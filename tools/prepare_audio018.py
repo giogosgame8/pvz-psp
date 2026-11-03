@@ -3,6 +3,16 @@ from pathlib import Path
 import argparse,hashlib,json,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
 
 ROOT=Path(__file__).resolve().parents[1]
+def normalize_sound_names(sounds):
+    """The bundled resource IDs omit the SOUND_ prefix used by Foley groups."""
+    normalized={}
+    for name,path in sounds.items():
+        key=name if name.startswith('SOUND_') else 'SOUND_'+name
+        if key in normalized and normalized[key]!=path:
+            raise ValueError(f'Conflicting sound declarations for {key}')
+        normalized[key]=path
+    return normalized
+
 def read_facts(elf,manifest):
     raw=Path(elf).read_bytes();names={};delta=0x29e30;at=0x833c7c
     def name_at(pos):
@@ -34,6 +44,7 @@ def prepare(imported,dest,reference_elf=None):
     if reference_elf:groups,sounds=read_facts(reference_elf,manifest)
     else:
         facts=json.loads((ROOT/'FOLEY-REFERENCE-0.18.json').read_text());groups,sounds=facts['groups'],facts['sounds']
+    sounds=normalize_sound_names(sounds)
     source={p.stem.lower():p for p in (imported/'archives/sounds/sounds').glob('*.mpg')}
     filenames=sorted(source);assert len(filenames)==194
     ids={name:i for i,name in enumerate(filenames)}

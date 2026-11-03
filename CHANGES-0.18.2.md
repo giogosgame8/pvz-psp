@@ -2,6 +2,7 @@
 
 - Double-click Setup.cmd, choose the original PS3 ISO, then copy the ready PSP folder.
 - Checks the source and guides installation of missing PC tools.
+- Fixes sound preparation when using only the supported disc ISO.
 - Prepares data in the correct folder, with readable progress and a local setup log.
 - Keeps existing data and saves until a complete replacement is ready.
 - Shorter installation page, with technical instructions kept separately.
