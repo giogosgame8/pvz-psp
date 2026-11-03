@@ -1,0 +1,1264 @@
+{
+  "source_iso_sha256": "50ecf8b9a8ccbba80bbbba83d9456c85f3080c33039a1f7424261235faaf1053",
+  "adventure": [
+    {
+      "level": 1,
+      "label": "1-1",
+      "waves": 4,
+      "world": "day"
+    },
+    {
+      "level": 2,
+      "label": "1-2",
+      "waves": 6,
+      "world": "day"
+    },
+    {
+      "level": 3,
+      "label": "1-3",
+      "waves": 8,
+      "world": "day"
+    },
+    {
+      "level": 4,
+      "label": "1-4",
+      "waves": 10,
+      "world": "day"
+    },
+    {
+      "level": 5,
+      "label": "1-5",
+      "waves": 8,
+      "world": "day"
+    },
+    {
+      "level": 6,
+      "label": "1-6",
+      "waves": 10,
+      "world": "day"
+    },
+    {
+      "level": 7,
+      "label": "1-7",
+      "waves": 20,
+      "world": "day"
+    },
+    {
+      "level": 8,
+      "label": "1-8",
+      "waves": 10,
+      "world": "day"
+    },
+    {
+      "level": 9,
+      "label": "1-9",
+      "waves": 20,
+      "world": "day"
+    },
+    {
+      "level": 10,
+      "label": "1-10",
+      "waves": 20,
+      "world": "day"
+    },
+    {
+      "level": 11,
+      "label": "2-1",
+      "waves": 10,
+      "world": "night"
+    },
+    {
+      "level": 12,
+      "label": "2-2",
+      "waves": 20,
+      "world": "night"
+    },
+    {
+      "level": 13,
+      "label": "2-3",
+      "waves": 10,
+      "world": "night"
+    },
+    {
+      "level": 14,
+      "label": "2-4",
+      "waves": 20,
+      "world": "night"
+    },
+    {
+      "level": 15,
+      "label": "2-5",
+      "waves": 10,
+      "world": "night"
+    },
+    {
+      "level": 16,
+      "label": "2-6",
+      "waves": 10,
+      "world": "night"
+    },
+    {
+      "level": 17,
+      "label": "2-7",
+      "waves": 20,
+      "world": "night"
+    },
+    {
+      "level": 18,
+      "label": "2-8",
+      "waves": 10,
+      "world": "night"
+    },
+    {
+      "level": 19,
+      "label": "2-9",
+      "waves": 20,
+      "world": "night"
+    },
+    {
+      "level": 20,
+      "label": "2-10",
+      "waves": 20,
+      "world": "night"
+    },
+    {
+      "level": 21,
+      "label": "3-1",
+      "waves": 10,
+      "world": "pool"
+    },
+    {
+      "level": 22,
+      "label": "3-2",
+      "waves": 20,
+      "world": "pool"
+    },
+    {
+      "level": 23,
+      "label": "3-3",
+      "waves": 20,
+      "world": "pool"
+    },
+    {
+      "level": 24,
+      "label": "3-4",
+      "waves": 30,
+      "world": "pool"
+    },
+    {
+      "level": 25,
+      "label": "3-5",
+      "waves": 20,
+      "world": "pool"
+    },
+    {
+      "level": 26,
+      "label": "3-6",
+      "waves": 20,
+      "world": "pool"
+    },
+    {
+      "level": 27,
+      "label": "3-7",
+      "waves": 30,
+      "world": "pool"
+    },
+    {
+      "level": 28,
+      "label": "3-8",
+      "waves": 20,
+      "world": "pool"
+    },
+    {
+      "level": 29,
+      "label": "3-9",
+      "waves": 30,
+      "world": "pool"
+    },
+    {
+      "level": 30,
+      "label": "3-10",
+      "waves": 30,
+      "world": "pool"
+    },
+    {
+      "level": 31,
+      "label": "4-1",
+      "waves": 10,
+      "world": "fog"
+    },
+    {
+      "level": 32,
+      "label": "4-2",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 33,
+      "label": "4-3",
+      "waves": 10,
+      "world": "fog"
+    },
+    {
+      "level": 34,
+      "label": "4-4",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 35,
+      "label": "4-5",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 36,
+      "label": "4-6",
+      "waves": 10,
+      "world": "fog"
+    },
+    {
+      "level": 37,
+      "label": "4-7",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 38,
+      "label": "4-8",
+      "waves": 10,
+      "world": "fog"
+    },
+    {
+      "level": 39,
+      "label": "4-9",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 40,
+      "label": "4-10",
+      "waves": 20,
+      "world": "fog"
+    },
+    {
+      "level": 41,
+      "label": "5-1",
+      "waves": 10,
+      "world": "roof"
+    },
+    {
+      "level": 42,
+      "label": "5-2",
+      "waves": 20,
+      "world": "roof"
+    },
+    {
+      "level": 43,
+      "label": "5-3",
+      "waves": 20,
+      "world": "roof"
+    },
+    {
+      "level": 44,
+      "label": "5-4",
+      "waves": 30,
+      "world": "roof"
+    },
+    {
+      "level": 45,
+      "label": "5-5",
+      "waves": 20,
+      "world": "roof"
+    },
+    {
+      "level": 46,
+      "label": "5-6",
+      "waves": 20,
+      "world": "roof"
+    },
+    {
+      "level": 47,
+      "label": "5-7",
+      "waves": 30,
+      "world": "roof"
+    },
+    {
+      "level": 48,
+      "label": "5-8",
+      "waves": 20,
+      "world": "roof"
+    },
+    {
+      "level": 49,
+      "label": "5-9",
+      "waves": 30,
+      "world": "roof"
+    },
+    {
+      "level": 50,
+      "label": "5-10",
+      "waves": 30,
+      "world": "roof"
+    }
+  ],
+  "minigames": [
+    {
+      "mode": 17,
+      "icon": 0,
+      "row": 0,
+      "col": 0,
+      "key": "WAR_AND_PEAS",
+      "title": "ZomBotany"
+    },
+    {
+      "mode": 18,
+      "icon": 6,
+      "row": 0,
+      "col": 1,
+      "key": "WALL_NUT_BOWLING",
+      "title": "Wall-nut Bowling"
+    },
+    {
+      "mode": 19,
+      "icon": 2,
+      "row": 0,
+      "col": 2,
+      "key": "SLOT_MACHINE",
+      "title": "Slot Machine"
+    },
+    {
+      "mode": 20,
+      "icon": 3,
+      "row": 0,
+      "col": 3,
+      "key": "HEAVY_WEAPON",
+      "title": "Heavy Weapon"
+    },
+    {
+      "mode": 21,
+      "icon": 1,
+      "row": 0,
+      "col": 4,
+      "key": "BEGHOULED",
+      "title": "Beghouled"
+    },
+    {
+      "mode": 22,
+      "icon": 8,
+      "row": 1,
+      "col": 0,
+      "key": "INVISIGHOUL",
+      "title": "Invisi-ghoul"
+    },
+    {
+      "mode": 23,
+      "icon": 5,
+      "row": 1,
+      "col": 1,
+      "key": "SEEING_STARS",
+      "title": "Seeing Stars"
+    },
+    {
+      "mode": 24,
+      "icon": 7,
+      "row": 1,
+      "col": 2,
+      "key": "ZOMBIQUARIUM",
+      "title": "Zombiquarium"
+    },
+    {
+      "mode": 25,
+      "icon": 20,
+      "row": 1,
+      "col": 3,
+      "key": "BEGHOULED_TWIST",
+      "title": "Beghouled Twist"
+    },
+    {
+      "mode": 26,
+      "icon": 12,
+      "row": 1,
+      "col": 4,
+      "key": "LITTLE_TROUBLE",
+      "title": "Big Trouble Little Zombie"
+    },
+    {
+      "mode": 27,
+      "icon": 15,
+      "row": 2,
+      "col": 0,
+      "key": "PORTAL_COMBAT",
+      "title": "Portal Combat"
+    },
+    {
+      "mode": 28,
+      "icon": 4,
+      "row": 2,
+      "col": 1,
+      "key": "COLUMN_AS_YOU_SEE_EM",
+      "title": "Column Like You See 'Em"
+    },
+    {
+      "mode": 29,
+      "icon": 17,
+      "row": 2,
+      "col": 2,
+      "key": "BOBSLED_BONANZA",
+      "title": "Bobsled Bonanza"
+    },
+    {
+      "mode": 30,
+      "icon": 18,
+      "row": 2,
+      "col": 3,
+      "key": "ZOMBIES_ON_SPEED",
+      "title": "Zombie Nimble Zombie Quick"
+    },
+    {
+      "mode": 31,
+      "icon": 16,
+      "row": 2,
+      "col": 4,
+      "key": "WHACK_A_ZOMBIE",
+      "title": "Whack a Zombie"
+    },
+    {
+      "mode": 32,
+      "icon": 21,
+      "row": 3,
+      "col": 0,
+      "key": "LAST_STAND",
+      "title": "Last Stand"
+    },
+    {
+      "mode": 33,
+      "icon": 0,
+      "row": 3,
+      "col": 1,
+      "key": "WAR_AND_PEAS_2",
+      "title": "ZomBotany 2"
+    },
+    {
+      "mode": 34,
+      "icon": 6,
+      "row": 3,
+      "col": 2,
+      "key": "WALL_NUT_BOWLING_EXTREME",
+      "title": "Wall-nut Bowling 2"
+    },
+    {
+      "mode": 35,
+      "icon": 14,
+      "row": 3,
+      "col": 3,
+      "key": "POGO_PARTY",
+      "title": "Pogo Party"
+    },
+    {
+      "mode": 36,
+      "icon": 19,
+      "row": 3,
+      "col": 4,
+      "key": "FINAL_BOSS",
+      "title": "Dr. Zomboss's Revenge"
+    }
+  ],
+  "notes": [
+    {
+      "file": "ZombieNote1.ptx",
+      "after_level": 9
+    },
+    {
+      "file": "ZombieNote2.ptx",
+      "after_level": 19
+    },
+    {
+      "file": "ZombieNote3.ptx",
+      "after_level": 29
+    },
+    {
+      "file": "ZombieNote4.ptx",
+      "after_level": 39
+    },
+    {
+      "file": "ZombieFinalNote.ptx",
+      "after_level": 49
+    }
+  ],
+  "ending": {
+    "audio": "ZOMBIESONYOURLAWN.OGG",
+    "visuals": [
+      "Credits_Main.reanim",
+      "Credits_Main2.reanim",
+      "Credits_Main3.reanim"
+    ],
+    "standalone_video": false
+  },
+  "implemented_adventure_levels": 50,
+  "implemented_minigames": [
+    "Wall-nut Bowling",
+    "Whack a Zombie"
+  ],
+  "ending_video_implemented": false,
+  "minigame_table_file_offset": "0x8513c4",
+  "challenge_table_file_offset": "0x85125c",
+  "ps3_challenges": [
+    {
+      "mode": 2,
+      "icon": 0,
+      "page": 0,
+      "row": 0,
+      "col": 0,
+      "key": "[SURVIVAL_DAY_NORMAL]"
+    },
+    {
+      "mode": 3,
+      "icon": 1,
+      "page": 0,
+      "row": 0,
+      "col": 1,
+      "key": "[SURVIVAL_NIGHT_NORMAL]"
+    },
+    {
+      "mode": 4,
+      "icon": 2,
+      "page": 0,
+      "row": 0,
+      "col": 2,
+      "key": "[SURVIVAL_POOL_NORMAL]"
+    },
+    {
+      "mode": 5,
+      "icon": 3,
+      "page": 0,
+      "row": 0,
+      "col": 3,
+      "key": "[SURVIVAL_FOG_NORMAL]"
+    },
+    {
+      "mode": 6,
+      "icon": 4,
+      "page": 0,
+      "row": 0,
+      "col": 4,
+      "key": "[SURVIVAL_ROOF_NORMAL]"
+    },
+    {
+      "mode": 7,
+      "icon": 5,
+      "page": 0,
+      "row": 1,
+      "col": 0,
+      "key": "[SURVIVAL_DAY_HARD]"
+    },
+    {
+      "mode": 8,
+      "icon": 6,
+      "page": 0,
+      "row": 1,
+      "col": 1,
+      "key": "[SURVIVAL_NIGHT_HARD]"
+    },
+    {
+      "mode": 9,
+      "icon": 7,
+      "page": 0,
+      "row": 1,
+      "col": 2,
+      "key": "[SURVIVAL_POOL_HARD]"
+    },
+    {
+      "mode": 10,
+      "icon": 8,
+      "page": 0,
+      "row": 1,
+      "col": 3,
+      "key": "[SURVIVAL_FOG_HARD]"
+    },
+    {
+      "mode": 11,
+      "icon": 9,
+      "page": 0,
+      "row": 1,
+      "col": 4,
+      "key": "[SURVIVAL_ROOF_HARD]"
+    },
+    {
+      "mode": 12,
+      "icon": 10,
+      "page": 2,
+      "row": 3,
+      "col": 0,
+      "key": "[SURVIVAL_DAY_ENDLESS]"
+    },
+    {
+      "mode": 13,
+      "icon": 10,
+      "page": 2,
+      "row": 3,
+      "col": 1,
+      "key": "[SURVIVAL_NIGHT_ENDLESS]"
+    },
+    {
+      "mode": 14,
+      "icon": 10,
+      "page": 0,
+      "row": 2,
+      "col": 2,
+      "key": "[SURVIVAL_POOL_ENDLESS]"
+    },
+    {
+      "mode": 15,
+      "icon": 10,
+      "page": 2,
+      "row": 3,
+      "col": 2,
+      "key": "[SURVIVAL_FOG_ENDLESS]"
+    },
+    {
+      "mode": 16,
+      "icon": 10,
+      "page": 2,
+      "row": 3,
+      "col": 3,
+      "key": "[SURVIVAL_ROOF_ENDLESS]"
+    },
+    {
+      "mode": 17,
+      "icon": 0,
+      "page": 1,
+      "row": 0,
+      "col": 0,
+      "key": "[WAR_AND_PEAS]"
+    },
+    {
+      "mode": 18,
+      "icon": 6,
+      "page": 1,
+      "row": 0,
+      "col": 1,
+      "key": "[WALL_NUT_BOWLING]"
+    },
+    {
+      "mode": 19,
+      "icon": 2,
+      "page": 1,
+      "row": 0,
+      "col": 2,
+      "key": "[SLOT_MACHINE]"
+    },
+    {
+      "mode": 20,
+      "icon": 3,
+      "page": 1,
+      "row": 0,
+      "col": 3,
+      "key": "[HEAVY_WEAPON]"
+    },
+    {
+      "mode": 21,
+      "icon": 1,
+      "page": 1,
+      "row": 0,
+      "col": 4,
+      "key": "[BEGHOULED]"
+    },
+    {
+      "mode": 22,
+      "icon": 8,
+      "page": 1,
+      "row": 1,
+      "col": 0,
+      "key": "[INVISIGHOUL]"
+    },
+    {
+      "mode": 23,
+      "icon": 5,
+      "page": 1,
+      "row": 1,
+      "col": 1,
+      "key": "[SEEING_STARS]"
+    },
+    {
+      "mode": 24,
+      "icon": 7,
+      "page": 1,
+      "row": 1,
+      "col": 2,
+      "key": "[ZOMBIQUARIUM]"
+    },
+    {
+      "mode": 25,
+      "icon": 20,
+      "page": 1,
+      "row": 1,
+      "col": 3,
+      "key": "[BEGHOULED_TWIST]"
+    },
+    {
+      "mode": 26,
+      "icon": 12,
+      "page": 1,
+      "row": 1,
+      "col": 4,
+      "key": "[LITTLE_TROUBLE]"
+    },
+    {
+      "mode": 27,
+      "icon": 15,
+      "page": 1,
+      "row": 2,
+      "col": 0,
+      "key": "[PORTAL_COMBAT]"
+    },
+    {
+      "mode": 28,
+      "icon": 4,
+      "page": 1,
+      "row": 2,
+      "col": 1,
+      "key": "[COLUMN_AS_YOU_SEE_EM]"
+    },
+    {
+      "mode": 29,
+      "icon": 17,
+      "page": 1,
+      "row": 2,
+      "col": 2,
+      "key": "[BOBSLED_BONANZA]"
+    },
+    {
+      "mode": 30,
+      "icon": 18,
+      "page": 1,
+      "row": 2,
+      "col": 3,
+      "key": "[ZOMBIES_ON_SPEED]"
+    },
+    {
+      "mode": 31,
+      "icon": 16,
+      "page": 1,
+      "row": 2,
+      "col": 4,
+      "key": "[WHACK_A_ZOMBIE]"
+    },
+    {
+      "mode": 32,
+      "icon": 21,
+      "page": 1,
+      "row": 3,
+      "col": 0,
+      "key": "[LAST_STAND]"
+    },
+    {
+      "mode": 33,
+      "icon": 0,
+      "page": 1,
+      "row": 3,
+      "col": 1,
+      "key": "[WAR_AND_PEAS_2]"
+    },
+    {
+      "mode": 34,
+      "icon": 6,
+      "page": 1,
+      "row": 3,
+      "col": 2,
+      "key": "[WALL_NUT_BOWLING_EXTREME]"
+    },
+    {
+      "mode": 35,
+      "icon": 14,
+      "page": 1,
+      "row": 3,
+      "col": 3,
+      "key": "[POGO_PARTY]"
+    },
+    {
+      "mode": 36,
+      "icon": 19,
+      "page": 1,
+      "row": 3,
+      "col": 4,
+      "key": "[FINAL_BOSS]"
+    },
+    {
+      "mode": 37,
+      "icon": 0,
+      "page": 2,
+      "row": 0,
+      "col": 0,
+      "key": "[ART_CHALLENGE_WALL_NUT]"
+    },
+    {
+      "mode": 38,
+      "icon": 1,
+      "page": 2,
+      "row": 0,
+      "col": 1,
+      "key": "[SUNNY_DAY]"
+    },
+    {
+      "mode": 39,
+      "icon": 2,
+      "page": 2,
+      "row": 0,
+      "col": 2,
+      "key": "[UNSODDED]"
+    },
+    {
+      "mode": 40,
+      "icon": 3,
+      "page": 2,
+      "row": 0,
+      "col": 3,
+      "key": "[BIG_TIME]"
+    },
+    {
+      "mode": 41,
+      "icon": 4,
+      "page": 2,
+      "row": 0,
+      "col": 4,
+      "key": "[ART_CHALLENGE_SUNFLOWER]"
+    },
+    {
+      "mode": 42,
+      "icon": 5,
+      "page": 2,
+      "row": 1,
+      "col": 0,
+      "key": "[AIR_RAID]"
+    },
+    {
+      "mode": 43,
+      "icon": 6,
+      "page": 2,
+      "row": 1,
+      "col": 1,
+      "key": "[ICE_LEVEL]"
+    },
+    {
+      "mode": 44,
+      "icon": 7,
+      "page": 2,
+      "row": 1,
+      "col": 2,
+      "key": "[ZEN_GARDEN]"
+    },
+    {
+      "mode": 45,
+      "icon": 8,
+      "page": 2,
+      "row": 1,
+      "col": 3,
+      "key": "[HIGH_GRAVITY]"
+    },
+    {
+      "mode": 46,
+      "icon": 11,
+      "page": 2,
+      "row": 1,
+      "col": 4,
+      "key": "[GRAVE_DANGER]"
+    },
+    {
+      "mode": 47,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 0,
+      "key": "[CAN_YOU_DIG_IT]"
+    },
+    {
+      "mode": 48,
+      "icon": 13,
+      "page": 2,
+      "row": 2,
+      "col": 1,
+      "key": "[DARK_STORMY_NIGHT]"
+    },
+    {
+      "mode": 49,
+      "icon": 9,
+      "page": 2,
+      "row": 2,
+      "col": 2,
+      "key": "[BUNGEE_BLITZ]"
+    },
+    {
+      "mode": 50,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 3,
+      "key": "[SQUIRREL]"
+    },
+    {
+      "mode": 51,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 1,
+      "key": "[TREE_OF_WISDOM]"
+    },
+    {
+      "mode": 52,
+      "icon": 10,
+      "page": 4,
+      "row": 0,
+      "col": 0,
+      "key": "[SCARY_POTTER_1]"
+    },
+    {
+      "mode": 53,
+      "icon": 11,
+      "page": 4,
+      "row": 2,
+      "col": 0,
+      "key": "[I_ZOMBIE_1]"
+    },
+    {
+      "mode": 54,
+      "icon": 10,
+      "page": 4,
+      "row": 0,
+      "col": 1,
+      "key": "[SCARY_POTTER_2]"
+    },
+    {
+      "mode": 55,
+      "icon": 11,
+      "page": 4,
+      "row": 2,
+      "col": 1,
+      "key": "[I_ZOMBIE_2]"
+    },
+    {
+      "mode": 56,
+      "icon": 10,
+      "page": 4,
+      "row": 0,
+      "col": 2,
+      "key": "[SCARY_POTTER_3]"
+    },
+    {
+      "mode": 57,
+      "icon": 11,
+      "page": 4,
+      "row": 2,
+      "col": 2,
+      "key": "[I_ZOMBIE_3]"
+    },
+    {
+      "mode": 58,
+      "icon": 10,
+      "page": 4,
+      "row": 0,
+      "col": 3,
+      "key": "[SCARY_POTTER_4]"
+    },
+    {
+      "mode": 59,
+      "icon": 11,
+      "page": 4,
+      "row": 2,
+      "col": 3,
+      "key": "[I_ZOMBIE_4]"
+    },
+    {
+      "mode": 60,
+      "icon": 10,
+      "page": 4,
+      "row": 0,
+      "col": 4,
+      "key": "[SCARY_POTTER_5]"
+    },
+    {
+      "mode": 61,
+      "icon": 11,
+      "page": 4,
+      "row": 2,
+      "col": 4,
+      "key": "[I_ZOMBIE_5]"
+    },
+    {
+      "mode": 62,
+      "icon": 10,
+      "page": 4,
+      "row": 1,
+      "col": 0,
+      "key": "[SCARY_POTTER_6]"
+    },
+    {
+      "mode": 63,
+      "icon": 11,
+      "page": 4,
+      "row": 3,
+      "col": 0,
+      "key": "[I_ZOMBIE_6]"
+    },
+    {
+      "mode": 64,
+      "icon": 10,
+      "page": 4,
+      "row": 1,
+      "col": 1,
+      "key": "[SCARY_POTTER_7]"
+    },
+    {
+      "mode": 65,
+      "icon": 11,
+      "page": 4,
+      "row": 3,
+      "col": 1,
+      "key": "[I_ZOMBIE_7]"
+    },
+    {
+      "mode": 66,
+      "icon": 10,
+      "page": 4,
+      "row": 1,
+      "col": 2,
+      "key": "[SCARY_POTTER_8]"
+    },
+    {
+      "mode": 67,
+      "icon": 11,
+      "page": 4,
+      "row": 3,
+      "col": 2,
+      "key": "[I_ZOMBIE_8]"
+    },
+    {
+      "mode": 68,
+      "icon": 10,
+      "page": 4,
+      "row": 1,
+      "col": 3,
+      "key": "[SCARY_POTTER_9]"
+    },
+    {
+      "mode": 69,
+      "icon": 11,
+      "page": 4,
+      "row": 3,
+      "col": 3,
+      "key": "[I_ZOMBIE_9]"
+    },
+    {
+      "mode": 70,
+      "icon": 10,
+      "page": 4,
+      "row": 1,
+      "col": 4,
+      "key": "[SCARY_POTTER_ENDLESS]"
+    },
+    {
+      "mode": 71,
+      "icon": 11,
+      "page": 4,
+      "row": 3,
+      "col": 4,
+      "key": "[I_ZOMBIE_ENDLESS]"
+    },
+    {
+      "mode": 72,
+      "icon": 10,
+      "page": 2,
+      "row": 3,
+      "col": 4,
+      "key": "[UPSELL]"
+    },
+    {
+      "mode": 73,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 3,
+      "key": "[INTRO]"
+    },
+    {
+      "mode": 74,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 2,
+      "key": ""
+    },
+    {
+      "mode": 75,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 3,
+      "key": ""
+    },
+    {
+      "mode": 76,
+      "icon": 10,
+      "page": 2,
+      "row": 2,
+      "col": 1,
+      "key": ""
+    },
+    {
+      "mode": 77,
+      "icon": 18,
+      "page": 2,
+      "row": 0,
+      "col": 0,
+      "key": "[COOP]"
+    },
+    {
+      "mode": 78,
+      "icon": 18,
+      "page": 2,
+      "row": 0,
+      "col": 1,
+      "key": ""
+    },
+    {
+      "mode": 79,
+      "icon": 0,
+      "page": 3,
+      "row": 0,
+      "col": 0,
+      "key": "[COOP_1]"
+    },
+    {
+      "mode": 80,
+      "icon": 1,
+      "page": 3,
+      "row": 0,
+      "col": 1,
+      "key": "[COOP_2]"
+    },
+    {
+      "mode": 81,
+      "icon": 2,
+      "page": 3,
+      "row": 0,
+      "col": 2,
+      "key": "[COOP_3]"
+    },
+    {
+      "mode": 82,
+      "icon": 4,
+      "page": 3,
+      "row": 0,
+      "col": 3,
+      "key": "[COOP_4]"
+    },
+    {
+      "mode": 83,
+      "icon": 6,
+      "page": 3,
+      "row": 0,
+      "col": 4,
+      "key": "[COOP_BOWLING]"
+    },
+    {
+      "mode": 84,
+      "icon": 5,
+      "page": 3,
+      "row": 1,
+      "col": 0,
+      "key": "[COOP_HARD_1]"
+    },
+    {
+      "mode": 85,
+      "icon": 6,
+      "page": 3,
+      "row": 1,
+      "col": 1,
+      "key": "[COOP_HARD_2]"
+    },
+    {
+      "mode": 86,
+      "icon": 7,
+      "page": 3,
+      "row": 1,
+      "col": 2,
+      "key": "[COOP_HARD_3]"
+    },
+    {
+      "mode": 87,
+      "icon": 9,
+      "page": 3,
+      "row": 1,
+      "col": 3,
+      "key": "[COOP_HARD_4]"
+    },
+    {
+      "mode": 88,
+      "icon": 19,
+      "page": 3,
+      "row": 1,
+      "col": 4,
+      "key": "[COOP_FINAL_BOSS]"
+    },
+    {
+      "mode": 89,
+      "icon": 10,
+      "page": 3,
+      "row": 2,
+      "col": 2,
+      "key": "[COOP_ENDLESS]"
+    },
+    {
+      "mode": 90,
+      "icon": 18,
+      "page": 2,
+      "row": 2,
+      "col": 4,
+      "key": "[ITS_RAINING_SEEDS]"
+    },
+    {
+      "mode": 76,
+      "icon": 0,
+      "page": 5,
+      "row": 0,
+      "col": 0,
+      "key": "[MP_VS_DAY]"
+    },
+    {
+      "mode": 76,
+      "icon": 1,
+      "page": 5,
+      "row": 0,
+      "col": 1,
+      "key": "[MP_VS_NIGHT]"
+    },
+    {
+      "mode": 76,
+      "icon": 2,
+      "page": 5,
+      "row": 0,
+      "col": 2,
+      "key": "[MP_VS_POOL_DAY]"
+    },
+    {
+      "mode": 76,
+      "icon": 3,
+      "page": 5,
+      "row": 0,
+      "col": 3,
+      "key": "[MP_VS_POOL_NIGHT]"
+    },
+    {
+      "mode": 76,
+      "icon": 4,
+      "page": 5,
+      "row": 0,
+      "col": 4,
+      "key": "[MP_VS_ROOF]"
+    }
+  ],
+  "purchased_plants_implemented": 9,
+  "almanac_entries": 75,
+  "adhoc_coop_implemented": false,
+  "adhoc_versus_implemented": false
+}

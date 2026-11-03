@@ -1,0 +1,18 @@
+This software is based in part on the work of the Independent JPEG Group.
+
+The PSP binary links libjpeg-turbo 3.1.3, zlib 1.3.1 and PSPSDK libraries.
+Their notices are included in third_party. Source projects:
+https://github.com/libjpeg-turbo/libjpeg-turbo
+https://github.com/madler/zlib
+https://github.com/pspdev/pspsdk
+
+The ISO importer has its own LICENSE and NOTICE.txt in importer.
+Supporting game-mechanics reference: PvZ-Portable (LGPL-3.0-or-later),
+https://github.com/wszqkzqk/PvZ-Portable. Its engine is not bundled or compiled.
+See EXTRA-REFERENCE.json for the provenance of puzzle inventories/layout facts.
+Game resources belong to their original owners and are excluded from the
+asset-free package. The personal kit is for the owner's private testing.
+
+Personal launcher audio is prepared with ItsNoHax/pspbuild (MIT), an external
+build-time tool, not linked into the game. Its notice is included in
+third_party/pspbuild-MIT.txt. https://github.com/ItsNoHax/pspbuild

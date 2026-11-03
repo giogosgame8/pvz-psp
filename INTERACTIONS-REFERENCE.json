@@ -1,0 +1,35 @@
+{
+  "source_iso_sha256": "50ecf8b9a8ccbba80bbbba83d9456c85f3080c33039a1f7424261235faaf1053",
+  "whack": {
+    "ps3_executable_virtual_addresses": [
+      "0x1b1c00",
+      "0x24f57c"
+    ],
+    "helmet_damage_call": "0x2c9934",
+    "helmet_hit": 900,
+    "unarmored_body_hit": 400,
+    "helmet_overflow": "discarded by whack caller",
+    "full_health_hits": {
+      "regular": 1,
+      "conehead": 2,
+      "buckethead": 3
+    }
+  },
+  "death_clips": "Original imported reanimations; frame counts and source fps in src/death_data.h. Per-corpse playback, ground anchors, held last frame, then fade.",
+  "reward_art": "Original trophy_hi_res, Sunflower_trophy silver cell, Shovel_hi_res, localized Almanac, CarKeys, Taco, WateringCan and ZombieNoteSmall resources.",
+  "reward_levels": {
+    "4": "shovel",
+    "14": "almanac",
+    "24": "car keys",
+    "34": "taco",
+    "44": "watering can",
+    "9,19,29,39,49": "zombie note",
+    "50": "silver sunflower",
+    "other Adventure": "next plant seed packet",
+    "standalone mini-games": "trophy"
+  },
+  "binary_handling": "Read-only static inspection plus user-authorized RPCS3 reference setup. The original title screen was booted; Heavy Weapon, co-op and versus have not yet been observed.",
+  "plant_definition_table_file_offset": "0x854de4",
+  "shop_cost_function_virtual_address": "0x2a0bf4",
+  "challenge_table_file_offset": "0x85125c"
+}

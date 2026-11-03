@@ -1,0 +1,13 @@
+PvZ PS3 resource importer
+
+PS3 PAK format reference:
+PopStudio, by the PopGameTool/PopStudio contributors
+https://github.com/PopGameTool/PopStudio
+Licensed under the Apache License, Version 2.0.
+
+This package rewrites the relevant format-handling logic in Python and adds ISO
+inspection, build selection, bounds checking, safe extraction, and resource hashes.
+It does not include or license Plants vs. Zombies game content.
+
+Plants vs. Zombies and original game content belong to their respective owners.
+This is an unofficial development tool, not an EA, PopCap, or Sony product.

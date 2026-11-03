@@ -1,0 +1,890 @@
+{
+  "provenance": "Factual puzzle inventories/placements transcribed from supporting PC reference. Console names/order come from the user disc. PS3 layout parity requires comparison.",
+  "vases": [
+    {
+      "blocked_columns": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 0,
+          "count": 5
+        },
+        {
+          "content": 5,
+          "count": 5
+        },
+        {
+          "content": 17,
+          "count": 5
+        },
+        {
+          "content": -1,
+          "count": 6
+        },
+        {
+          "content": -3,
+          "count": 3
+        },
+        {
+          "content": -16,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1,
+        2,
+        8
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 51,
+          "count": 7
+        },
+        {
+          "content": 5,
+          "count": 3
+        },
+        {
+          "content": 2,
+          "count": 3
+        },
+        {
+          "content": 4,
+          "count": 2
+        },
+        {
+          "content": -1,
+          "count": 6
+        },
+        {
+          "content": -3,
+          "count": 3
+        },
+        {
+          "content": -16,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1,
+        2
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 51,
+          "count": 6
+        },
+        {
+          "content": 5,
+          "count": 4
+        },
+        {
+          "content": 17,
+          "count": 2
+        },
+        {
+          "content": 12,
+          "count": 3
+        },
+        {
+          "content": 2,
+          "count": 3
+        },
+        {
+          "content": -1,
+          "count": 8
+        },
+        {
+          "content": -3,
+          "count": 2
+        },
+        {
+          "content": -9,
+          "count": 1
+        },
+        {
+          "content": -16,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 8,
+          "count": 11
+        },
+        {
+          "content": 12,
+          "count": 4
+        },
+        {
+          "content": 51,
+          "count": 4
+        },
+        {
+          "content": -16,
+          "count": 8
+        },
+        {
+          "content": -1,
+          "count": 7
+        },
+        {
+          "content": -8,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 51,
+          "count": 6
+        },
+        {
+          "content": 30,
+          "count": 3
+        },
+        {
+          "content": 17,
+          "count": 4
+        },
+        {
+          "content": 12,
+          "count": 2
+        },
+        {
+          "content": 5,
+          "count": 2
+        },
+        {
+          "content": 31,
+          "count": 3
+        },
+        {
+          "content": -1,
+          "count": 6
+        },
+        {
+          "content": -3,
+          "count": 5
+        },
+        {
+          "content": -16,
+          "count": 1
+        },
+        {
+          "content": -8,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 51,
+          "count": 7
+        },
+        {
+          "content": 17,
+          "count": 2
+        },
+        {
+          "content": 23,
+          "count": 5
+        },
+        {
+          "content": 18,
+          "count": 2
+        },
+        {
+          "content": 22,
+          "count": 4
+        },
+        {
+          "content": -1,
+          "count": 7
+        },
+        {
+          "content": -4,
+          "count": 5
+        },
+        {
+          "content": -8,
+          "count": 2
+        },
+        {
+          "content": -16,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1,
+        2
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 21,
+          "count": 13
+        },
+        {
+          "content": 2,
+          "count": 3
+        },
+        {
+          "content": 17,
+          "count": 3
+        },
+        {
+          "content": -1,
+          "count": 10
+        },
+        {
+          "content": -3,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 8,
+          "count": 7
+        },
+        {
+          "content": 23,
+          "count": 3
+        },
+        {
+          "content": 17,
+          "count": 5
+        },
+        {
+          "content": 51,
+          "count": 4
+        },
+        {
+          "content": -16,
+          "count": 8
+        },
+        {
+          "content": -1,
+          "count": 4
+        },
+        {
+          "content": -19,
+          "count": 4
+        }
+      ]
+    },
+    {
+      "blocked_columns": [
+        0,
+        1
+      ],
+      "green": 2,
+      "contents": [
+        {
+          "content": 51,
+          "count": 6
+        },
+        {
+          "content": 5,
+          "count": 2
+        },
+        {
+          "content": 0,
+          "count": 2
+        },
+        {
+          "content": 18,
+          "count": 2
+        },
+        {
+          "content": 17,
+          "count": 5
+        },
+        {
+          "content": 4,
+          "count": 1
+        },
+        {
+          "content": 2,
+          "count": 1
+        },
+        {
+          "content": 25,
+          "count": 1
+        },
+        {
+          "content": -1,
+          "count": 8
+        },
+        {
+          "content": -3,
+          "count": 5
+        },
+        {
+          "content": -16,
+          "count": 1
+        },
+        {
+          "content": -24,
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "izombie": [
+    {
+      "fixed": [
+        [
+          1,
+          3,
+          2
+        ],
+        [
+          1,
+          3,
+          3
+        ]
+      ],
+      "random": [
+        [
+          1,
+          7,
+          -1
+        ],
+        [
+          17,
+          3,
+          -1
+        ],
+        [
+          0,
+          6,
+          -1
+        ],
+        [
+          5,
+          2,
+          -1
+        ]
+      ],
+      "columns": 4
+    },
+    {
+      "fixed": [
+        [
+          21,
+          3,
+          0
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          1,
+          3,
+          3
+        ]
+      ],
+      "random": [
+        [
+          21,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          5,
+          2,
+          3
+        ],
+        [
+          1,
+          1,
+          3
+        ],
+        [
+          1,
+          4,
+          -1
+        ],
+        [
+          21,
+          2,
+          -1
+        ],
+        [
+          5,
+          2,
+          -1
+        ],
+        [
+          0,
+          4,
+          -1
+        ]
+      ],
+      "columns": 4
+    },
+    {
+      "fixed": [
+        [
+          4,
+          3,
+          0
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          4,
+          2,
+          2
+        ],
+        [
+          1,
+          2,
+          4
+        ],
+        [
+          22,
+          3,
+          3
+        ]
+      ],
+      "random": [
+        [
+          22,
+          2,
+          -1
+        ],
+        [
+          1,
+          5,
+          -1
+        ],
+        [
+          0,
+          7,
+          -1
+        ],
+        [
+          28,
+          1,
+          -1
+        ]
+      ],
+      "columns": 4
+    },
+    {
+      "fixed": [
+        [
+          2,
+          3,
+          0
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          2,
+          3,
+          1
+        ],
+        [
+          2,
+          3,
+          2
+        ],
+        [
+          1,
+          2,
+          2
+        ],
+        [
+          2,
+          3,
+          3
+        ],
+        [
+          2,
+          3,
+          4
+        ],
+        [
+          1,
+          2,
+          4
+        ]
+      ],
+      "random": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          5,
+          1,
+          1
+        ],
+        [
+          10,
+          2,
+          2
+        ],
+        [
+          5,
+          1,
+          3
+        ],
+        [
+          0,
+          1,
+          4
+        ],
+        [
+          0,
+          2,
+          -1
+        ],
+        [
+          1,
+          4,
+          -1
+        ]
+      ],
+      "columns": 4
+    },
+    {
+      "fixed": [
+        [
+          1,
+          3,
+          2
+        ],
+        [
+          1,
+          3,
+          3
+        ]
+      ],
+      "random": [
+        [
+          26,
+          1,
+          1
+        ],
+        [
+          26,
+          1,
+          4
+        ],
+        [
+          31,
+          1,
+          -1
+        ],
+        [
+          1,
+          5,
+          -1
+        ],
+        [
+          0,
+          8,
+          -1
+        ],
+        [
+          5,
+          2,
+          -1
+        ]
+      ],
+      "columns": 4
+    },
+    {
+      "fixed": [
+        [
+          36,
+          4,
+          1
+        ],
+        [
+          36,
+          4,
+          3
+        ]
+      ],
+      "random": [
+        [
+          1,
+          3,
+          1
+        ],
+        [
+          1,
+          3,
+          3
+        ],
+        [
+          22,
+          2,
+          -1
+        ],
+        [
+          1,
+          2,
+          -1
+        ],
+        [
+          21,
+          3,
+          -1
+        ],
+        [
+          5,
+          1,
+          -1
+        ],
+        [
+          0,
+          5,
+          -1
+        ],
+        [
+          17,
+          2,
+          -1
+        ],
+        [
+          34,
+          2,
+          -1
+        ]
+      ],
+      "columns": 5
+    },
+    {
+      "fixed": [
+        [
+          1,
+          4,
+          2
+        ],
+        [
+          1,
+          4,
+          4
+        ]
+      ],
+      "random": [
+        [
+          1,
+          6,
+          -1
+        ],
+        [
+          4,
+          9,
+          -1
+        ],
+        [
+          6,
+          8,
+          -1
+        ]
+      ],
+      "columns": 5
+    },
+    {
+      "fixed": [],
+      "random": [
+        [
+          2,
+          3,
+          -1
+        ],
+        [
+          31,
+          2,
+          -1
+        ],
+        [
+          0,
+          8,
+          -1
+        ],
+        [
+          17,
+          2,
+          -1
+        ],
+        [
+          4,
+          2,
+          -1
+        ],
+        [
+          1,
+          8,
+          -1
+        ]
+      ],
+      "columns": 5
+    },
+    {
+      "fixed": [
+        [
+          23,
+          5,
+          1
+        ],
+        [
+          22,
+          5,
+          3
+        ]
+      ],
+      "random": [
+        [
+          4,
+          4,
+          0
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          1,
+          2,
+          1
+        ],
+        [
+          18,
+          1,
+          1
+        ],
+        [
+          5,
+          1,
+          1
+        ],
+        [
+          28,
+          1,
+          1
+        ],
+        [
+          6,
+          3,
+          2
+        ],
+        [
+          1,
+          2,
+          2
+        ],
+        [
+          17,
+          1,
+          2
+        ],
+        [
+          0,
+          3,
+          3
+        ],
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          1,
+          1,
+          4
+        ],
+        [
+          10,
+          1,
+          4
+        ],
+        [
+          13,
+          1,
+          4
+        ],
+        [
+          29,
+          1,
+          4
+        ],
+        [
+          28,
+          1,
+          4
+        ],
+        [
+          31,
+          1,
+          4
+        ]
+      ],
+      "columns": 6
+    }
+  ]
+}

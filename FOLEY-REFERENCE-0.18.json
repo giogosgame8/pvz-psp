@@ -1,0 +1,1299 @@
+{
+  "source": "User PS3 EBOOT, Foley table file offset 0x8538c4, 104 records of 52 bytes; sound-name/global arrays paired from offsets 0x833c7c and 0x809e4c",
+  "groups": [
+    {
+      "id": 0,
+      "name": "FOLEY_SUN",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_POINTS"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "FOLEY_SPLAT",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SPLAT",
+        "SOUND_SPLAT2",
+        "SOUND_SPLAT3"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "FOLEY_LAWNMOWER",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_LAWNMOWER"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "FOLEY_THROW",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_THROW",
+        "SOUND_THROW",
+        "SOUND_THROW",
+        "SOUND_THROW2"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "FOLEY_SPAWN_SUN",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_THROW"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "FOLEY_CHOMP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CHOMP",
+        "SOUND_CHOMP2"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "FOLEY_CHOMP_SOFT",
+      "pitch": 4.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CHOMPSOFT"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "FOLEY_PLANT",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLANT",
+        "SOUND_PLANT2"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "FOLEY_USE_SHOVEL",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLANT2"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "FOLEY_DROP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_TAP2"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "FOLEY_BLEEP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BLEEP"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "FOLEY_GROAN",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GROAN",
+        "SOUND_GROAN2",
+        "SOUND_GROAN3",
+        "SOUND_GROAN4",
+        "SOUND_GROAN5",
+        "SOUND_GROAN6"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "FOLEY_BRAINS",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GROAN",
+        "SOUND_GROAN2",
+        "SOUND_GROAN3",
+        "SOUND_GROAN4",
+        "SOUND_GROAN5",
+        "SOUND_GROAN6",
+        "SOUND_SUKHBIR4",
+        "SOUND_SUKHBIR5",
+        "SOUND_SUKHBIR6"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "FOLEY_SUKHBIR",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GROAN",
+        "SOUND_GROAN2",
+        "SOUND_GROAN3",
+        "SOUND_GROAN4",
+        "SOUND_GROAN5",
+        "SOUND_GROAN6",
+        "SOUND_SUKHBIR",
+        "SOUND_SUKHBIR2",
+        "SOUND_SUKHBIR3"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "FOLEY_JACKINTHEBOX",
+      "pitch": 0.0,
+      "flags": 7,
+      "variants": [
+        "SOUND_JACKINTHEBOX"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "FOLEY_ART_CHALLENGE",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_DIAMOND"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "FOLEY_ZAMBONI",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_ZAMBONI"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "FOLEY_THUNDER",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_THUNDER"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "FOLEY_FROZEN",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FROZEN"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "FOLEY_ZOMBIESPLASH",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLANT_WATER",
+        "SOUND_ZOMBIE_ENTERING_WATER"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "FOLEY_BOWLINGIMPACT",
+      "pitch": -3.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BOWLINGIMPACT"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "FOLEY_SQUISH",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CHOMP",
+        "SOUND_CHOMP2"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "FOLEY_TIRE_POP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BALLOON_POP"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "FOLEY_EXPLOSION",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_EXPLOSION"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "FOLEY_SLURP",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SLURP"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "FOLEY_LIMBS_POP",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_LIMBS_POP"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "FOLEY_POGO_ZOMBIE",
+      "pitch": 4.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_POGO_ZOMBIE"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "FOLEY_SNOW_PEA_SPARKLES",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SNOW_PEA_SPARKLES"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "FOLEY_ZOMBIE_FALLING",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_ZOMBIE_FALLING_1",
+        "SOUND_ZOMBIE_FALLING_2"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "FOLEY_PUFF",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PUFF"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "FOLEY_FUME",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FUME"
+      ]
+    },
+    {
+      "id": 31,
+      "name": "FOLEY_COIN",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_COIN"
+      ]
+    },
+    {
+      "id": 32,
+      "name": "FOLEY_KERNEL_SPLAT",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_KERNELPULT",
+        "SOUND_KERNELPULT2"
+      ]
+    },
+    {
+      "id": 33,
+      "name": "FOLEY_DIGGER",
+      "pitch": 0.0,
+      "flags": 7,
+      "variants": [
+        "SOUND_DIGGER_ZOMBIE"
+      ]
+    },
+    {
+      "id": 34,
+      "name": "FOLEY_JACK_SURPRISE",
+      "pitch": 1.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_JACK_SURPRISE",
+        "SOUND_JACK_SURPRISE",
+        "SOUND_JACK_SURPRISE2"
+      ]
+    },
+    {
+      "id": 35,
+      "name": "FOLEY_VASE_BREAKING",
+      "pitch": -5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_VASE_BREAKING"
+      ]
+    },
+    {
+      "id": 36,
+      "name": "FOLEY_POOL_CLEANER",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_POOL_CLEANER"
+      ]
+    },
+    {
+      "id": 37,
+      "name": "FOLEY_BASKETBALL",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BASKETBALL"
+      ]
+    },
+    {
+      "id": 38,
+      "name": "FOLEY_IGNITE",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_IGNITE",
+        "SOUND_IGNITE",
+        "SOUND_IGNITE",
+        "SOUND_IGNITE2"
+      ]
+    },
+    {
+      "id": 39,
+      "name": "FOLEY_FIREPEA",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FIREPEA"
+      ]
+    },
+    {
+      "id": 40,
+      "name": "FOLEY_THUMP",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GARGANTUAR_THUMP"
+      ]
+    },
+    {
+      "id": 41,
+      "name": "FOLEY_SQUASH_HMM",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SQUASH_HMM",
+        "SOUND_SQUASH_HMM",
+        "SOUND_SQUASH_HMM2"
+      ]
+    },
+    {
+      "id": 42,
+      "name": "FOLEY_MAGNETSHROOM",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_MAGNETSHROOM"
+      ]
+    },
+    {
+      "id": 43,
+      "name": "FOLEY_BUTTER",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BUTTER"
+      ]
+    },
+    {
+      "id": 44,
+      "name": "FOLEY_BUNGEE_SCREAM",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BUNGEE_SCREAM",
+        "SOUND_BUNGEE_SCREAM2",
+        "SOUND_BUNGEE_SCREAM3"
+      ]
+    },
+    {
+      "id": 45,
+      "name": "FOLEY_BOSS_EXPLOSION_SMALL",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_EXPLOSION"
+      ]
+    },
+    {
+      "id": 46,
+      "name": "FOLEY_SHIELD_HIT",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SHIELDHIT",
+        "SOUND_SHIELDHIT2"
+      ]
+    },
+    {
+      "id": 47,
+      "name": "FOLEY_SWING",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SWING"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "FOLEY_BONK",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BONK"
+      ]
+    },
+    {
+      "id": 49,
+      "name": "FOLEY_RAIN",
+      "pitch": 0.0,
+      "flags": 5,
+      "variants": [
+        "SOUND_RAIN"
+      ]
+    },
+    {
+      "id": 50,
+      "name": "FOLEY_DOLPHIN_BEFORE_JUMPING",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_DOLPHIN_BEFORE_JUMPING"
+      ]
+    },
+    {
+      "id": 51,
+      "name": "FOLEY_DOLPHIN_APPEARS",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_DOLPHIN_APPEARS"
+      ]
+    },
+    {
+      "id": 52,
+      "name": "FOLEY_PLANT_WATER",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLANT_WATER"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "FOLEY_ZOMBIE_ENTERING_WATER",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_ZOMBIE_ENTERING_WATER"
+      ]
+    },
+    {
+      "id": 54,
+      "name": "FOLEY_GRAVEBUSTERCHOMP",
+      "pitch": 0.0,
+      "flags": 4,
+      "variants": [
+        "SOUND_GRAVEBUSTERCHOMP"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "FOLEY_CHERRYBOMB",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CHERRYBOMB"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "FOLEY_JALAPENO_IGNITE",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_JALAPENO"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "FOLEY_REVERSE_EXPLOSION",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_REVERSE_EXPLOSION"
+      ]
+    },
+    {
+      "id": 58,
+      "name": "FOLEY_PLASTIC_HIT",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLASTICHIT",
+        "SOUND_PLASTICHIT2"
+      ]
+    },
+    {
+      "id": 59,
+      "name": "FOLEY_WINMUSIC",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_WINMUSIC"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "FOLEY_BALLOONINFLATE",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BALLOONINFLATE"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "FOLEY_BIGCHOMP",
+      "pitch": -2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BIGCHOMP"
+      ]
+    },
+    {
+      "id": 62,
+      "name": "FOLEY_MELONIMPACT",
+      "pitch": -5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_MELONIMPACT",
+        "SOUND_MELONIMPACT2"
+      ]
+    },
+    {
+      "id": 63,
+      "name": "FOLEY_PLANTGROW",
+      "pitch": -2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PLANTGROW"
+      ]
+    },
+    {
+      "id": 64,
+      "name": "FOLEY_SHOOP",
+      "pitch": -5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SHOOP"
+      ]
+    },
+    {
+      "id": 65,
+      "name": "FOLEY_JUICY",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_JUICY"
+      ]
+    },
+    {
+      "id": 66,
+      "name": "FOLEY_NEWSPAPER_RARRGH",
+      "pitch": -2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_NEWSPAPER_RARRGH",
+        "SOUND_NEWSPAPER_RARRGH2",
+        "SOUND_NEWSPAPER_RARRGH2"
+      ]
+    },
+    {
+      "id": 67,
+      "name": "FOLEY_NEWSPAPER_RIP",
+      "pitch": -2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_NEWSPAPER_RIP"
+      ]
+    },
+    {
+      "id": 68,
+      "name": "FOLEY_FLOOP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FLOOP"
+      ]
+    },
+    {
+      "id": 69,
+      "name": "FOLEY_COFFEE",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_COFFEE"
+      ]
+    },
+    {
+      "id": 70,
+      "name": "FOLEY_LOW_GROAN",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_LOWGROAN",
+        "SOUND_LOWGROAN2"
+      ]
+    },
+    {
+      "id": 71,
+      "name": "FOLEY_PRIZE",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PRIZE"
+      ]
+    },
+    {
+      "id": 72,
+      "name": "FOLEY_YUCK",
+      "pitch": 1.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_YUCK",
+        "SOUND_YUCK",
+        "SOUND_YUCK2"
+      ]
+    },
+    {
+      "id": 73,
+      "name": "FOLEY_UMBRELLA",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_THROW2"
+      ]
+    },
+    {
+      "id": 74,
+      "name": "FOLEY_GRASSSTEP",
+      "pitch": 2.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GRASSSTEP"
+      ]
+    },
+    {
+      "id": 75,
+      "name": "FOLEY_SHOVEL",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SHOVEL"
+      ]
+    },
+    {
+      "id": 76,
+      "name": "FOLEY_COB_LAUNCH",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_COBLAUNCH"
+      ]
+    },
+    {
+      "id": 77,
+      "name": "FOLEY_WATERING",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_WATERING"
+      ]
+    },
+    {
+      "id": 78,
+      "name": "FOLEY_POLEVAULT",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_POLEVAULT"
+      ]
+    },
+    {
+      "id": 79,
+      "name": "FOLEY_GRAVESTONE_RUMBLE",
+      "pitch": 10.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GRAVESTONE_RUMBLE"
+      ]
+    },
+    {
+      "id": 80,
+      "name": "FOLEY_DIRT_RISE",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_DIRT_RISE"
+      ]
+    },
+    {
+      "id": 81,
+      "name": "FOLEY_FERTILIZER",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FERTILIZER"
+      ]
+    },
+    {
+      "id": 82,
+      "name": "FOLEY_PORTAL",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PORTAL"
+      ]
+    },
+    {
+      "id": 83,
+      "name": "FOLEY_WAKEUP",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_WAKEUP"
+      ]
+    },
+    {
+      "id": 84,
+      "name": "FOLEY_BUGSPRAY",
+      "pitch": 3.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BUGSPRAY"
+      ]
+    },
+    {
+      "id": 85,
+      "name": "FOLEY_SCREAM",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_SCREAM"
+      ]
+    },
+    {
+      "id": 86,
+      "name": "FOLEY_PAPER",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PAPER"
+      ]
+    },
+    {
+      "id": 87,
+      "name": "FOLEY_MONEYFALLS",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_MONEYFALLS"
+      ]
+    },
+    {
+      "id": 88,
+      "name": "FOLEY_IMP",
+      "pitch": 5.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_IMP",
+        "SOUND_IMP2"
+      ]
+    },
+    {
+      "id": 89,
+      "name": "FOLEY_HYDRAULIC_SHORT",
+      "pitch": 3.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_HYDRAULIC_SHORT"
+      ]
+    },
+    {
+      "id": 90,
+      "name": "FOLEY_HYDRAULIC",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_HYDRAULIC"
+      ]
+    },
+    {
+      "id": 91,
+      "name": "FOLEY_GARGANTUDEATH",
+      "pitch": 3.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_GARGANTUDEATH"
+      ]
+    },
+    {
+      "id": 92,
+      "name": "FOLEY_CERAMIC",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CERAMIC"
+      ]
+    },
+    {
+      "id": 93,
+      "name": "FOLEY_BOSS_BOULDER_ATTACK",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_BOSSBOULDERATTACK"
+      ]
+    },
+    {
+      "id": 94,
+      "name": "FOLEY_CHIME",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CHIME"
+      ]
+    },
+    {
+      "id": 95,
+      "name": "FOLEY_CRAZY_DAVE_SHORT",
+      "pitch": 0.0,
+      "flags": 16,
+      "variants": [
+        "SOUND_CRAZYDAVESHORT1",
+        "SOUND_CRAZYDAVESHORT2",
+        "SOUND_CRAZYDAVESHORT3"
+      ]
+    },
+    {
+      "id": 96,
+      "name": "FOLEY_CRAZY_DAVE_LONG",
+      "pitch": 0.0,
+      "flags": 16,
+      "variants": [
+        "SOUND_CRAZYDAVELONG1",
+        "SOUND_CRAZYDAVELONG2",
+        "SOUND_CRAZYDAVELONG3"
+      ]
+    },
+    {
+      "id": 97,
+      "name": "FOLEY_CRAZY_DAVE_EXTRA_LONG",
+      "pitch": 0.0,
+      "flags": 16,
+      "variants": [
+        "SOUND_CRAZYDAVEEXTRALONG1",
+        "SOUND_CRAZYDAVEEXTRALONG2",
+        "SOUND_CRAZYDAVEEXTRALONG3"
+      ]
+    },
+    {
+      "id": 98,
+      "name": "FOLEY_CRAZY_DAVE_CRAZY",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CRAZYDAVECRAZY"
+      ]
+    },
+    {
+      "id": 99,
+      "name": "FOLEY_PHONOGRAPH",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_PHONOGRAPH"
+      ]
+    },
+    {
+      "id": 100,
+      "name": "FOLEY_DANCER",
+      "pitch": 0.0,
+      "flags": 6,
+      "variants": [
+        "SOUND_DANCER"
+      ]
+    },
+    {
+      "id": 101,
+      "name": "FOLEY_FINAL_FANFARE",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_FINALFANFARE"
+      ]
+    },
+    {
+      "id": 102,
+      "name": "FOLEY_CRAZY_DAVE_SCREAM",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CRAZYDAVESCREAM"
+      ]
+    },
+    {
+      "id": 103,
+      "name": "FOLEY_CRAZY_DAVE_SCREAM_2",
+      "pitch": 0.0,
+      "flags": 0,
+      "variants": [
+        "SOUND_CRAZYDAVESCREAM2"
+      ]
+    }
+  ],
+  "sounds": {
+    "BUTTONCLICK": "buttonclick",
+    "LOADINGBAR_FLOWER": "loadingbar_flower",
+    "LOADINGBAR_ZOMBIE": "loadingbar_zombie",
+    "AWOOGA": "awooga",
+    "BLEEP": "bleep",
+    "BUZZER": "buzzer",
+    "CHOMP": "chomp",
+    "CHOMP2": "chomp2",
+    "CHOMPSOFT": "chompsoft",
+    "EVILLAUGH": "evillaugh",
+    "FLOOP": "floop",
+    "FROZEN": "frozen",
+    "GULP": "gulp",
+    "GROAN": "groan",
+    "GROAN2": "groan2",
+    "GROAN3": "groan3",
+    "GROAN4": "groan4",
+    "GROAN5": "groan5",
+    "GROAN6": "groan6",
+    "LOSEMUSIC": "losemusic",
+    "MINDCONTROLLED": "mindcontrolled",
+    "PAUSE": "pause",
+    "PLANT": "plant",
+    "PLANT2": "plant2",
+    "POINTS": "points",
+    "SEEDLIFT": "seedlift",
+    "SIREN": "siren",
+    "SLURP": "slurp",
+    "SPLAT": "splat",
+    "SPLAT2": "splat2",
+    "SPLAT3": "splat3",
+    "SUKHBIR": "sukhbir",
+    "SUKHBIR2": "sukhbir2",
+    "SUKHBIR3": "sukhbir3",
+    "SUKHBIR4": "sukhbir4",
+    "SUKHBIR5": "sukhbir5",
+    "SUKHBIR6": "sukhbir6",
+    "TAP": "tap",
+    "TAP2": "tap2",
+    "THROW": "throw",
+    "THROW2": "throw2",
+    "BLOVER": "blover",
+    "WINMUSIC": "winmusic",
+    "LAWNMOWER": "lawnmower",
+    "BOING": "boing",
+    "JACKINTHEBOX": "jackinthebox",
+    "DIAMOND": "diamond",
+    "DOLPHIN_APPEARS": "dolphin_appears",
+    "DOLPHIN_BEFORE_JUMPING": "dolphin_before_jumping",
+    "POTATO_MINE": "potato_mine",
+    "ZAMBONI": "zamboni",
+    "BALLOON_POP": "balloon_pop",
+    "THUNDER": "thunder",
+    "ZOMBIESPLASH": "zombiesplash",
+    "BOWLING": "bowling",
+    "BOWLINGIMPACT": "bowlingimpact",
+    "BOWLINGIMPACT2": "bowlingimpact2",
+    "GRAVEBUSTERCHOMP": "gravebusterchomp",
+    "GRAVEBUTTON": "gravebutton",
+    "LIMBS_POP": "limbs_pop",
+    "PLANTERN": "plantern",
+    "POGO_ZOMBIE": "pogo_zombie",
+    "SNOW_PEA_SPARKLES": "snow_pea_sparkles",
+    "PLANT_WATER": "plant_water",
+    "ZOMBIE_ENTERING_WATER": "zombie_entering_water",
+    "ZOMBIE_FALLING_1": "zombie_falling_1",
+    "ZOMBIE_FALLING_2": "zombie_falling_2",
+    "PUFF": "puff",
+    "FUME": "fume",
+    "HUGE_WAVE": "hugewave",
+    "SLOT_MACHINE": "slotmachine",
+    "COIN": "coin",
+    "ROLL_IN": "roll_in",
+    "DIGGER_ZOMBIE": "digger_zombie",
+    "HATCHBACK_CLOSE": "hatchback_close",
+    "HATCHBACK_OPEN": "hatchback_open",
+    "KERNELPULT": "kernelpult",
+    "KERNELPULT2": "kernelpult2",
+    "ZOMBAQUARIUM_DIE": "zombaquarium_die",
+    "BUNGEE_SCREAM": "bungee_scream",
+    "BUNGEE_SCREAM2": "bungee_scream2",
+    "BUNGEE_SCREAM3": "bungee_scream3",
+    "BUTTER": "butter",
+    "JACK_SURPRISE": "jack_surprise",
+    "JACK_SURPRISE2": "jack_surprise2",
+    "NEWSPAPER_RARRGH": "newspaper_rarrgh",
+    "NEWSPAPER_RARRGH2": "newspaper_rarrgh2",
+    "NEWSPAPER_RIP": "newspaper_rip",
+    "SQUASH_HMM": "squash_hmm",
+    "SQUASH_HMM2": "squash_hmm2",
+    "VASE_BREAKING": "vase_breaking",
+    "POOL_CLEANER": "pool_cleaner",
+    "MAGNETSHROOM": "magnetshroom",
+    "LADDER_ZOMBIE": "ladder_zombie",
+    "GARGANTUAR_THUMP": "gargantuar_thump",
+    "BASKETBALL": "basketball",
+    "FIREPEA": "firepea",
+    "IGNITE": "ignite",
+    "IGNITE2": "ignite2",
+    "READYSETPLANT": "readysetplant",
+    "DOOMSHROOM": "doomshroom",
+    "EXPLOSION": "explosion",
+    "FINALWAVE": "finalwave",
+    "REVERSE_EXPLOSION": "reverse_explosion",
+    "RVTHROW": "RVthrow",
+    "SHIELDHIT": "shieldhit",
+    "SHIELDHIT2": "shieldhit2",
+    "BOSSEXPLOSION": "bossexplosion",
+    "CHERRYBOMB": "cherrybomb",
+    "BONK": "bonk",
+    "SWING": "swing",
+    "RAIN": "rain",
+    "LIGHTFILL": "lightfill",
+    "PLASTICHIT": "plastichit",
+    "PLASTICHIT2": "plastichit2",
+    "JALAPENO": "jalapeno",
+    "BALLOONINFLATE": "ballooninflate",
+    "BIGCHOMP": "bigchomp",
+    "MELONIMPACT": "melonimpact",
+    "MELONIMPACT2": "melonimpact2",
+    "PLANTGROW": "plantgrow",
+    "SHOOP": "shoop",
+    "TAPGLASS": "tapglass",
+    "JUICY": "juicy",
+    "COFFEE": "coffee",
+    "WAKEUP": "wakeup",
+    "LOWGROAN": "lowgroan",
+    "LOWGROAN2": "lowgroan2",
+    "PRIZE": "prize",
+    "YUCK": "yuck",
+    "YUCK2": "yuck2",
+    "GRASSSTEP": "grassstep",
+    "SHOVEL": "shovel",
+    "COBLAUNCH": "coblaunch",
+    "WATERING": "watering",
+    "POLEVAULT": "polevault",
+    "GRAVESTONE_RUMBLE": "gravestone_rumble",
+    "DIRT_RISE": "dirt_rise",
+    "FERTILIZER": "fertilizer",
+    "PORTAL": "portal",
+    "BUGSPRAY": "bugspray",
+    "SCREAM": "scream",
+    "PAPER": "paper",
+    "MONEYFALLS": "moneyfalls",
+    "IMP": "imp",
+    "IMP2": "imp2",
+    "HYDRAULIC_SHORT": "hydraulic_short",
+    "HYDRAULIC": "hydraulic",
+    "GARGANTUDEATH": "gargantudeath",
+    "CERAMIC": "ceramic",
+    "BOSSBOULDERATTACK": "bossboulderattack",
+    "CHIME": "chime",
+    "CRAZYDAVESHORT1": "crazydaveshort1",
+    "CRAZYDAVESHORT2": "crazydaveshort2",
+    "CRAZYDAVESHORT3": "crazydaveshort3",
+    "CRAZYDAVELONG1": "crazydavelong1",
+    "CRAZYDAVELONG2": "crazydavelong2",
+    "CRAZYDAVELONG3": "crazydavelong3",
+    "CRAZYDAVEEXTRALONG1": "crazydaveextralong1",
+    "CRAZYDAVEEXTRALONG2": "crazydaveextralong2",
+    "CRAZYDAVEEXTRALONG3": "crazydaveextralong3",
+    "CRAZYDAVECRAZY": "crazydavecrazy",
+    "PHONOGRAPH": "phonograph",
+    "DANCER": "dancer",
+    "FINALFANFARE": "finalfanfare",
+    "CRAZYDAVESCREAM": "crazydavescream",
+    "CRAZYDAVESCREAM2": "crazydavescream2",
+    "MP_TIMER": "tap",
+    "CROW_FLAP1": "crow_flap1",
+    "CROW_FLAP2": "crow_flap2",
+    "CROW_FLAP3": "crow_flap3",
+    "CROW_CAW1": "crow_CAW1",
+    "CROW_CAW2": "crow_CAW2",
+    "CROW_CAW3": "crow_CAW3",
+    "THUNDER_1": "thunder_1",
+    "THUNDER_2": "thunder_2",
+    "THUNDER_3": "thunder_3",
+    "THUNDER_1R": "thunder_1r",
+    "THUNDER_2R": "thunder_2r",
+    "THUNDER_3R": "thunder_3r",
+    "MINIGAMES": "minigames",
+    "PUZZLE": "puzzle",
+    "SURVIVAL": "survival",
+    "COOP": "coop",
+    "VS": "vs",
+    "MENU_L_ST": "MENU_L_ST",
+    "MENU_C_ST": "MENU_C_ST",
+    "MENU_R_ST": "MENU_R_ST",
+    "SHOP": "SHOP",
+    "ZEN": "ZEN",
+    "MAIL": "MAIL",
+    "ALMANAC": "ALMANAC",
+    "VS_HEADPOP": "VS_HEADPOP",
+    "BIGTHUD": "bigthud"
+  },
+  "group_names": [
+    "FOLEY_SUN",
+    "FOLEY_SPLAT",
+    "FOLEY_LAWNMOWER",
+    "FOLEY_THROW",
+    "FOLEY_SPAWN_SUN",
+    "FOLEY_CHOMP",
+    "FOLEY_CHOMP_SOFT",
+    "FOLEY_PLANT",
+    "FOLEY_USE_SHOVEL",
+    "FOLEY_DROP",
+    "FOLEY_BLEEP",
+    "FOLEY_GROAN",
+    "FOLEY_BRAINS",
+    "FOLEY_SUKHBIR",
+    "FOLEY_JACKINTHEBOX",
+    "FOLEY_ART_CHALLENGE",
+    "FOLEY_ZAMBONI",
+    "FOLEY_THUNDER",
+    "FOLEY_FROZEN",
+    "FOLEY_ZOMBIESPLASH",
+    "FOLEY_BOWLINGIMPACT",
+    "FOLEY_SQUISH",
+    "FOLEY_TIRE_POP",
+    "FOLEY_EXPLOSION",
+    "FOLEY_SLURP",
+    "FOLEY_LIMBS_POP",
+    "FOLEY_POGO_ZOMBIE",
+    "FOLEY_SNOW_PEA_SPARKLES",
+    "FOLEY_ZOMBIE_FALLING",
+    "FOLEY_PUFF",
+    "FOLEY_FUME",
+    "FOLEY_COIN",
+    "FOLEY_KERNEL_SPLAT",
+    "FOLEY_DIGGER",
+    "FOLEY_JACK_SURPRISE",
+    "FOLEY_VASE_BREAKING",
+    "FOLEY_POOL_CLEANER",
+    "FOLEY_BASKETBALL",
+    "FOLEY_IGNITE",
+    "FOLEY_FIREPEA",
+    "FOLEY_THUMP",
+    "FOLEY_SQUASH_HMM",
+    "FOLEY_MAGNETSHROOM",
+    "FOLEY_BUTTER",
+    "FOLEY_BUNGEE_SCREAM",
+    "FOLEY_BOSS_EXPLOSION_SMALL",
+    "FOLEY_SHIELD_HIT",
+    "FOLEY_SWING",
+    "FOLEY_BONK",
+    "FOLEY_RAIN",
+    "FOLEY_DOLPHIN_BEFORE_JUMPING",
+    "FOLEY_DOLPHIN_APPEARS",
+    "FOLEY_PLANT_WATER",
+    "FOLEY_ZOMBIE_ENTERING_WATER",
+    "FOLEY_GRAVEBUSTERCHOMP",
+    "FOLEY_CHERRYBOMB",
+    "FOLEY_JALAPENO_IGNITE",
+    "FOLEY_REVERSE_EXPLOSION",
+    "FOLEY_PLASTIC_HIT",
+    "FOLEY_WINMUSIC",
+    "FOLEY_BALLOONINFLATE",
+    "FOLEY_BIGCHOMP",
+    "FOLEY_MELONIMPACT",
+    "FOLEY_PLANTGROW",
+    "FOLEY_SHOOP",
+    "FOLEY_JUICY",
+    "FOLEY_NEWSPAPER_RARRGH",
+    "FOLEY_NEWSPAPER_RIP",
+    "FOLEY_FLOOP",
+    "FOLEY_COFFEE",
+    "FOLEY_LOW_GROAN",
+    "FOLEY_PRIZE",
+    "FOLEY_YUCK",
+    "FOLEY_UMBRELLA",
+    "FOLEY_GRASSSTEP",
+    "FOLEY_SHOVEL",
+    "FOLEY_COB_LAUNCH",
+    "FOLEY_WATERING",
+    "FOLEY_POLEVAULT",
+    "FOLEY_GRAVESTONE_RUMBLE",
+    "FOLEY_DIRT_RISE",
+    "FOLEY_FERTILIZER",
+    "FOLEY_PORTAL",
+    "FOLEY_WAKEUP",
+    "FOLEY_BUGSPRAY",
+    "FOLEY_SCREAM",
+    "FOLEY_PAPER",
+    "FOLEY_MONEYFALLS",
+    "FOLEY_IMP",
+    "FOLEY_HYDRAULIC_SHORT",
+    "FOLEY_HYDRAULIC",
+    "FOLEY_GARGANTUDEATH",
+    "FOLEY_CERAMIC",
+    "FOLEY_BOSS_BOULDER_ATTACK",
+    "FOLEY_CHIME",
+    "FOLEY_CRAZY_DAVE_SHORT",
+    "FOLEY_CRAZY_DAVE_LONG",
+    "FOLEY_CRAZY_DAVE_EXTRA_LONG",
+    "FOLEY_CRAZY_DAVE_CRAZY",
+    "FOLEY_PHONOGRAPH",
+    "FOLEY_DANCER",
+    "FOLEY_FINAL_FANFARE",
+    "FOLEY_CRAZY_DAVE_SCREAM",
+    "FOLEY_CRAZY_DAVE_SCREAM_2"
+  ]
+}

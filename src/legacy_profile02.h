@@ -1,0 +1,1 @@
+typedef struct {uint32_t money,purchases[SHOP_ITEMS],highest,adventure_finished,next_session,seen_zombies;uint64_t seen_plants;CoinCheckpoint credited[16];uint32_t journal_next;uint32_t mini_trophies;} LegacyProfile02;
