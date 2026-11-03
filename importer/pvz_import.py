@@ -118,11 +118,24 @@ def inspect_or_import(source: Path, destination: Path | None) -> dict:
     try:
         files = {entry["path"]: entry for entry in iso.walk() if not entry["directory"]}
         sfo = files.get("/PS3_GAME/PARAM.SFO")
-        if sfo is None or sfo["size"] > 1024 * 1024:
-            raise ValueError("No supported disc PARAM.SFO")
+        if sfo is None:
+            if any(path.startswith("/PSP_GAME/") for path in files):
+                raise ValueError(
+                    "The selected ISO is a PSP image, not a supported PS3 disc. "
+                    "Use your original PS3 BLUS30852 version 01.00 disc dump "
+                    "containing NPUA_30059. A PSP ISO or EBOOT cannot supply "
+                    "the required PS3 resources.")
+            raise ValueError(
+                "No /PS3_GAME/PARAM.SFO found. Expected your original PS3 "
+                "BLUS30852 version 01.00 disc dump containing NPUA_30059.")
+        if sfo["size"] > 1024 * 1024:
+            raise ValueError("The PS3 disc PARAM.SFO is too large to be supported")
         metadata = parse_sfo(iso.read(sfo["lba"] * SECTOR, sfo["size"]))
         if metadata.get("TITLE_ID") != BUILD or metadata.get("APP_VER") != "01.00":
-            raise ValueError(f"Unsupported disc build: {metadata.get('TITLE_ID')} {metadata.get('APP_VER')}")
+            raise ValueError(
+                f"Unsupported disc build: {metadata.get('TITLE_ID')} "
+                f"{metadata.get('APP_VER')}. Expected PS3 {BUILD} version 01.00 "
+                "containing NPUA_30059.")
         required = [GAME_ROOT + "DATA/" + name for name in ARCHIVES]
         required += [GAME_ROOT + "SOUNDS/" + name for name in MUSIC]
         if any(path not in files for path in required):

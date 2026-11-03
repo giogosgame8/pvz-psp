@@ -435,20 +435,23 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sources = parser.add_mutually_exclusive_group(required=True)
-    sources.add_argument("--iso", type=Path)
+    sources.add_argument("--iso", type=Path, help="Your original PS3 BLUS30852 version 01.00 disc dump containing NPUA_30059; not a PSP ISO")
     sources.add_argument("--imported-dir", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--previews", type=Path)
     parser.add_argument("--credits-timing", type=Path, help="Optional timing table prepared from your own decrypted PS3 executable")
     parser.add_argument("--reference-elf", type=Path, help="Optional personal decrypted executable for original ending lip sync")
     args = parser.parse_args()
-    if args.iso:
-        with tempfile.TemporaryDirectory(prefix="pvz-import-") as temporary:
-            imported = Path(temporary) / "resources"
-            inspect_or_import(args.iso, imported)
-            prepare(imported, args.output, args.previews, credits_timing=args.credits_timing, reference_elf=args.reference_elf)
-    else:
-        prepare(args.imported_dir, args.output, args.previews, credits_timing=args.credits_timing, reference_elf=args.reference_elf)
+    try:
+        if args.iso:
+            with tempfile.TemporaryDirectory(prefix="pvz-import-") as temporary:
+                imported = Path(temporary) / "resources"
+                inspect_or_import(args.iso, imported)
+                prepare(imported, args.output, args.previews, credits_timing=args.credits_timing, reference_elf=args.reference_elf)
+        else:
+            prepare(args.imported_dir, args.output, args.previews, credits_timing=args.credits_timing, reference_elf=args.reference_elf)
+    except (OSError, ValueError, zlib.error, struct.error) as error:
+        parser.exit(1, f"Asset preparation failed: {error}\n")
 
 
 if __name__ == "__main__":

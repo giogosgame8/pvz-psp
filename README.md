@@ -47,6 +47,24 @@ PSP/GAME/PVZPSP/data/...
 Start the game from the PSP Game menu. Back up existing installations and saves
 before updating. See [INSTALL-0.18.1.txt](INSTALL-0.18.1.txt) for model settings.
 
+## Troubleshooting asset preparation
+
+`--iso` must point to your **original PS3 disc dump**, not an existing PSP
+Plants vs. Zombies ISO or an EBOOT. A PSP image contains `PSP_GAME`; the supported
+source contains `PS3_GAME/PARAM.SFO`, title ID `BLUS30852`, version `01.00`, and
+the embedded game `NPUA_30059`. Renaming a PSP ISO does not change its contents.
+
+If preparation reports `No supported disc PARAM.SFO` (older tool versions) or
+`The selected ISO is a PSP image`, select the supported PS3 source instead.
+You can verify a source without extracting resources:
+
+```powershell
+py .\importer\pvz_import.py "C:\path\to\your-owned-PS3-copy.iso"
+```
+
+The versioned 0.18.1 release ZIP predates the clearer input diagnostics on the
+main branch. Its supported source requirement is the same.
+
 ## Implemented content
 
 - 50 first-run Adventure stages and level replay.

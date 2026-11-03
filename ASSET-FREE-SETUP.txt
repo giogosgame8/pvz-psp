@@ -49,3 +49,12 @@ for the sound bank. The PS3 executable is never included in the result.
 0.18.1 prepares GPU-ready PVA4 textures, preserving the same RGBA4444 pixels.
 Use the new program with these files. PSP-1000 has a saved 30/60 FPS option in
 Options; the new small-model graphics cache is 12/2/0 MiB.
+
+TROUBLESHOOTING: THE REQUIRED ISO IS THE ORIGINAL PS3 DISC
+The --iso input must be the original PS3 BLUS30852 version 01.00 disc dump
+containing NPUA_30059. An existing PSP game ISO or EBOOT is not an asset source.
+PSP images contain PSP_GAME; the required PS3 source contains PS3_GAME.
+If you see "No supported disc PARAM.SFO" or "The selected ISO is a PSP image",
+select your supported PS3 disc dump. Renaming a PSP ISO does not convert it.
+To verify a source without extracting resources, run:
+  py .\importer\pvz_import.py "C:\path\to\your-owned-PS3-copy.iso"
