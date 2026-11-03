@@ -8,7 +8,7 @@ No RPCS3 session was opened for this update.
 * Foley: ELF file offset 0x8538c4; 104 records of 52 bytes, big-endian
   ID/float pitch/ten weighted sound-global pointers/flags. Sound-global and
   resource-name arrays were correlated with the original resource manifest.
-  FOLEY-REFERENCE-0.18.json records the recovered numeric facts. The packer can
+  tools/reference/FOLEY-REFERENCE-0.18.json records the recovered numeric facts. The packer can
   reread the table with --reference-elf. All group variant lists were cross-checked
   with the local supporting PvzpFoley source; the actual PS3 flags take precedence.
 * The sound archive has 194 actual MPGs. resources.xml has 194 Sound IDs but

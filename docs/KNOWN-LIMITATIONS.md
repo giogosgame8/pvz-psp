@@ -53,6 +53,6 @@ Supporting evidence: src/platform.*, src/main.c, src/profile.*, src/game.h,
 src/chapter_game.inc, src/extra_rules.inc, src/mini_ui.inc, src/extra_ui.inc,
 src/garden.*, tools/prepare_assets.py and the supplied disc's LawnStrings.txt.
 0.18 now uses stored marigold colours, facing, sleep/aquarium/pot variants,
-animated tools and progressive challenge locks. See CHANGES-0.18.md and
-PS3-REFERENCE-0.18.md for direct ISO evidence and remaining matching limits.
+animated tools and progressive challenge locks. See docs/changelog/CHANGES-0.18.md and
+docs/reference/PS3-REFERENCE-0.18.md for direct ISO evidence and remaining matching limits.
 No RPCS3 session was opened for this audit.

@@ -1,4 +1,4 @@
-ASSET-FREE SOURCE PACKAGE - 0.18.1
+MANUAL ASSET PREPARATION
 
 The asset-free EBOOT has no launcher images or preview music. To prepare and
 embed your own launcher media, see the options in tools/prepare_launcher.py
@@ -24,7 +24,7 @@ The command writes prepared-data on the computer. For your PSP:
    There is one executable; it detects the model automatically.
 2. Put the chosen EBOOT.PBP in PSP/GAME/PVZPSP on the PSP.
 3. Copy prepared-data into that same PVZPSP folder and rename it data.
-4. Keep any existing player saves. See INSTALL-0.18.1.txt for controls and limits.
+4. Keep any existing player saves. See README.md for installation and docs/KNOWN-LIMITATIONS.md for limits.
 
 For developers with PSPDEV, the native builds are reproducible with:
   py .\tools\build.py --pspdev "C:\path\to\pspdev"
@@ -39,10 +39,10 @@ The executable is read locally; it is not copied to the PSP or source package.
 Without it, the ending still animates but lacks that recovered lip-sync table.
 
 Local ad-hoc co-op and versus are not implemented in either build yet.
-The port is unfinished; see PORTING-STATUS.md.
+The port is unfinished; see docs/reference/PORTING-STATUS.md.
 
 0.18 also prepares all 194 available sounds into foley.pvf and 34 garden/lock
-assets. FOLEY-REFERENCE-0.18.json contains the supported disc numeric definitions;
+assets. tools/reference/FOLEY-REFERENCE-0.18.json contains the supported disc numeric definitions;
 --reference-elf can recover them again from your own executable. FFmpeg is needed
 for the sound bank. The PS3 executable is never included in the result.
 

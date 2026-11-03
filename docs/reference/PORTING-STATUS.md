@@ -55,12 +55,12 @@ and progressive challenge locks. Existing saves/records remain intact.
 
 0.18.1 adds a saved PSP-1000 30/60 FPS option, lossless GPU-ready PVA4 graphics
 and a 12 MiB small-model frame cache. 30 FPS remains the default for PSP-1000;
-see PERFORMANCE-0.18.1.md for workload-specific results and hardware limits.
+see docs/PERFORMANCE.md for workload-specific results and hardware limits.
 
 Remaining work includes complete PS3 cinematic direction/branching, second
 Adventure, exact challenge/Survival wave tables, late Endless balance and
 various combat, attachment and particle details. PSP ad-hoc co-op and versus
-are unfinished and hidden. See REMAINING-FEATURES-0.18.md and PS3-REFERENCE-0.18.md for evidence and limits.
+are unfinished and hidden. See docs/KNOWN-LIMITATIONS.md and docs/reference/PS3-REFERENCE-0.18.md for evidence and limits.
 
 A 24 MiB decoded frame cache and 8 MiB compressed bank limit page the roughly
 339 MiB virtual animation data within the automatically sized larger-model heap. The ending streams through

@@ -1,14 +1,13 @@
 """Check bundled declarations against the original Foley group names."""
 import json
-from pathlib import Path
 import unittest
 
-from prepare_audio018 import normalize_sound_names
+from prepare_audio018 import REFERENCE, normalize_sound_names
 
 
 class SoundDeclarationTests(unittest.TestCase):
     def test_all_bundled_foley_variants_resolve_without_reference_executable(self):
-        facts=json.loads((Path(__file__).resolve().parents[1]/'FOLEY-REFERENCE-0.18.json').read_text())
+        facts=json.loads(REFERENCE.read_text())
         sounds=normalize_sound_names(facts['sounds'])
         self.assertEqual(len(sounds),194)
         self.assertEqual(len(facts['groups']),104)

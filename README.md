@@ -30,4 +30,4 @@ Back up existing saves before updating. Download the game ZIP above; GitHub's
 
 **[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**
 
-[Known limitations](REMAINING-FEATURES-0.18.md) · [Manual setup / building](docs/DEVELOPMENT.md) · [Credits and notices](THIRD-PARTY-NOTICES.txt)
+[Known limitations](docs/KNOWN-LIMITATIONS.md) · [Manual setup / building](docs/DEVELOPMENT.md) · [Credits and notices](third_party/NOTICE.txt)

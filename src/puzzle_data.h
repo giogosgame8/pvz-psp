@@ -1,4 +1,4 @@
-/* Factual reference puzzle inventories. See EXTRA-REFERENCE.json. */
+/* Factual reference puzzle inventories. See tools/reference/EXTRA-REFERENCE.json. */
 typedef struct {int value,count;} VaseContent;
 typedef struct {int blocked,green,n;VaseContent contents[16];} VaseDefinition;
 static const VaseDefinition vase_defs[9]={

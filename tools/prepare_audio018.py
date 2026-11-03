@@ -3,6 +3,9 @@ from pathlib import Path
 import argparse,hashlib,json,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
 
 ROOT=Path(__file__).resolve().parents[1]
+REFERENCE=ROOT/'tools/reference/FOLEY-REFERENCE-0.18.json'
+if not REFERENCE.is_file():
+    REFERENCE=ROOT/'FOLEY-REFERENCE-0.18.json'  # Earlier release ZIP layout.
 def normalize_sound_names(sounds):
     """The bundled resource IDs omit the SOUND_ prefix used by Foley groups."""
     normalized={}
@@ -24,7 +27,7 @@ def read_facts(elf,manifest):
         names[struct.unpack_from('>I',raw,at-delta)[0]]=name;at+=4
     # Enum labels are factual names; the variants, weighting, pitch and flags
     # are independently read from the owner's supported PS3 executable.
-    labels=json.loads((ROOT/'FOLEY-REFERENCE-0.18.json').read_text())['group_names']
+    labels=json.loads(REFERENCE.read_text())['group_names']
     groups=[]
     for i in range(104):
         row=struct.unpack_from('>If10II',raw,0x8538c4+i*52)
@@ -43,7 +46,7 @@ def prepare(imported,dest,reference_elf=None):
     manifest=imported/'archives/compressed/properties/resources.xml'
     if reference_elf:groups,sounds=read_facts(reference_elf,manifest)
     else:
-        facts=json.loads((ROOT/'FOLEY-REFERENCE-0.18.json').read_text());groups,sounds=facts['groups'],facts['sounds']
+        facts=json.loads(REFERENCE.read_text());groups,sounds=facts['groups'],facts['sounds']
     sounds=normalize_sound_names(sounds)
     source={p.stem.lower():p for p in (imported/'archives/sounds/sounds').glob('*.mpg')}
     filenames=sorted(source);assert len(filenames)==194

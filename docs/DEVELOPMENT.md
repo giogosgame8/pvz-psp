@@ -37,15 +37,15 @@ py -m unittest discover -s importer -p test_disc_input.py
 py -m unittest discover -s tools -p test_setup_assets.py
 ```
 
-See [performance results](../PERFORMANCE-0.18.1.md),
-[port status](../PORTING-STATUS.md) and
-[known missing features](../REMAINING-FEATURES-0.18.md) for implementation limits.
+See [performance results](PERFORMANCE.md),
+[port status](reference/PORTING-STATUS.md) and
+[known missing features](KNOWN-LIMITATIONS.md) for implementation limits.
 The 0.18.2 distribution changes PC setup and documentation; the native game
 executable is unchanged from 0.18.1.
 
 ## Licensing
 
 No project-wide source-code license has been selected. The importer and third-party
-components retain their own licenses; see [notices](../THIRD-PARTY-NOTICES.txt).
+components retain their own licenses; see [notices](../third_party/NOTICE.txt).
 Game resources and trademarks belong to their respective owners. This project is
 not endorsed by EA, PopCap or Sony; asset-free packaging grants no rights to their content.
