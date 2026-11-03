@@ -1,60 +1,17 @@
-ASSET-FREE SOURCE PACKAGE - 0.18.1
+WINDOWS SETUP
 
-The asset-free EBOOT has no launcher images or preview music. To prepare and
-embed your own launcher media, see the options in tools/prepare_launcher.py
-and tools/launcher_media.py (run either with --help).
+1. Extract the entire game ZIP to a folder on your computer.
+2. Install Python 3.10 or newer if needed: https://www.python.org/downloads/windows/
+3. Double-click Setup.cmd and choose your ORIGINAL PS3 disc ISO.
+4. Wait for READY. Setup prepares data in PSP/GAME/PVZPSP automatically.
+5. Copy PVZPSP into PSP/GAME on your PSP memory card and start it from Game.
 
-This software-only package requires resources from your own supported disc dump.
-Supported edition: BLUS30852 compilation containing PvZ NPUA_30059.
-The importer opens the ISO read-only and does not import PS3 executables/firmware.
+Use the PS3 BLUS30852 version 01.00 disc containing NPUA_30059.
+An existing PSP Plants vs. Zombies ISO is not the required source.
+Setup offers to install missing Pillow/FFmpeg tools. It does not download game assets.
 
-On your computer, extract this source ZIP into a new folder. Install Python 3.10+
-and FFmpeg with XM decoding (libopenmpt). Make ffmpeg available on PATH.
-In PowerShell, open the extracted folder and run:
+Back up saves before updating. Existing data is kept until preparation succeeds;
+replaced data is backed up. Do not close setup while it is preparing files.
 
-  py -m pip install Pillow
-  py .\tools\prepare_assets.py --iso "C:\path\to\your-owned-copy.iso" --output ".\prepared-data"
-
-Replace the example ISO path with your actual file. The output folder must not
-already exist. Preparation evaluates original animation transforms and converts
-the soundtrack to small streaming files, so it can take time.
-
-The command writes prepared-data on the computer. For your PSP:
-1. Use PSP/GAME/PVZPSP/EBOOT.PBP for PSP Street, PSP-2000, PSP-3000 or the experimental PSP-1000 profile.
-   There is one executable; it detects the model automatically.
-2. Put the chosen EBOOT.PBP in PSP/GAME/PVZPSP on the PSP.
-3. Copy prepared-data into that same PVZPSP folder and rename it data.
-4. Keep any existing player saves. See INSTALL-0.18.1.txt for controls and limits.
-
-For developers with PSPDEV, the native builds are reproducible with:
-  py .\tools\build.py --pspdev "C:\path\to\pspdev"
-  py .\tools\build.py --pspdev "C:\path\to\pspdev" --low-memory
-The normal build auto-detects PSP-1000. --low-memory forces the conservative
-profile on every model for diagnostics. Physical PSP-1000 testing is still needed.
-
-The command also builds the animated ending from original layered resources.
-For original PS3 mouth/lyric synchronization, optionally add:
-  --reference-elf "C:\path\to\your-own-decrypted-EBOOT.elf"
-The executable is read locally; it is not copied to the PSP or source package.
-Without it, the ending still animates but lacks that recovered lip-sync table.
-
-Local ad-hoc co-op and versus are not implemented in either build yet.
-The port is unfinished; see PORTING-STATUS.md.
-
-0.18 also prepares all 194 available sounds into foley.pvf and 34 garden/lock
-assets. FOLEY-REFERENCE-0.18.json contains the supported disc numeric definitions;
---reference-elf can recover them again from your own executable. FFmpeg is needed
-for the sound bank. The PS3 executable is never included in the result.
-
-0.18.1 prepares GPU-ready PVA4 textures, preserving the same RGBA4444 pixels.
-Use the new program with these files. PSP-1000 has a saved 30/60 FPS option in
-Options; the new small-model graphics cache is 12/2/0 MiB.
-
-TROUBLESHOOTING: THE REQUIRED ISO IS THE ORIGINAL PS3 DISC
-The --iso input must be the original PS3 BLUS30852 version 01.00 disc dump
-containing NPUA_30059. An existing PSP game ISO or EBOOT is not an asset source.
-PSP images contain PSP_GAME; the required PS3 source contains PS3_GAME.
-If you see "No supported disc PARAM.SFO" or "The selected ISO is a PSP image",
-select your supported PS3 disc dump. Renaming a PSP ISO does not convert it.
-To verify a source without extracting resources, run:
-  py .\importer\pvz_import.py "C:\path\to\your-owned-PS3-copy.iso"
+If setup fails, the error is shown in its window and details are in setup.log.
+Manual setup and developer instructions: docs/MANUAL-SETUP.txt and docs/DEVELOPMENT.md.

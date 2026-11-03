@@ -1,137 +1,33 @@
-# Plants vs. Zombies PSP
+# Plants vs. Zombies for PSP
 
-An unofficial, experimental native PSP reimplementation. This project does not
-run the PS3 executable on PSP and is not affiliated with or endorsed by EA,
-PopCap or Sony.
+An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**Current preview: 0.18.1.** It is unfinished and does not reproduce every
-feature, animation, wave or interaction of the original game.
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.2/PvZ-PSP-0.18.2.zip)**
 
-## Download and requirements
+## What you need
 
-Download the **asset-free ZIP** from [Releases](https://github.com/giogosgame8/pvz-psp/releases). It contains the
-PSP executable, source and asset-preparation tools, but no original game art,
-music, sound banks, ending frames, PS3 executables, firmware or disc image.
+- A PSP that can run homebrew: Street, PSP-2000, PSP-3000 or experimental PSP-1000 support.
+- Your own **original PS3 game ISO: BLUS30852, version 01.00**. An existing PSP ISO will not work.
+- A Windows computer with [Python 3.10 or newer](https://www.python.org/downloads/windows/).
 
-You need:
+## Install
 
-- A PSP configured to run homebrew.
-- Your own supported disc dump: **BLUS30852**, containing PvZ **NPUA_30059**.
-  Other editions are not currently supported by the importer.
-- A computer with Python 3.10+, Pillow, and FFmpeg with XM/libopenmpt decoding.
-- Sufficient free space on the PSP for the locally prepared resources.
+1. Download the game ZIP above and **extract all files**.
+2. Double-click **Setup.cmd** on your computer.
+3. Select your **original PS3 ISO**. Setup helps install Pillow and FFmpeg if needed.
+4. Wait until the window says **READY**. Preparing the game can take several minutes.
+5. Copy **PVZPSP** from the extracted **PSP/GAME** folder into **PSP/GAME** on your PSP memory card.
+6. Start the game from the PSP's **Game** menu.
 
-Full instructions: [ASSET-FREE-SETUP.txt](ASSET-FREE-SETUP.txt).
+Back up existing saves before updating. Download the game ZIP above; GitHub's
+**Source code** ZIP does not include EBOOT.PBP.
 
-## Quick installation
+## Good to know
 
-Extract the release ZIP on your computer. With FFmpeg available on PATH, open
-PowerShell in the extracted folder and run:
+- This is early access: some modes and original-game behavior still need work.
+- Multiplayer is not available yet.
+- PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
 
-```powershell
-py -m pip install Pillow
-py .\tools\prepare_assets.py --iso "C:\path\to\your-owned-copy.iso" --output ".\prepared-data"
-```
+**[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**
 
-Replace the ISO path with your own file. The output folder must not already
-exist. Preparation can take time. Keep prepared resources private.
-
-Copy `PSP/GAME/PVZPSP` from the ZIP onto the PSP's memory card. Copy the resulting
-`prepared-data` folder into `PSP/GAME/PVZPSP` and rename it `data`:
-
-```text
-PSP/GAME/PVZPSP/EBOOT.PBP
-PSP/GAME/PVZPSP/data/...
-```
-
-Start the game from the PSP Game menu. Back up existing installations and saves
-before updating. See [INSTALL-0.18.1.txt](INSTALL-0.18.1.txt) for model settings.
-
-## Troubleshooting asset preparation
-
-`--iso` must point to your **original PS3 disc dump**, not an existing PSP
-Plants vs. Zombies ISO or an EBOOT. A PSP image contains `PSP_GAME`; the supported
-source contains `PS3_GAME/PARAM.SFO`, title ID `BLUS30852`, version `01.00`, and
-the embedded game `NPUA_30059`. Renaming a PSP ISO does not change its contents.
-
-If preparation reports `No supported disc PARAM.SFO` (older tool versions) or
-`The selected ISO is a PSP image`, select the supported PS3 source instead.
-You can verify a source without extracting resources:
-
-```powershell
-py .\importer\pvz_import.py "C:\path\to\your-owned-PS3-copy.iso"
-```
-
-The versioned 0.18.1 release ZIP predates the clearer input diagnostics on the
-main branch. Its supported source requirement is the same.
-
-## Implemented content
-
-- 50 first-run Adventure stages and level replay.
-- 20 main mini-game selections, 11 Survival selections and 20 Puzzle selections.
-- 49 plants, Zen Garden and additional gardens, Tree of Wisdom, shop and Almanac.
-- Chapter notes, rewards, player names and saved progression.
-- Level-context music, imported sound-event support and a reconstructed animated
-  ending, generated locally from the owner's resources.
-- Compact PSP menus, animation gallery and optional health bars.
-
-These counts describe available implementations, not exact PS3 parity.
-
-## Models and performance
-
-One executable detects the PSP model. Street, PSP-2000 and PSP-3000 target 60 FPS.
-PSP-1000 defaults to 30 FPS, with a saved experimental 60 FPS option in Options.
-Unknown model queries use the conservative 30 FPS profile. Simulation runs at
-60 updates per second regardless of the display target.
-
-The latest validation used PPSSPP 1.20.4. Sustained PSP-1000-mode stress scenes
-averaged 58.67 FPS by day and 56.16 FPS at the pool. These are emulator results,
-not physical-console benchmarks or a guarantee of locked 60 FPS. The 60 FPS
-live configuration passed 976 native checks; other tested configurations
-passed 973 each. Real-console testing and long Endless sessions remain needed.
-
-See [PERFORMANCE-0.18.1.md](PERFORMANCE-0.18.1.md) for workload and test limits.
-
-## Known limitations
-
-- Co-op, versus and PSP ad-hoc multiplayer are not implemented and are hidden.
-- The original second Adventure run, full Yeti progression, Giga-gargantuar,
-  Gold Sunflower completion, house customization and secret-code cosmetics are
-  incomplete or missing.
-- Exact challenge layouts, waves, late Endless balance, boss choreography,
-  several special mini-game mechanics and presentation still need work.
-- The ending is reconstructed from layered resources at 480x272/24 FPS, not a
-  frame-exact reproduction of the PS3 compositor.
-- PSN services and PlayStation system trophies are outside this PSP project.
-
-Read [REMAINING-FEATURES-0.18.md](REMAINING-FEATURES-0.18.md) for details.
-
-## Building
-
-With PSPDEV installed, including libjpeg-turbo and zlib:
-
-```powershell
-py .\tools\build.py --pspdev "C:\path\to\pspdev" --no-launcher-media
-```
-
-This creates `build/EBOOT.PBP`. The ordinary build includes model detection;
-`--low-memory` forces the conservative profile for diagnostics.
-
-## Reporting problems
-
-Open an issue with your PSP model (or emulator version/settings), firmware,
-release version, mode/level, and the exact steps needed to reproduce the bug.
-Attach screenshots or a short clip if useful. Remove personal information from
-logs and never upload an ISO, extracted game resources, keys or firmware.
-
-## Notices and licensing
-
-Original game content and trademarks belong to their respective owners. Users
-must provide their own resources; no ownership of that content is claimed.
-Asset-free packaging is not a grant of permission from the original rights
-holders. The download is not an official EA, PopCap or Sony release.
-
-A project-wide source-code license has not yet been selected. Do not assume a
-dependency's license applies to the whole project. The importer and third-party
-components retain their own licenses and notices; see
-[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), `importer/` and `third_party/`.
+[Known limitations](REMAINING-FEATURES-0.18.md) · [Manual setup / building](docs/DEVELOPMENT.md) · [Credits and notices](THIRD-PARTY-NOTICES.txt)
