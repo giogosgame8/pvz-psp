@@ -34,14 +34,21 @@ The optional --low-memory switch forces the conservative profile for diagnostics
 
 ```powershell
 py -m unittest discover -s importer -p test_disc_input.py
-py -m unittest discover -s tools -p test_setup_assets.py
+py -m unittest discover -s tools -p "test_*.py"
 ```
 
 See [performance results](PERFORMANCE.md),
 [port status](reference/PORTING-STATUS.md) and
 [known missing features](KNOWN-LIMITATIONS.md) for implementation limits.
-The 0.18.2 distribution changes PC setup and documentation; the native game
-executable is unchanged from 0.18.1.
+The 0.18.3 setup limits affine rendering to relevant image regions, uses up to
+eight rendering threads, and converts up to four sound files concurrently.
+Generated game data is checked against the validated 0.18.2 output; the native
+game executable is unchanged from 0.18.1.
+
+A full conversion on an i5-14600K with dependencies already installed took
+7 minutes, compared with approximately 20 minutes for the previous setup run
+on the same PC. All 382 generated content/metadata files were byte-identical;
+only the ending progress log differed in its elapsed time. Other PCs will vary.
 
 ## Licensing
 

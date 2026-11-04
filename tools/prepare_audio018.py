@@ -1,6 +1,7 @@
 """Pack every owned-disc sample into bounded, seekable mono IMA ADPCM data."""
 from pathlib import Path
-import argparse,hashlib,json,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
+import argparse,hashlib,json,os,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT=Path(__file__).resolve().parents[1]
 REFERENCE=ROOT/'tools/reference/FOLEY-REFERENCE-0.18.json'
@@ -42,7 +43,9 @@ def read_facts(elf,manifest):
     if len(sounds)!=194:raise ValueError('Unsupported sound resource manifest')
     return groups,sounds
 
-def prepare(imported,dest,reference_elf=None):
+def prepare(imported,dest,reference_elf=None,jobs=None):
+    jobs=min(4,max(1,(os.cpu_count() or 1)//2)) if jobs is None else jobs
+    if jobs<1:raise ValueError("Sound conversion jobs must be at least 1")
     manifest=imported/'archives/compressed/properties/resources.xml'
     if reference_elf:groups,sounds=read_facts(reference_elf,manifest)
     else:
@@ -57,11 +60,13 @@ def prepare(imported,dest,reference_elf=None):
     enum=['/* Sample IDs and factual PS3 Foley groups; no audio embedded. */','#ifndef PVZ_FOLEY_DEFS_H','#define PVZ_FOLEY_DEFS_H','enum { '+','.join('FX_'+k[6:].upper() for k in primary)+', FX_SAMPLE_COUNT };','enum { '+','.join('FX_'+k[6:].upper()+'='+str(v) for k,v in key_ids.items() if k not in primary)+' };','enum { '+','.join(g['name'] for g in groups)+', FOLEY_COUNT };','typedef struct {float pitch;unsigned char flags,count;short samples[10];} FoleyDefinition;','static const FoleyDefinition foley_definitions[FOLEY_COUNT]={']
     for g in groups:
         variants=[key_ids[k] for k in g['variants']];assert all(i>=0 for i in variants);enum.append('{'+str(g['pitch'])+'f,'+str(g['flags'])+','+str(len(variants))+',{'+','.join(map(str,variants))+'}},')
-    enum+=['};','#endif'];(ROOT/'src/foley_defs.h').write_text('\n'.join(enum)+'\n')
+    enum+=['};','#endif'];(ROOT/'src/foley_defs.h').write_text('\n'.join(enum)+'\n',encoding='utf-8',newline='\n')
     entries=[];payload=[];facts=[]
     with tempfile.TemporaryDirectory(prefix='pvz-foley-') as temp:
-        target=Path(temp)/'sound.wav';pcm=Path(temp)/'sound.pcm'
-        for i,name in enumerate(filenames):
+        def encode_sample(item):
+            i,name=item
+            folder=Path(temp)/str(i);folder.mkdir()
+            target=folder/'sound.wav';pcm=folder/'sound.pcm'
             key=primary[i];source_file=source[name]
             subprocess.run(['ffmpeg','-v','error','-y','-i',str(source_file),'-ac','1','-ar','22050','-c:a','adpcm_ima_wav','-block_size','256','-bitexact',str(target),'-map','0:a:0','-ac','1','-ar','22050','-f','s16le',str(pcm)],check=True)
             data=target.read_bytes();at=12;samples=None;blocks=None
@@ -72,8 +77,11 @@ def prepare(imported,dest,reference_elf=None):
                 at+=8+size+(size&1)
             samples=pcm.stat().st_size//2
             assert samples and blocks and len(blocks)%256==0 and (len(blocks)//256-1)*505<samples<=len(blocks)//256*505
-            payload.append(blocks);facts.append(dict(id=i,key=key,file=source_file.name,samples=samples,seconds=round(samples/22050,6),bytes=len(blocks),sha256=hashlib.sha256(blocks).hexdigest()))
-            print(f'Prepared {i+1}/194 {source_file.name}',flush=True)
+            return blocks,dict(id=i,key=key,file=source_file.name,samples=samples,seconds=round(samples/22050,6),bytes=len(blocks),sha256=hashlib.sha256(blocks).hexdigest())
+        with ThreadPoolExecutor(max_workers=min(jobs,len(filenames))) as pool:
+            for blocks,record in pool.map(encode_sample,enumerate(filenames)):
+                payload.append(blocks);facts.append(record)
+                print(f"Prepared {record['id']+1}/194 {record['file']}",flush=True)
     offset=16+len(filenames)*16
     with (dest/'foley.pvf').open('wb') as f:
         f.write(struct.pack('<4sIII',b'PVFX',1,len(filenames),22050))
@@ -85,4 +93,4 @@ def prepare(imported,dest,reference_elf=None):
     (dest/'foley-index.json').write_text(json.dumps(result,indent=2));return result
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--imported',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--reference-elf',type=Path);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True);prepare(a.imported,a.output,a.reference_elf)
+    p=argparse.ArgumentParser();p.add_argument('--imported',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--reference-elf',type=Path);p.add_argument('--jobs',type=int,help='Parallel sound conversions; default up to 4');a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True);prepare(a.imported,a.output,a.reference_elf,a.jobs)

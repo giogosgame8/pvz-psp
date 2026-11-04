@@ -21,6 +21,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageChops
+from affine_render import composite_affine, render_frames
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "importer"))
@@ -224,18 +225,15 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     def draw_matrix(canvas,im,m,alpha=1):
         a,b,c,d,x,y=m;inverse=invert((a,b,c,d,x+96,y+96))
         ia,ib,ic,id,ix,iy=inverse
-        layer=im.transform(canvas.size,Image.Transform.AFFINE,(ia,ib,ix,ic,id,iy),resample=Image.Resampling.BICUBIC)
-        if alpha<1:layer.putalpha(layer.getchannel('A').point(lambda v:round(v*alpha)))
-        canvas.alpha_composite(layer)
+        composite_affine(canvas,im,(a,b,c,d,x+96,y+96),(ia,ib,ix,ic,id,iy),alpha)
     for output_name, animation, marker, scale, equipment in SPECS:
         damage=equipment if isinstance(equipment,dict) else {}
         gear=damage.get("gear",equipment)
         source = files["reanim/" + animation.lower() + ".reanim"]
         fps, tracks = frames_from_xml(source)
         start, stop = clip_range(tracks, marker)
-        rendered = []
         # A generous source canvas handles rotation and negative source coordinates.
-        for index in range(start, stop):
+        def render_frame(index):
             canvas_size=1536 if animation in ("Zombie_boss","treeofWisdom") else 768 if animation in ("Zombie_gargantuar","CrazyDave") else 384
             canvas = Image.new("RGBA", (canvas_size, canvas_size))
             for name, frames in tracks:
@@ -286,11 +284,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 tx, ty = frame["x"] + 96, frame["y"] + 96
                 inverse = (d / determinant, -b / determinant, (b * ty - d * tx) / determinant,
                            -c / determinant, a / determinant, (c * tx - a * ty) / determinant)
-                layer = image.transform(canvas.size, Image.Transform.AFFINE, inverse,
-                                        resample=Image.Resampling.BICUBIC)
-                if frame["a"] < 1:
-                    layer.putalpha(layer.getchannel("A").point(lambda value: round(value * frame["a"])))
-                canvas.alpha_composite(layer)
+                composite_affine(canvas,image,(a,b,c,d,tx,ty),inverse,frame["a"])
                 if gear=="flag" and name=="Zombie_flaghand":
                     overlay=multiply(matrix(frame),invert(matrix(frames[0])))
                     for child_name,child_frames in flag_tracks:
@@ -299,7 +293,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                         identifier=child['i']
                         if body and child_name=='Zombie_flag':identifier='IMAGE_REANIM_ZOMBIE_FLAG3'
                         draw_matrix(canvas,texture(identifier),multiply(overlay,matrix(child)),child['a'])
-            rendered.append(canvas)
+            return canvas
+        rendered = render_frames(render_frame,range(start,stop))
         union = Image.new("L", rendered[0].size)
         for frame in rendered:
             union = ImageChops.lighter(union, frame.getchannel("A"))
