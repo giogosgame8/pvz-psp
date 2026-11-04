@@ -74,7 +74,7 @@ class Scene:
   if idx<0:return 0
   before=self.timings[idx];after=self.timings[min(idx+1,len(self.timings)-1)]
   return 0 if before[1]=='OFF' else 1 if frame-before[0]<.2 or after[0]-frame<.4 else {'AA':2,'EE':3,'AW':4,'OH':5}.get(before[1],0)
- def draw(self,canvas,name,pos,parent=(1,0,0,1,0,0),alpha=1,rate=None,depth=0):
+ def draw(self,canvas,name,pos,parent=(1,0,0,1,0,0),alpha=1,rate=None,depth=0,timeline=None):
   if depth>12:return
   fps,tracks=self.animation(name)
   if not tracks:return
@@ -102,8 +102,12 @@ class Scene:
       if active:
        start=active[0];stop=start+1
        while stop<len(keys) and keys[stop]['f']>=0:stop+=1
-    elapsed=max(0,pos-f['born'])/rate;phase=elapsed*child_rate;length=max(1,stop-start-1);phase=min(length,phase) if 'hold' in tags or 'once' in tags else phase%length
-    self.draw(canvas,child,start+phase,m,a,child_rate,depth+1);continue
+    # Keep the child's clock advancing when a static parent scene loops or
+    # holds its pose. Credits_ZombieArmy1 is only two authoring frames long.
+    elapsed=max(0,(pos if timeline is None else timeline)-f['born'])/rate
+    phase=elapsed*child_rate;length=max(1,stop-start-1)
+    sample_phase=min(length,phase) if 'hold' in tags or 'once' in tags else phase%length
+    self.draw(canvas,child,start+sample_phase,m,a,child_rate,depth+1,start+phase);continue
    image=None
    if f['i']:
     identifier=f['i']
@@ -112,7 +116,7 @@ class Scene:
      if mouth:identifier='IMAGE_REANIM_SUNFLOWER_HEAD_SING'+str(mouth)
     image=self.texture(identifier)
    elif f['font'] and text:
-    black=('black' in f['font'].lower() or (name.lower() in ('credits_main2','credits_main3') and pos<124) or name.lower()=='credits_wearetheundead');image=self.text(text,f['font'],(0,0,0,255) if black else (255,255,255,255));m=multiply(m,(1,0,0,1,-image.width*.5,-image.height))
+    black=('black' in f['font'].lower() or (name.lower() in ('credits_main2','credits_main3') and pos<124) or name.lower()=='credits_wearetheundead');image=self.text(text,f['font'],(0,0,0,255) if black else (255,255,255,255));m=multiply(m,(1,0,0,1,-image.width*.5,0))
    if name.lower()=='zombie':
     low=track.lower()
     if any(s in low for s in ('cone','bucket','flaghand','screendoor','mustache','bloated','duckytube')):continue

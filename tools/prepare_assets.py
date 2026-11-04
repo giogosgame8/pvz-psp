@@ -22,6 +22,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops
 from affine_render import composite_affine, render_frames
+from pc_runtime import hidden_process_options
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "importer"))
@@ -370,7 +371,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
             source = imported / "archives" / "sounds" / "sounds" / (name + ".mpg")
             target = destination / f"sfx{index}.pcm"
             subprocess.run([ffmpeg, "-v", "error", "-i", str(source), "-t", "8", "-ac", "1", "-ar", "44100",
-                            "-f", "s16le", str(target)], check=True)
+                            "-f", "s16le", str(target)], check=True, **hidden_process_options())
             audio.append(target.name)
         from prepare_music import prepare_music
         print('Stage: music', flush=True)
@@ -378,7 +379,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         print("Prepared original effects and soundtrack sections", flush=True)
     else:
         print("FFmpeg not found: preparing a silent build; install FFmpeg for audio", flush=True)
-    manifest = {"schema": 1, "version": "0.18.1", "format": "PVA4 zlib GPU-tiled RGBA4444", "source_iso_sha256": source_manifest["source_sha256"],
+    manifest = {"schema": 1, "version": "0.18.5", "format": "PVA4 zlib GPU-tiled RGBA4444", "source_iso_sha256": source_manifest["source_sha256"],
                 "disc_title_id": "BLUS30852", "assets": assets,
                 "texture_bytes": sum(asset["bytes"] - 32 for asset in assets), "audio": audio,
                 "note": "Private game data, generated from the user's copy; do not redistribute."}
@@ -400,6 +401,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     assets.extend(prepare_chapters(imported,destination,previews,write_pva))
     from prepare_features09 import prepare_features09
     feature_assets=prepare_features09(imported,destination,previews,write_pva)
+    alignment=destination/'shoot-alignment.bin'
+    manifest['shoot_alignment']={'file':alignment.name,'bytes':alignment.stat().st_size,'sha256':hashlib.sha256(alignment.read_bytes()).hexdigest()}
     changed={a['file'] for a in feature_assets};assets[:]=[a for a in assets if a['file'] not in changed]+feature_assets
     from prepare_expansion import prepare_expansion
     from prepare_features010 import prepare_features010

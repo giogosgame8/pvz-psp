@@ -341,6 +341,31 @@ static void tick_death(Zombie *z,float dt){z->age+=dt;z->death=fmaxf(0,z->death-
 int game_dying_count(const Game *g){int n=0;for(int i=0;i<MAX_ZOMBIES;i++)n+=g->zombies[i].used&&g->zombies[i].death>0;return n;}
 static void effects_step(Game *g,float dt){for(int i=0;i<32;i++)g->extra.effect_time[i]=fmaxf(0,g->extra.effect_time[i]-dt);for(int i=0;i<MAX_ZOMBIES;i++)g->extra.hit_flash[i]=fmaxf(0,g->extra.hit_flash[i]-dt);}
 static void combat_effect(Game *g,float x,float y,int kind){for(int i=0;i<32;i++)if(g->extra.effect_time[i]<=0){g->extra.effect_time[i]=kind?.5f:.2f;g->extra.effect_x[i]=x;g->extra.effect_y[i]=y;g->extra.effect_kind[i]=kind;break;}}
+/* Keep cosmetic debris in the existing effect pool, without changing saves or
+   drawing random numbers from the gameplay generator. The owned particle XML
+   specifies a 180-tick life, gravity, ground contact and 0.3 reflection. */
+static void head_effect(Game *g,const Zombie *z){
+    int slot=-1;for(int i=0;i<32;i++)if(g->extra.effect_time[i]<=0){slot=i;break;}
+    if(slot<0)for(int i=0;i<32;i++)if(g->extra.effect_kind[i]<2){slot=i;break;}
+    if(slot<0)return;
+    int kind=z->kind==Z_POLE?1:z->kind==Z_FOOTBALL?2:z->kind==Z_DANCER?3:z->kind==Z_BACKUP?4:0;
+    g->extra.effect_time[slot]=1.8f;g->extra.effect_kind[slot]=2+kind;g->extra.effect_x[slot]=z->x-5;
+    g->extra.effect_y[slot]=game_ground_y(g,z->row)+game_roof_offset(g,z->x)+2;cue(FOLEY_LIMBS_POP);
+}
+int game_head_particle(const Game *g,int index,HeadParticle *out){
+    if(index<0||index>=32||g->extra.effect_time[index]<=0||g->extra.effect_kind[index]<2||g->extra.effect_kind[index]>6)return 0;
+    float age=1.8f-g->extra.effect_time[index],remaining=fmaxf(0,age),height=-32,velocity=-42;
+    for(int bounce=0;bounce<4;bounce++){
+        float hit=(-velocity+sqrtf(velocity*velocity-420*height))/210;
+        if(remaining<hit){height+=velocity*remaining+105*remaining*remaining;break;}
+        remaining-=hit;velocity=-(velocity+210*hit)*.3f;height=0;
+        if(bounce==3)remaining=0;
+    }
+    float spin=fminf(age,.72f),direction=index%2?1:-1;
+    out->kind=g->extra.effect_kind[index]-2;out->x=g->extra.effect_x[index]-(14+index%3*4)*age;
+    out->y=g->extra.effect_y[index]+fminf(0,height);out->rotation=direction*12.56637f*(spin-spin*spin/1.44f);
+    out->alpha=fminf(1,g->extra.effect_time[index]/.09f);return 1;
+}
 void game_animate_deaths(Game *g,float dt){if(dt<=0)return;effects_step(g,dt);g->flash=fmaxf(0,g->flash-dt);for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used&&g->zombies[i].death>0)tick_death(&g->zombies[i],dt);}
 static void kill_zombie(Game *g,Zombie *z){
     if(z->death<=0){if(z->kind==Z_GARG)cue(FOLEY_GARGANTUDEATH);else if(z->kind==Z_ZOMBONI)cue(FOLEY_EXPLOSION);z->vault_from=death_rate(g,z->kind);z->death=game_death_duration(z);z->age=0;z->eating=0;z->vault=0;g->kills++;
@@ -365,6 +390,7 @@ static void hurt_zombie(Game *g,Zombie *z,float damage,int ice) {
     if(before_armor>0&&z->armor==0&&z->kind==Z_PAPER){z->speed=.7f;z->age=0;cue(FOLEY_NEWSPAPER_RIP);cue(FOLEY_NEWSPAPER_RARRGH);}
     z->hp-=damage;if(ice){z->slow=8;cue(FOLEY_SNOW_PEA_SPARKLES);}
     int maximum=z->kind==Z_POLE||z->kind==Z_DANCER?500:270;if(before_hp>=maximum*2.0f/3&&z->hp<maximum*2.0f/3)cue(FOLEY_LIMBS_POP);
+    if(z->kind<Z_DUCK&&g->level!=25&&!game_mini_active(g,MINI_LITTLE)&&!g->mini.zombie_heads[z-g->zombies]&&before_hp>=maximum/3.0f&&z->hp<maximum/3.0f&&z->hp>0)head_effect(g,z);
     if(z->hp<=0)kill_zombie(g,z);
 }
 
@@ -633,7 +659,7 @@ void game_step(Game *g,float dt) {
             }
         }}
         int was_eating=z->eating;z->slow=fmaxf(0,z->slow-dt);z->eating=0;
-        int headless=g->level!=25&&!game_mini_active(g,MINI_LITTLE)&&z->kind<=Z_BACKUP&&game_zombie_body_stage(z)==2;
+        int headless=g->level!=25&&!game_mini_active(g,MINI_LITTLE)&&z->kind<Z_DUCK&&game_zombie_body_stage(z)==2;
         if(headless){
             if(z->kind==Z_POLE&&!z->vaulted){z->vaulted=1;z->vault=0;z->age=0;z->speed=.23f+random_unit(g)*.14f;}
             z->hp-=dt*(z->kind==Z_POLE?60:20);
@@ -1347,7 +1373,14 @@ int game_selftest(FILE *out) {
     CHECK("five pea hits remove regular zombie arm",g.zombies[z].hp==170&&game_zombie_body_stage(&g.zombies[z])==1);
     for(int i=0;i<4;i++)hurt_zombie(&g,&g.zombies[z],20,0);
     CHECK("head stays attached exactly at one-third body health",g.zombies[z].hp==90&&game_zombie_body_stage(&g.zombies[z])==1);
-    hurt_zombie(&g,&g.zombies[z],20,0);CHECK("next pea hit leaves a visibly headless dying zombie",g.zombies[z].hp==70&&game_zombie_body_stage(&g.zombies[z])==2&&g.zombies[z].death==0);
+    uint32_t head_rng=g.rng;hurt_zombie(&g,&g.zombies[z],20,0);CHECK("next pea hit leaves a visibly headless dying zombie",g.zombies[z].hp==70&&game_zombie_body_stage(&g.zombies[z])==2&&g.zombies[z].death==0);
+    {int slot=-1,heads=0;for(int i=0;i<32;i++)if(g.extra.effect_time[i]>0&&g.extra.effect_kind[i]>=2){heads++;slot=i;}
+     HeadParticle start,ground;int shown=slot>=0&&game_head_particle(&g,slot,&start);
+     CHECK("head loss creates exactly one detached head without consuming gameplay randomness",heads==1&&shown&&g.rng==head_rng);
+     if(slot>=0){float life=g.extra.effect_time[slot];g.extra.effect_time[slot]=.2f;int landed=game_head_particle(&g,slot,&ground);
+       CHECK("detached head falls onto the ground before fading",shown&&landed&&ground.y>start.y+25&&ground.y<=g.extra.effect_y[slot]+.01f&&ground.alpha==1);
+       g.extra.effect_time[slot]=.04f;CHECK("detached head fades at end of original 180 tick lifetime",game_head_particle(&g,slot,&ground)&&ground.alpha>0&&ground.alpha<.5f);
+       g.extra.effect_time[slot]=0;CHECK("expired detached head is no longer drawn",!game_head_particle(&g,slot,&ground));g.extra.effect_time[slot]=life;}}
     g.sun=1000;game_place(&g,2,4,WALLNUT);g.zombies[z].x=plant_x(4)+20;advance(&g,1);
     CHECK("headless zombie stops eating and loses remaining health",g.plants[2][4].hp==4000&&!g.zombies[z].eating&&g.zombies[z].hp<51&&g.zombies[z].hp>49);
     advance(&g,3);CHECK("headless regular zombie finishes dying",g.kills==1);

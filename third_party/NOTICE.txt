@@ -16,3 +16,8 @@ asset-free package. The personal kit is for the owner's private testing.
 Personal launcher audio is prepared with ItsNoHax/pspbuild (MIT), an external
 build-time tool, not linked into the game. Its notice is included in
 third_party/pspbuild-MIT.txt. https://github.com/ItsNoHax/pspbuild
+
+The Windows release's Setup.exe embeds CPython, Pillow and Tcl/Tk using
+PyInstaller. Their versions and license texts are shipped in the release's
+third_party/windows-setup directory. FFmpeg is a separate external dependency;
+it is not embedded in Setup.exe or redistributed in this package.

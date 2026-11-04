@@ -2,9 +2,10 @@
 from pathlib import Path
 import argparse,hashlib,json,os,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from pc_runtime import hidden_process_options,is_frozen,resource_root
 
 ROOT=Path(__file__).resolve().parents[1]
-REFERENCE=ROOT/'tools/reference/FOLEY-REFERENCE-0.18.json'
+REFERENCE=resource_root()/'tools/reference/FOLEY-REFERENCE-0.18.json'
 if not REFERENCE.is_file():
     REFERENCE=ROOT/'FOLEY-REFERENCE-0.18.json'  # Earlier release ZIP layout.
 def normalize_sound_names(sounds):
@@ -60,7 +61,9 @@ def prepare(imported,dest,reference_elf=None,jobs=None):
     enum=['/* Sample IDs and factual PS3 Foley groups; no audio embedded. */','#ifndef PVZ_FOLEY_DEFS_H','#define PVZ_FOLEY_DEFS_H','enum { '+','.join('FX_'+k[6:].upper() for k in primary)+', FX_SAMPLE_COUNT };','enum { '+','.join('FX_'+k[6:].upper()+'='+str(v) for k,v in key_ids.items() if k not in primary)+' };','enum { '+','.join(g['name'] for g in groups)+', FOLEY_COUNT };','typedef struct {float pitch;unsigned char flags,count;short samples[10];} FoleyDefinition;','static const FoleyDefinition foley_definitions[FOLEY_COUNT]={']
     for g in groups:
         variants=[key_ids[k] for k in g['variants']];assert all(i>=0 for i in variants);enum.append('{'+str(g['pitch'])+'f,'+str(g['flags'])+','+str(len(variants))+',{'+','.join(map(str,variants))+'}},')
-    enum+=['};','#endif'];(ROOT/'src/foley_defs.h').write_text('\n'.join(enum)+'\n',encoding='utf-8',newline='\n')
+    enum+=['};','#endif']
+    if not is_frozen():
+        (ROOT/'src/foley_defs.h').write_text('\n'.join(enum)+'\n',encoding='utf-8',newline='\n')
     entries=[];payload=[];facts=[]
     with tempfile.TemporaryDirectory(prefix='pvz-foley-') as temp:
         def encode_sample(item):
@@ -68,7 +71,7 @@ def prepare(imported,dest,reference_elf=None,jobs=None):
             folder=Path(temp)/str(i);folder.mkdir()
             target=folder/'sound.wav';pcm=folder/'sound.pcm'
             key=primary[i];source_file=source[name]
-            subprocess.run(['ffmpeg','-v','error','-y','-i',str(source_file),'-ac','1','-ar','22050','-c:a','adpcm_ima_wav','-block_size','256','-bitexact',str(target),'-map','0:a:0','-ac','1','-ar','22050','-f','s16le',str(pcm)],check=True)
+            subprocess.run(['ffmpeg','-v','error','-y','-i',str(source_file),'-ac','1','-ar','22050','-c:a','adpcm_ima_wav','-block_size','256','-bitexact',str(target),'-map','0:a:0','-ac','1','-ar','22050','-f','s16le',str(pcm)],check=True,**hidden_process_options())
             data=target.read_bytes();at=12;samples=None;blocks=None
             while at+8<=len(data):
                 tag,size=struct.unpack_from('<4sI',data,at);chunk=data[at+8:at+8+size]

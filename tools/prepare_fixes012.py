@@ -1,6 +1,7 @@
 """Original Squash attack clips and reward particles for the 0.12 fixes."""
 from pathlib import Path
 import math,shutil,subprocess
+from pc_runtime import hidden_process_options
 from PIL import Image,ImageChops
 
 def prepare_fixes012(imported,destination,previews,write_pva):
@@ -42,5 +43,5 @@ def prepare_fixes012(imported,destination,previews,write_pva):
  if ffmpeg:
   for index,name in [(21,'squash_hmm'),(22,'gargantuar_thump')]:
    target=destination/f'sfx{index}.pcm'
-   if not target.exists():subprocess.run([ffmpeg,'-v','error','-i',str(imported/'archives/sounds/sounds'/(name+'.mpg')),'-t','8','-ac','1','-ar','44100','-f','s16le',str(target)],check=True)
+   if not target.exists():subprocess.run([ffmpeg,'-v','error','-i',str(imported/'archives/sounds/sounds'/(name+'.mpg')),'-t','8','-ac','1','-ar','44100','-f','s16le',str(target)],check=True,**hidden_process_options())
  return result

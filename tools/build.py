@@ -51,7 +51,7 @@ def main():
     stripped = build / "pvz-strip.elf"
     run("psp-strip", elf, "-o", stripped)
     sfo = build / "PARAM.SFO"
-    run("mksfoex", "-d", "MEMSIZE=" + ("0" if args.low_memory else "1"), "PvZ PSP Prototype", sfo)
+    run("mksfoex", "-d", "MEMSIZE=" + ("0" if args.low_memory else "1"), "Plants vs. Zombies", sfo)
     run("pack-pbp", build / "EBOOT.PBP", sfo, "NULL", "NULL", "NULL", "NULL", "NULL", stripped, "NULL")
     media = args.launcher_media or ROOT / "private" / "launcher0111"
     if not args.no_launcher_media and (args.launcher_media or media.is_dir()):

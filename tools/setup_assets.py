@@ -13,8 +13,9 @@ import subprocess
 import sys
 import tempfile
 import time
+from pc_runtime import hidden_process_options, is_frozen, package_root, preparation_command
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = package_root()
 sys.path.insert(0, str(ROOT / 'importer'))
 from pvz_import import inspect_or_import
 
@@ -69,14 +70,14 @@ def supports_music(path):
     try:
         result = subprocess.run([str(path), '-hide_banner', '-demuxers'],
                                 capture_output=True, text=True, encoding='utf-8',
-                                errors='replace', timeout=20)
+                                errors='replace', timeout=20, **hidden_process_options())
         return result.returncode == 0 and bool(re.search(r'\blibopenmpt\b', result.stdout))
     except (OSError, subprocess.TimeoutExpired):
         return False
 
 
 def find_ffmpeg():
-    candidates = []
+    candidates = [ROOT / 'ffmpeg.exe', ROOT / 'tools/ffmpeg.exe']
     on_path = shutil.which('ffmpeg')
     if on_path:
         candidates.append(Path(on_path))
@@ -100,6 +101,8 @@ def find_ffmpeg():
 
 def ensure_dependencies(allow_install):
     if importlib.util.find_spec('PIL') is None:
+        if is_frozen():
+            raise ValueError('The portable setup is incomplete. Extract a fresh copy of the game download ZIP.')
         if not allow_install or not ask('PC setup', 'Pillow is required to prepare the pictures.\n\nInstall Pillow for this Python now?'):
             raise ValueError('Pillow is required. Run Setup.cmd again and allow its installation.')
         print('Installing Pillow...', flush=True)
@@ -121,13 +124,13 @@ def ensure_dependencies(allow_install):
             if chosen and supports_music(chosen):
                 ffmpeg = chosen.resolve()
     if ffmpeg is None:
-        raise ValueError('FFmpeg with music support (libopenmpt) was not found. Install the full FFmpeg build, then run Setup.cmd again.')
+        raise ValueError('FFmpeg with music support (libopenmpt) was not found. Install the full FFmpeg build, then run setup again.')
     return ffmpeg
 
 
 def validate_prepared(folder):
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    if manifest.get('version') != '0.18.1' or manifest.get('disc_title_id') != 'BLUS30852':
+    if manifest.get('version') != '0.18.5' or manifest.get('disc_title_id') != 'BLUS30852':
         raise ValueError('Prepared files do not match this game package.')
     assets = manifest.get('assets', [])
     if not assets:
@@ -139,9 +142,12 @@ def validate_prepared(folder):
         path = folder / relative
         if not path.is_file() or path.stat().st_size == 0:
             raise ValueError(f'Prepared file is missing: {relative.name}')
-    for name in ('foley.pvf', 'music-index.json', 'ending.pvj', 'ending.json'):
+    for name in ('foley.pvf', 'music-index.json', 'ending.pvj', 'ending.json', 'shoot-alignment.bin'):
         if not (folder / name).is_file() or (folder / name).stat().st_size == 0:
             raise ValueError(f'Preparation did not finish: {name} is missing.')
+    alignment=(folder/'shoot-alignment.bin').read_bytes()
+    if len(alignment)!=1936 or alignment[:16]!=b'PPA1\x03\x00\x00\x00\x50\x00\x00\x00\x3c\x00\x00\x00':
+        raise ValueError('The plant animation alignment data is incomplete.')
     for song in json.loads((folder / 'music-index.json').read_text(encoding='utf-8')):
         relative = Path(song['file'])
         if relative.is_absolute() or '..' in relative.parts or not (folder / relative).is_file():
@@ -176,13 +182,14 @@ def prepare_game(source, destination, ffmpeg, log, root=ROOT):
     env = os.environ.copy()
     env['PATH'] = str(ffmpeg.parent) + os.pathsep + env.get('PATH', '')
     env['PYTHONUTF8'] = '1'
-    command = [sys.executable, '-u', str(root / 'tools/prepare_assets.py'), '--iso', str(source), '--output', str(staging)]
+    command = preparation_command(source, staging, root)
     print('Preparing game files. This can take several minutes; keep this window open.', flush=True)
     count = 0
     music_count = 0
     stage = 'animations'
     process = subprocess.Popen(command, cwd=root, env=env, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
+                               stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace',
+                               **hidden_process_options())
     try:
         for line in process.stdout:
             log.write(line)

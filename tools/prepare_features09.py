@@ -3,6 +3,19 @@ from pathlib import Path
 import math,re,struct,zlib,array
 from PIL import Image,ImageChops,ImageDraw
 from prepare_almanac import PLANT_KEYS
+from texture_layout import untile_rgba4444
+
+
+def first_prepared_frame(path):
+    """Portraits need linear pixels, even when their source is GPU-tiled PVA4."""
+    b=path.read_bytes();magic,w,h,tw,th,n,stride,fps,ax,ay=struct.unpack_from('<4s6If2f',b)
+    if magic not in (b'PVA3',b'PVA4'):raise ValueError('Unsupported prepared image')
+    off,length=struct.unpack_from('<II',b,40)
+    raw=zlib.decompress(b[40+8*n+off:40+8*n+off+length])
+    if magic==b'PVA4':raw=untile_rgba4444(raw,tw,th)
+    values=array.array('H',raw)
+    rgba=bytes(v for p in values for v in ((p&15)*17,((p>>4)&15)*17,((p>>8)&15)*17,((p>>12)&15)*17))
+    return Image.frombytes('RGBA',(tw,th),rgba).crop((0,0,w,h))
 
 def prepare_features09(imported,destination,previews,write_pva):
     from prepare_assets import frames_from_xml,clip_range
@@ -25,8 +38,16 @@ def prepare_features09(imported,destination,previews,write_pva):
         x,y=f['x']+96,f['y']+96;layer=image.transform(canvas.size,Image.Transform.AFFINE,(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det),resample=Image.Resampling.BICUBIC)
         if f['a']<1:layer.putalpha(layer.getchannel('A').point(lambda v:round(v*f['a'])))
         canvas.alpha_composite(layer)
+    alignment=[]
     for prefix,source,rate in [('pea','PeaShooterSingle',35),('repeater','PeaShooter',45),('snow','SnowPea',35)]:
         _,tracks=frames_from_xml(files['reanim/'+source.lower()+'.reanim']);clips={}
+        face=next(keys for name,keys in tracks if name=='anim_face')
+        origin=sample(face,54)
+        # Move the firing head with the same idle stem pose as the body. The
+        # original head's recoil remains relative to its authored firing pose.
+        for n in range(80):
+            idle=sample(face,79+min(24,n/60*18))
+            alignment.extend(((idle['x']-origin['x'])*.66,(idle['y']-origin['y'])*.66))
         for mode,start,playrate,part in [('idle',79,18,'all'),('body',79,18,'body'),('head',79,18,'head'),('fire',54,rate,'head'),('shoot',54,rate,'all')]:
             frames=[];count=math.ceil(24/playrate*60)+(mode in ('fire','shoot'))
             for n in range(count):
@@ -42,10 +63,11 @@ def prepare_features09(imported,destination,previews,write_pva):
             for f in frames:union=ImageChops.lighter(union,f.getchannel('A'))
         box=union.getbbox();box=(box[0]-2,box[1]-2,box[2]+2,box[3]+2);size=(round((box[2]-box[0])*.66),round((box[3]-box[1])*.66))
         for mode,frames in clips.items():save(prefix+'_'+mode,[f.crop(box).resize(size,Image.Resampling.LANCZOS) for f in frames],60)
+    (destination/'shoot-alignment.bin').write_bytes(struct.pack('<4s3I',b'PPA1',3,80,60)+struct.pack('<480f',*alignment))
     # Decode first prepared plant frames to build the console's packet portraits.
     names=['pea_idle','sunflower','wallnut','cherry','mine','snow_idle','chomper','repeater_idle','puff','sunshroom','fume','gravebuster','hypno','scaredy','iceshroom','doom','lily','squash','threepeater','kelp','jalapeno','spikeweed','torchwood','tallnut','sea','plantern','cactus','blover','split','star','pumpkin','magnet','cabbage','pot','kernel','coffee','garlic','umbrella','marigold','melon','gatling','twin','gloom','cattail','winter','goldmagnet','spikerock','cob','imitater']
     def first(name):
-        b=(destination/(name+'.pva')).read_bytes();magic,w,h,tw,th,n,stride,fps,ax,ay=struct.unpack_from('<4s6If2f',b);off,length=struct.unpack_from('<II',b,40);values=array.array('H',zlib.decompress(b[40+8*n+off:40+8*n+off+length]));rgba=bytes(v for p in values for v in ((p&15)*17,((p>>4)&15)*17,((p>>8)&15)*17,((p>>12)&15)*17));return Image.frombytes('RGBA',(tw,th),rgba).crop((0,0,w,h))
+        return first_prepared_frame(destination/(name+'.pva'))
     def font(name):
         txt=files['data/'+name.lower()+'.txt'].read_text(encoding='utf-8-sig')
         def block(k):return re.search(r'Define\s+'+k+r'\s*\((.*?)\);',txt,re.S).group(1)
@@ -89,6 +111,10 @@ def prepare_features09(imported,destination,previews,write_pva):
         a=n*math.tau/12;d.polygon([(96,96),(96+94*math.cos(a),96+94*math.sin(a)),(96+94*math.cos(a+.16),96+94*math.sin(a+.16))],fill=(255,244,140,130))
     save('award_rays',[rays])
     brain=im('images/brain.ptx');brain.thumbnail((20,18));save('brain',[brain])
+    for name,source in [('normal','ZombieHead'),('pole','ZombiePoleVaulterHead'),('football','ZombieFootballHead'),('dancer','ZombieDancerHead_disco'),('backup','ZombieBackupDancerHead_disco')]:
+        head=im('particles/'+source+'.ptx')
+        head=head.resize((max(1,round(head.width*.48)),max(1,round(head.height*.48))),Image.Resampling.LANCZOS)
+        save('head_'+name,[head])
     return result
 
 if __name__=='__main__':

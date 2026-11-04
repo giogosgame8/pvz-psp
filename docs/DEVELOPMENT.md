@@ -3,6 +3,27 @@
 The download ZIP is the supported starting point for players. GitHub's automatic
 source archives contain no EBOOT.PBP. Use the top-level README for installation.
 
+## Portable Windows setup
+
+The player ZIP includes Setup.exe, which embeds Python and Pillow. Players do
+not install Python or use these development commands. FFmpeg remains external;
+setup detects it or offers installation through Windows Package Manager.
+It also accepts ffmpeg.exe beside Setup.exe or in its tools subdirectory.
+
+To build the portable executable on 64-bit Windows with Python 3.12:
+
+```powershell
+py -m pip install Pillow==12.3.0 PyInstaller==6.22.3
+py .\tools\build_windows_setup.py
+```
+
+The result is build-pc/dist/Setup.exe. Its runtime licenses are written beside
+it in windows-setup-licenses; ship those under third_party/windows-setup.
+The packaged program launches itself with --prepare-worker instead of looking
+for a system Python. User data/logs live beside the executable; bundled Foley
+facts are read from its temporary runtime directory. The portable worker does
+not generate developer C headers.
+
 ## Manual preparation
 
 See [MANUAL-SETUP.txt](MANUAL-SETUP.txt). Commands run from the extracted package root:
@@ -42,8 +63,9 @@ See [performance results](PERFORMANCE.md),
 [known missing features](KNOWN-LIMITATIONS.md) for implementation limits.
 The 0.18.3 setup limits affine rendering to relevant image regions, uses up to
 eight rendering threads, and converts up to four sound files concurrently.
-Generated game data is checked against the validated 0.18.2 output; the native
-game executable is unchanged from 0.18.1.
+Generated game data was checked against the validated 0.18.2 output. Version
+0.18.5 also changes presentation, the native executable and prepared content;
+install its new program and data together. Existing save layouts are preserved.
 
 A full conversion on an i5-14600K with dependencies already installed took
 7 minutes, compared with approximately 20 minutes for the previous setup run

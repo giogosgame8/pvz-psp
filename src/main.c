@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP prototype 0.18.1 automatic memory profile"
+#define BUILD018_LABEL "PvZ PSP 0.18.5 presentation fixes and automatic memory profile"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -51,6 +51,15 @@ static const char *asset_names[A_COUNT]={"pea_idle","pea_shoot","sunflower","wal
 static Animation assets[A_COUNT],damaged[A_COUNT][2],imitated_assets[A_COUNT][3];static Game game;static volatile int running=1;
 static int screen,paused,help,gallery,ready,can_resume,debug_info;static char message[128];static float message_time;
 static int review_ui_only;
+static float shoot_alignment[3][80][2];
+static Animation head_particles[5];
+static const char *head_particle_names[5]={"head_normal","head_pole","head_football","head_dancer","head_backup"};
+static int load_shoot_alignment(void){
+    FILE *f=fopen("data/shoot-alignment.bin","rb");if(!f)return 0;
+    uint32_t h[4];int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x31415050&&h[1]==3&&h[2]==80&&h[3]==60&&fread(shoot_alignment,sizeof(shoot_alignment),1,f)==1&&fgetc(f)==EOF;fclose(f);
+    for(int k=0;ok&&k<3;k++)for(int n=0;n<80;n++)for(int j=0;j<2;j++)if(!isfinite(shoot_alignment[k][n][j])||fabsf(shoot_alignment[k][n][j])>64)ok=0;
+    return ok;
+}
 static int live_benchmark,live_phase;
 static int test_ok;static uint32_t previous_buttons;static float repeat_timer;static size_t texture_memory;
 static RenderStats last_render;
@@ -217,8 +226,9 @@ static void draw_board(void){
                     int body=p->kind==SNOW?A_SNOW_BODY:p->kind==REPEATER?A_REPEATER_BODY:A_PEA_BODY;float action=game.pea_shoot_time[row][col];float idle=p->age*(.84f+((row*7+col*13)%11)*.026f);
                     (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body],center(col),foot,idle,.68f,WHITE,1);
                     float end=24.0f/(p->kind==REPEATER?45:35),blend=action>0?fminf(1,fminf(action/.12f,(end+.12f-action)/.12f)):0;
-                    if(blend<1)(game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+1],center(col),foot,game.burst[row][col],.68f,RGBA(255,255,255,(int)(255*(1-blend))),1);
-                    if(blend>0)(game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+2],center(col),foot,action,.68f,RGBA(255,255,255,(int)(255*blend)),0);
+                    if(blend<1)(game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+1],center(col),foot,idle,.68f,RGBA(255,255,255,(int)(255*(1-blend))),1);
+                    if(blend>0){int family=p->kind==SNOW?2:p->kind==REPEATER?1:0,frame=(int)(idle*60)%80;float dx=shoot_alignment[family][frame][0]*.68f,dy=shoot_alignment[family][frame][1]*.68f;if(game.extra.left_facing[row][col])dx=-dx;
+                        (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+2],center(col)+dx,foot+dy,action,.68f,RGBA(255,255,255,(int)(255*blend)),0);}
                 }else (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(a,center(col),foot,game.extra.category==EXTRA_IZOMBIE?0:p->age,p->kind==MINE?(p->age<MINE_ARM_SECONDS?.51f:.45f):.68f,game.asleep[row][col]?RGBA(160,160,190,255):WHITE,1);
             }
             if(p->kind==MINE&&p->age<MINE_ARM_SECONDS){
@@ -268,7 +278,7 @@ static void draw_board(void){
     for(int i=0;i<MAX_NUTS;i++)if(game.nuts[i].used){BowlingNut *n=&game.nuts[i];render_anim_rotated(&assets[A_WALLNUT],n->x,n->y,n->age,n->explosive==2?1.45f:.68f,n->explosive==1?RGBA(255,100,90,255):WHITE,n->age*7);}
     for(int i=0;i<MAX_SUNS;i++)if(game.suns[i].used){Sun *s=&game.suns[i];float scale=s->used==2?.60f*(1-.5f*fminf(1,s->age/s->flight)):s->from_plant?fminf(.60f,.24f+s->flight*1.2f):.60f;render_anim(&assets[A_SUN],s->x,s->y,game.time,scale,WHITE,1);}
     for(int i=0;i<MAX_COINS;i++)if(game.money[i].used){Coin *c=&game.money[i];render_anim(&assets[c->value==-100?A_CHOCOLATE:c->value<0?A_PRESENT:c->value>=100?A_COIN_DIAMOND:c->value>=5?A_COIN_GOLD:A_COIN_SILVER],c->x,c->y,game.time,.75f,WHITE,1);}
-    for(int i=0;i<32;i++)if(game.extra.effect_time[i]>0){int explosion=game.extra.effect_kind[i];float t=1-game.extra.effect_time[i]/(explosion?.5f:.2f),x=game.extra.effect_x[i],y=game.extra.effect_y[i];if(explosion){for(int k=0;k<6;k++){float a=k*1.0471976f;render_anim(&assets[A_IMPACT_DUST],x+cosf(a)*t*24,y+sinf(a)*t*15,t*.25f,1+t,RGBA(255,235,195,(int)(230*(1-t))),0);}}else for(int k=0;k<5;k++){float a=k*1.256637f;render_anim(&assets[A_PROJECTILE_PEA],x+cosf(a)*t*10,y+sinf(a)*t*8,0,.18f,RGBA(230,255,170,(int)(255*(1-t))),0);}}
+    for(int i=0;i<32;i++)if(game.extra.effect_time[i]>0){HeadParticle head;if(game_head_particle(&game,i,&head)){render_anim_rotated(&head_particles[head.kind],head.x,head.y,0,.8f*.93f,RGBA(255,255,255,(int)(255*head.alpha)),head.rotation);continue;}int explosion=game.extra.effect_kind[i];float t=1-game.extra.effect_time[i]/(explosion?.5f:.2f),x=game.extra.effect_x[i],y=game.extra.effect_y[i];if(explosion){for(int k=0;k<6;k++){float a=k*1.0471976f;render_anim(&assets[A_IMPACT_DUST],x+cosf(a)*t*24,y+sinf(a)*t*15,t*.25f,1+t,RGBA(255,235,195,(int)(230*(1-t))),0);}}else for(int k=0;k<5;k++){float a=k*1.256637f;render_anim(&assets[A_PROJECTILE_PEA],x+cosf(a)*t*10,y+sinf(a)*t*8,0,.18f,RGBA(230,255,170,(int)(255*(1-t))),0);}}
     if(game.flash>0)render_rect(0,44,480,205,RGBA(255,240,180,(int)(game.flash*400)));
     if(game.mode==MODE_BOSS){
         if(game.status==WON)render_anim(&assets[A_BOSS_DEATH],442,244,reward_elapsed*18/assets[A_BOSS_DEATH].fps,.92f,WHITE,0);else{static const int spawn[]={A_BOSS_SPAWN1,A_BOSS_SPAWN2,A_BOSS_SPAWN3,A_BOSS_SPAWN4,A_BOSS_SPAWN5},spit[]={A_BOSS_SPIT1,A_BOSS_SPIT2,A_BOSS_SPIT3,A_BOSS_SPIT4,A_BOSS_SPIT5},stomp[]={A_BOSS_STOMP1,A_BOSS_STOMP2,A_BOSS_STOMP3,A_BOSS_STOMP4};int action=game.extra.boss_action,id=action==B_SPAWN?spawn[game.boss_row]:action==B_HEAD_ENTER?A_BOSS_HEAD_ENTER:action==B_HEAD_SPIT?spit[game.boss_row]:action==B_HEAD_WAIT||action==B_HEAD_AFTER?A_BOSS_EAT:action==B_HEAD_LEAVE?A_BOSS_HEAD_LEAVE:action==B_STOMP?stomp[game.boss_row%4]:action==B_BUNGEE?A_BOSS_BUNGEE:action==B_RV?A_BOSS_RV:A_BOSS_WALK;render_anim(&assets[id],442,244,game.extra.boss_action_time*(action==B_RV?16:12)/assets[id].fps,.92f,WHITE,action==B_IDLE||action==B_HEAD_WAIT||action==B_HEAD_AFTER);}
@@ -352,7 +362,7 @@ static void draw_hud(float fps){
 }
 
 static void panel(const char *title){ui_dialog(36,49,408,183,title);}
-static void draw_menu(void){render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+menu_selected,WHITE);char label[48];snprintf(label,sizeof(label),"Player: %s",player_name);render_image(&assets[A_UI_BUTTON],348,93,123,25,menu_selected==4,menu_selected==4?UI_ACTIVE_TINT:WHITE);ui_center(354,97,111,label,menu_selected==4?UI_FOCUS_TEXT:WHITE,.63f);if(menu_selected==3)ui_center(232,226,68,"Options",UI_GOLD,.65f);}
+static void draw_menu(void){render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+menu_selected,WHITE);char label[48];snprintf(label,sizeof(label),"Player: %s",player_name);render_image(&assets[A_UI_BUTTON],348,8,123,25,menu_selected==4,menu_selected==4?UI_ACTIVE_TINT:WHITE);ui_center(354,12,111,label,menu_selected==4?UI_FOCUS_TEXT:WHITE,.63f);if(menu_selected==3)ui_center(232,226,68,"Options",UI_GOLD,.65f);}
 static void draw_options(void){
  render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+3,WHITE);ui_dialog(66,24,348,220,"Options");static const char *bars[]={"Off","Plants","Zombies","Both"};
  int rows=options_count(),top=rows==8?58:62,step=rows==8?22:23;
@@ -701,7 +711,7 @@ int main(int argc,char *argv[]){
     FILE *tests=fopen("selftest.txt","w");test_ok=tests?game_selftest(tests):0;
     if(tests){test_ok&=game_mini_selftest(tests);test_ok&=game_extra_selftest(tests);test_ok&=garden_selftest(tests);test_ok&=platform_selftest(tests);test_ok&=performance_selftest(tests);test_ok&=audio_selftest(tests);test_ok&=foley_selftest(tests);test_ok&=game_audio018_selftest(tests);test_ok&=music_selftest(tests);test_ok&=progress_selftest(tests);test_ok&=profile_selftest(tests);int ok=render_selftest();test_ok&=ok;fprintf(tests,"texture swizzle pixel integrity: %s\n",ok?"PASS":"FAIL");fclose(tests);}
     profile_init(&player);profile_load(&player,profile_path);challenge_initialize();
-    game_init(&game,1);can_resume=game_load(&game,"save.dat");ready=motion_ok;
+    game_init(&game,1);can_resume=game_load(&game,"save.dat");ready=motion_ok&&load_shoot_alignment();
     progress_load(&progress,progress_path);if(can_resume){progress_import(&progress,&game);profile_apply(&player,&game);adventure_backup=game;}for(int l=1;l<=50;l++)if(progress_played(&progress,l)&&(uint32_t)l>player.highest)player.highest=l;reset_level_ui();
     for(int i=0;i<A_COUNT;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",asset_names[i]);
         if(!animation_load(&assets[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}
@@ -712,6 +722,7 @@ int main(int argc,char *argv[]){
             else texture_memory+=(size_t)damaged[i][stage-1].frames*damaged[i][stage-1].stride;
         }
     }
+    for(int i=0;i<5;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",head_particle_names[i]);if(!animation_load(&head_particles[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}}
     if(log){fprintf(log,"Assets: %s\nTexture bytes: %lu\nSelf tests: %s\nGame struct: %lu bytes\nUser partition free: %u bytes\n",ready?"OK":"MISSING",(unsigned long)texture_memory,test_ok?"PASS":"FAIL",(unsigned long)sizeof(Game),(unsigned)sceKernelTotalFreeMemSize());
         fprintf(log,"Memory configuration: automatic heap, 1 MiB system reserve / %d MiB frame cache / %d MiB banks / %d MiB static cap\nRender target: %d FPS; simulation: 60 updates/s\n",performance.low_memory?12:24,performance.low_memory?2:8,performance.low_memory?0:6,performance.target_fps);
         fflush(log);}
@@ -779,7 +790,7 @@ int main(int argc,char *argv[]){
         audio_music(ready&&!help&&!(screen==19&&ending_paused)&&(screen!=1||(!paused&&(game.status==PLAYING||(game.status==WON&&game.level==50))))&&!(screen==1&&game.level==40));
         audio_scene_step(dt);memset(game.events,0,sizeof(game.events));
         render_begin();
-        if(!ready){panel("GAME DATA REQUIRED");render_text(56,106,"RUN PREPARE_ASSETS.PY ON YOUR COMPUTER\nWITH YOUR OWN SUPPORTED PS3 ISO.\n\nCOPY THE GENERATED DATA FOLDER NEXT\nTO THIS EBOOT.PBP.\n\nSEE THE INCLUDED README.",WHITE,1);}
+        if(!ready){panel("GAME DATA REQUIRED");render_text(56,106,"RUN SETUP.EXE ON YOUR COMPUTER\nWITH YOUR OWN SUPPORTED PS3 ISO.\n\nCOPY THE RESULTING PVZPSP FOLDER\nINTO PSP/GAME ON YOUR MEMORY CARD.\n\nSEE THE INCLUDED README.",WHITE,1);}
         else if(gallery)draw_gallery(clock);
         else if(screen==0)draw_menu();
         else if(screen==2)draw_intro();
@@ -907,5 +918,5 @@ int main(int argc,char *argv[]){
     if(!benchmark){garden_flush();save_current();progress_save(&progress,progress_path);}
     write_profile(log,"EXIT");
     if(!benchmark){audio_queue_settings();if(ui_settings_dirty)ui_settings_save();if(performance_dirty)performance_save();}
-    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
+    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<5;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
 }

@@ -1,5 +1,8 @@
 MANUAL ASSET PREPARATION
 
+For the normal Windows installation, download the game ZIP and run Setup.exe.
+No Python installation is needed. The commands below are for manual/developer use.
+
 The asset-free EBOOT has no launcher images or preview music. To prepare and
 embed your own launcher media, see the options in tools/prepare_launcher.py
 and tools/launcher_media.py (run either with --help).

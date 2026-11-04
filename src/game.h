@@ -50,6 +50,7 @@ typedef struct { int used, row, ice; float x; } Shot;
 typedef struct { int used; float x, y, target_y, age; float vx,vy; int from_plant; float flight; } Sun;
 typedef struct { int used,explosive,row,target_row,last_hit,direction; float x,y,age; } BowlingNut;
 typedef struct { int used,value;float x,y,age,vx,vy,target_y; } Coin;
+typedef struct { int kind;float x,y,rotation,alpha; } HeadParticle;
 typedef struct {
     uint32_t rng;
     int status, sun, wave, spawned, kills, total_spawned, selected, shovel;
@@ -147,6 +148,7 @@ void game_animate_pickups(Game *g,float dt);
 int game_spawn_zombie(Game *g, int row, int kind, float x);
 int game_alive(const Game *g);
 int game_zombie_body_stage(const Zombie *z);
+int game_head_particle(const Game *g,int index,HeadParticle *out);
 int game_zombie_armor_stage(const Zombie *z);
 int game_sunflower_count(const Game *g);
 int game_load_motion(const char *filename);
