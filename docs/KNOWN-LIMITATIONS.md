@@ -43,7 +43,19 @@ These counts describe implemented content, not exact PS3 parity.
 | Mini-games | Heavy Weapon durations/targeting, Zombotany attachments/special attacks, Bobsled collision/movement and portal transitions. All 20 selections being playable does not establish faithful PS3 reproductions. |
 | Boss and combat | Attack scheduling, attachments, stomp/spawn choreography, damage interactions, collision nuances and some plant/zombie particles or death details. |
 | Presentation | Handheld menu proportions, animation transitions, particles, reward timings, exact original garden choreography and spatial audio/gain/voice priorities. UI and controls have deliberate PSP adaptations. |
-| Ending | Song and reconstructed animation are included. The source is reduced to 480x272/24 FPS, using the recovered PS3 lyric table. It is not a verified frame-exact reproduction of the original live compositor. |
+| Ending | Song and reconstructed animation are included at 480x272/24 FPS. Recovered PS3 lyric timing is optional when preparing from a private executable; normal disc-only setup does not recover it from the encrypted executable. The result is not a verified frame-exact reproduction of the original live compositor. |
+
+## 0.18.5 verification limits
+
+The standalone Windows setup completed a full disc conversion without Python or
+the py launcher on PATH. All 3,810 generated ending frames decoded successfully.
+Native checks completed in PPSSPP with Street, PSP-2000 and PSP-1000 profiles;
+these checks are not physical-console certification.
+
+PSP-1000 support remains experimental. Its conservative cache profile passed the
+checks but the dense stress scene ran at approximately 2.6 FPS in these emulator
+runs, even with a 60 FPS target. Menus remained responsive. A target setting does
+not guarantee that frame rate, and demanding scenes need further performance work.
 
 PSN leaderboards, PlayStation system trophies and other PS3 platform services
 remain excluded from the agreed offline scope. Local collectible trophies are
