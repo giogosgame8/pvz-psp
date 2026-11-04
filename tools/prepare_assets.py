@@ -419,6 +419,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in songs),'old_pcm_bytes':sum(s['pcm_bytes'] for s in songs)}
     from prepare_customizer import prepare_customizer
     assets.extend(prepare_customizer(imported,destination,previews,write_pva,geometry))
+    from prepare_gallery import prepare_gallery
+    assets.extend(prepare_gallery(destination,previews,write_pva))
     from prepare_garden018 import prepare_garden018
     with tempfile.TemporaryDirectory(prefix='pvz-garden-') as garden_temp:
         garden_dir=Path(garden_temp)/'data'

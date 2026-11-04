@@ -1,8 +1,13 @@
 enum { GALLERY_ZOMBIES=Z_TYPES+6,GALLERY_PAGE=8 };
 static int gallery_tab,gallery_focus,gallery_cursor[2],gallery_pose;
+static Animation gallery_thumbnails[2];
 static const char *gallery_zombie_names[GALLERY_ZOMBIES]={"Zombie","Conehead","Buckethead","Pole Vaulter","Flag Zombie","Newspaper","Screen Door","Football","Dancing Zombie","Backup Dancer","Ducky Tube","Snorkel","Zomboni","Bobsled Team","Dolphin Rider","Jack-in-the-Box","Balloon","Digger","Pogo","Yeti","Bungee","Ladder","Catapult","Gargantuar","Imp","Dr. Zomboss","Peashooter Zombie","Wall-nut Zombie","Jalapeno Zombie","Gatling Zombie","Squash Zombie","Tall-nut Zombie"};
 static int gallery_count(void){return gallery_tab?GALLERY_ZOMBIES:ALL_SEEDS;}
-static void gallery_open(void){gallery=1;gallery_tab=gallery_focus=gallery_cursor[0]=gallery_cursor[1]=gallery_pose=0;}
+static void gallery_open(void){
+ if(!gallery_thumbnails[0].loaded)animation_load(&gallery_thumbnails[0],"data/gallery_plants.pva");
+ if(!gallery_thumbnails[1].loaded)animation_load(&gallery_thumbnails[1],"data/gallery_zombies.pva");
+ gallery=1;gallery_tab=gallery_focus=gallery_cursor[0]=gallery_cursor[1]=gallery_pose=0;
+}
 static const Animation *gallery_plant(int kind,int pose,const char **label){
  *label="Idle";int id=seed_icons[kind];if(!pose)return &assets[id];*label="Action";
  switch(kind){
@@ -29,10 +34,27 @@ static const Animation *gallery_zombie(int kind,int pose){
  if(kind==Z_NORMAL||kind==Z_CONE||kind==Z_BUCKET)return &assets[pose==2?A_ZOMBIE_DEATH:kind==Z_CONE?(pose?A_CONE_EAT:A_CONE):kind==Z_BUCKET?(pose?A_BUCKET_EAT:A_BUCKET):(pose?A_ZOMBIE_EAT:A_ZOMBIE)];
  switch(kind){case Z_POLE:return &assets[pose==2?A_POLE_DEATH:pose?A_POLE_EAT:A_POLE_RUN];case Z_FLAG:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_FLAG_EAT:A_FLAG_WALK];case Z_PAPER:return &assets[A_PAPER+pose];case Z_DOOR:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_DOOR_EAT:A_DOOR];case Z_FOOTBALL:return &assets[A_FOOTBALL+pose];case Z_DANCER:return &assets[A_DANCER+pose];default:return &assets[A_BACKUP+pose];}
 }
+static const Animation *gallery_head(int index){return &assets[(int[]){A_PEA_HEAD,A_WALLNUT,A_JALAPENO,A_GATLING,A_SQUASH,A_TALLNUT}[index-Z_TYPES]];}
+static void gallery_schedule(void){
+ const Animation *thumb=&gallery_thumbnails[gallery_tab];
+ if(!animation_prefetch(thumb))return;
+ int selected=gallery_cursor[gallery_tab],first=selected/GALLERY_PAGE*GALLERY_PAGE,count=gallery_count();
+ for(int slot=-1;slot<GALLERY_PAGE;slot++){
+  int index=slot<0?selected:first+slot;if(index>=count||(slot>=0&&index==selected))continue;
+  int pose=index==selected?gallery_pose:0;const char *label;
+  animation_prefetch(gallery_tab?gallery_zombie(index,pose):gallery_plant(index,pose,&label));
+  if(gallery_tab&&index>=Z_TYPES&&pose!=2)animation_prefetch(gallery_head(index));
+ }
+}
 static void gallery_sprite(int tab,int index,int pose,float x,float y,float width,float height,float clock){
  const char *label;const Animation *a=tab?gallery_zombie(index,pose):gallery_plant(index,pose,&label);const Animation *head=0;float hs=1,offset=0;
+ if(tab&&index>=Z_TYPES&&pose!=2)head=gallery_head(index);
+ if(!animation_bank_ready(a)||(head&&!animation_bank_ready(head))){
+  if(animation_bank_ready(&gallery_thumbnails[tab]))render_image(&gallery_thumbnails[tab],x,y,width,height,index,WHITE);
+  return;
+ }
  float left=-a->anchor_x,top=-a->anchor_y,right=a->width-a->anchor_x,bottom=a->height-a->anchor_y;
- if(tab&&index>=Z_TYPES&&pose!=2){int h=index-Z_TYPES;head=&assets[(int[]){A_PEA_HEAD,A_WALLNUT,A_JALAPENO,A_GATLING,A_SQUASH,A_TALLNUT}[h]];hs=h==0?.84f:.56f;offset=h==0?9.7f:23.7f;
+ if(head){int h=index-Z_TYPES;hs=h==0?.84f:.56f;offset=h==0?9.7f:23.7f;
   left=fminf(left,-3.2f-(head->width-head->anchor_x)*hs);right=fmaxf(right,-3.2f+head->anchor_x*hs);top=fminf(top,-offset-head->anchor_y*hs);bottom=fmaxf(bottom,-offset+(head->height-head->anchor_y)*hs);
  }
  float scale=fminf(.93f,fminf(width/fmaxf(1,right-left),height/fmaxf(1,bottom-top))),cx=x+width*.5f-(left+right)*scale*.5f,foot=y+height*.5f-(top+bottom)*scale*.5f;
@@ -61,6 +83,7 @@ static void gallery_label(int x,int y,const char *name){
  render_clip(0,0,480,272);
 }
 static void draw_gallery(float clock){
+ gallery_schedule();
  render_background(&assets[A_MINI_BACKGROUND]);ui_button(82,8,151,"Plants",gallery_tab==0);ui_button(247,8,151,"Zombies",gallery_tab==1);if(!gallery_focus)render_focus(gallery_tab?246:81,7,153,27,FOCUS_SAGE);
  int count=gallery_count(),selected=gallery_cursor[gallery_tab],first=selected/GALLERY_PAGE*GALLERY_PAGE;char caption[128];const char *action=gallery_tab?(gallery_pose==0?"Walking":gallery_pose==1?"Eating":"Death"):"Idle";if(!gallery_tab)gallery_plant(selected,gallery_pose,&action);
  snprintf(caption,sizeof(caption),"%s %d-%d/%d   %s",gallery_tab?"Zombies":"Plants",first+1,first+8<count?first+8:count,count,action);ui_center(120,37,240,caption,UI_GOLD,.48f);

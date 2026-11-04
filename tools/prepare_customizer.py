@@ -5,11 +5,23 @@ from PIL import Image
 from affine_render import composite_affine,render_frames
 
 
+def draw_part(canvas,texture,f,dx=0,dy=0):
+    if f['f']<0 or f['a']<=0:return
+    kx,ky=map(math.radians,(f['kx'],f['ky']))
+    a,b,c,d=math.cos(kx)*f['sx'],-math.sin(ky)*f['sy'],math.sin(kx)*f['sx'],math.cos(ky)*f['sy']
+    x,y=f['x']+96+a*dx+b*dy,f['y']+96+c*dx+d*dy
+    det=a*d-b*c
+    if abs(det)>1e-8:
+        inverse=(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det)
+        composite_affine(canvas,texture,(a,b,c,d,x,y),inverse,f['a'])
+
+
 def prepare_customizer(imported,destination,previews,write_pva,geometry):
     from prepare_assets import frames_from_xml,clip_range
     files={p.relative_to(imported/'archives'/a).as_posix().lower():p for a in ('main','compressed','en') for p in (imported/'archives'/a).rglob('*') if p.is_file()}
     fps,tracks=frames_from_xml(files['reanim/zombie.reanim']);tracks=dict(tracks);result=[]
     def image(name):return Image.open(files['reanim/'+name.lower()+'.ptx']).convert('RGBA')
+    jaw=image('Zombie_jaw')
     choices=[('face','anim_head1',['Zombie_head']+['Zombie_head_sunglasses'+str(i) for i in range(1,5)]),
              ('hair','anim_hair',['Zombie_hair']),
              ('cone','anim_cone',['Zombie_cone'+str(i) for i in range(1,4)]),
@@ -25,15 +37,12 @@ def prepare_customizer(imported,destination,previews,write_pva,geometry):
             textures=[image(name) for name in names];keys=tracks[track]
             def frame(index):
                 variant,offset=divmod(index,count);f=keys[start+offset]
-                canvas=Image.new('RGBA',(384,384));kx,ky=map(math.radians,(f['kx'],f['ky']))
-                a,b,c,d=math.cos(kx)*f['sx'],-math.sin(ky)*f['sy'],math.sin(kx)*f['sx'],math.cos(ky)*f['sy']
-                x,y=f['x']+96,f['y']+96
-                if part=='face' and variant:x-=a*4;y-=c*4
-                if part=='helmet':x-=a*6+b*23;y-=c*6+d*23
-                det=a*d-b*c
-                if abs(det)>1e-8:
-                    inverse=(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det)
-                    composite_affine(canvas,textures[variant],(a,b,c,d,x,y),inverse,f['a'])
+                canvas=Image.new('RGBA',(384,384))
+                dx,dy=(-6,-23) if part=='helmet' else (-4,0) if part=='face' and variant else (0,0)
+                draw_part(canvas,textures[variant],f,dx,dy)
+                # The original mouth is an independent track, including while
+                # eating. Composite it with every face, using its own transform.
+                if part=='face':draw_part(canvas,jaw,tracks['anim_head2'][start+offset])
                 return canvas.crop(box).resize(size,Image.Resampling.LANCZOS)
             frames=render_frames(frame,range(count*len(textures)))
             name='avatar_'+part+'_'+action

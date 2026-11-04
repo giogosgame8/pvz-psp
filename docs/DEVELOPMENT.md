@@ -47,9 +47,16 @@ absent or invalid.
 
 Setup verifies SHA-256 and size for all indexed content before installation and
 reuse, and checks the source ISO identity and preparation recipe. --rebuild
-requests a fresh conversion. Ordinary repeat runs reuse valid 0.18.7 data and
+requests a fresh conversion. Ordinary repeat runs reuse valid current-version data and
 repack the launcher pictures into the supplied executable. User saves are not
 part of the prepared-data cache. Zombie presets live in custom-zombie.dat.
+
+Version 0.18.8 composites the original independent jaw track into both avatar
+face banks and adds gallery_plants.pva / gallery_zombies.pva fallback portraits.
+Gallery clips use one bounded asynchronous PSP read at a time, prioritized for
+the selected card; rendering uses a portrait until its animation bank is ready.
+The diagnostic suite checks every page, rapid navigation with a 250 ms simulated
+read delay, identical read results, and freeing/suspending in-flight owners.
 
 Full portable tests on an i5-14600K (14 cores/20 logical threads), with Python
 and py absent from PATH, took 235.915 seconds for 0.18.5 and 93.540 seconds for

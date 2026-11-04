@@ -1,6 +1,7 @@
 #include "render.h"
 #include <pspkernel.h>
 #include <pspgu.h>
+#include <pspiofilemgr.h>
 #include <zlib.h>
 #include <malloc.h>
 #include <math.h>
@@ -15,6 +16,12 @@ static CachedFrame entries[PAGES];static unsigned char page_used[PAGES];
 static uint16_t *frame_memory,*scratch;static Animation *animations;
 static uint32_t generation=1,serial,bank_bytes,bank_peak,frame_peak,static_bytes,static_peak,decode_count,cache_errors;
 static uint32_t error_kinds[5];
+/* Only the kernel writes the pending buffer. The drawing thread adopts it
+   after completion, and it counts against the same bank budget throughout. */
+static Animation *pending_owner;static unsigned char *pending_buffer;
+static SceUID pending_fd=-1;static int pending_state;static uint64_t pending_after;
+static uint32_t sync_reads,async_reads,async_waits,prefetch_delay;
+static void prefetch_finish(int wait);
 static void cache_error(const Animation *a,int frame,int reason){
     cache_errors++;error_kinds[reason]++;
     if(cache_errors<=12){FILE *f=fopen("asset-cache-errors.txt","a");if(f){fprintf(f,"reason %d, asset %s, frame %d, banks %u, pages %d\n",reason,a?a->path:"none",frame,(unsigned)bank_bytes,page_limit);fclose(f);}}
@@ -24,19 +31,62 @@ void animation_cache_configure(int low){
 }
 int animation_cache_ok(void){return cache_errors==0;}
 extern int animation_load_legacy(Animation*,const char*);
-void animation_cache_next_frame(void){generation++;}
+void animation_cache_next_frame(void){animation_prefetch_poll();generation++;}
 static void release_frame(int i){
     CachedFrame *e=&entries[i];if(!e->owner)return;
     if(e->owner->cached_slots)((Animation*)e->owner)->cached_slots[e->frame]=-1;
     for(int p=e->start;p<e->start+e->pages;p++)page_used[p]=0;memset(e,0,sizeof(*e));
 }
-int animation_warm(const Animation *source){
-    Animation *a=(Animation*)source;if(!a->loaded)return 0;if(!a->compressed||a->packed)return 1;
+static int reserve_bank(Animation *a){
+    if(a->packed_bytes>(uint32_t)bank_limit)return 0;
     while(bank_bytes+a->packed_bytes>(uint32_t)bank_limit){
         Animation *old=0;for(Animation *p=animations;p;p=p->next)if(p!=a&&p->packed&&(!old||p->touched<old->touched))old=p;
         if(!old)return 0;free(old->packed);old->packed=0;bank_bytes-=old->packed_bytes;
     }
+    return 1;
+}
+int animation_bank_ready(const Animation *a){return a&&a->loaded&&(!a->compressed||a->packed);}
+AnimationIOStats animation_io_stats(void){return (AnimationIOStats){sync_reads,async_reads,async_waits,pending_owner!=0,bank_bytes,bank_limit};}
+void animation_prefetch_test_delay(unsigned int ms){prefetch_delay=ms;}
+static void prefetch_finish(int wait){
+    if(!pending_owner)return;
+    if(pending_state==1){
+        SceInt64 result=0;int status;
+        if(wait){async_waits++;status=sceIoWaitAsync(pending_fd,&result);}
+        else status=sceIoPollAsync(pending_fd,&result);
+        if(status==1)return;
+        if(status<0){SceInt64 ignored;sceIoWaitAsync(pending_fd,&ignored);}
+        sceIoClose(pending_fd);pending_fd=-1;
+        if(status<0||result!=(SceInt64)pending_owner->packed_bytes){
+            bank_bytes-=pending_owner->packed_bytes;free(pending_buffer);cache_error(pending_owner,-1,0);pending_buffer=0;pending_owner=0;pending_state=0;return;
+        }
+        pending_state=2;
+    }
+    if(!wait&&(uint64_t)sceKernelGetSystemTimeWide()<pending_after)return;
+    pending_owner->packed=pending_buffer;pending_owner->touched=++serial;
+    pending_buffer=0;pending_owner=0;pending_state=0;
+}
+void animation_prefetch_poll(void){prefetch_finish(0);}
+int animation_prefetch(const Animation *source){
+    Animation *a=(Animation*)source;animation_prefetch_poll();
+    if(animation_bank_ready(a)){a->touched=++serial;return 1;}
+    if(!a||!a->loaded||pending_owner||!reserve_bank(a))return 0;
+    unsigned char *buffer=memalign(64,a->packed_bytes);if(!buffer)return 0;
+    SceUID fd=sceIoOpen(a->path,PSP_O_RDONLY,0);
+    if(fd<0){free(buffer);return 0;}
+    sceIoChangeAsyncPriority(fd,0x30);
+    if(sceIoLseek32(fd,a->payload_offset,PSP_SEEK_SET)<0||sceIoReadAsync(fd,buffer,a->packed_bytes)<0){sceIoClose(fd);free(buffer);return 0;}
+    pending_owner=a;pending_buffer=buffer;pending_fd=fd;pending_state=1;
+    pending_after=sceKernelGetSystemTimeWide()+(uint64_t)prefetch_delay*1000;
+    bank_bytes+=a->packed_bytes;if(bank_bytes>bank_peak)bank_peak=bank_bytes;async_reads++;return 0;
+}
+int animation_warm(const Animation *source){
+    Animation *a=(Animation*)source;if(!a->loaded)return 0;
+    if(pending_owner==a)prefetch_finish(1);
+    if(!a->compressed||a->packed)return 1;
+    if(!reserve_bank(a))return 0;
     FILE *f=fopen(a->path,"rb");if(!f)return 0;
+    sync_reads++;
     a->packed=malloc(a->packed_bytes);int ok=a->packed&&!fseek(f,a->payload_offset,SEEK_SET)&&fread(a->packed,a->packed_bytes,1,f)==1;fclose(f);
     if(!ok){free(a->packed);a->packed=0;cache_error(a,-1,0);return 0;}
     bank_bytes+=a->packed_bytes;if(bank_bytes>bank_peak)bank_peak=bank_bytes;a->touched=++serial;return 1;
@@ -111,6 +161,7 @@ int animation_load(Animation *a,const char *path){
 }
 
 void animation_free(Animation *a){
+    if(pending_owner==a)prefetch_finish(1);
     for(int i=0;i<PAGES;i++)if(entries[i].owner==a)release_frame(i);
     Animation **p=&animations;while(*p&&*p!=a)p=&(*p)->next;if(*p)*p=a->next;
     if(a->packed)bank_bytes-=a->packed_bytes;if(a->compressed&&a->pixels)static_bytes-=a->stride;free(a->packed);free(a->pixels);free(a->index);free(a->cached_slots);memset(a,0,sizeof(*a));
@@ -123,8 +174,9 @@ int animation_catalog_selftest(FILE *out){
  ok=!animation_catalog_load(path);pass+=ok;fprintf(out,"catalog rejects a damaged checksum: %s\n",ok?"PASS":"FAIL");header[3]=0xffffffffu;f=fopen(path,"wb");if(f){fwrite(header,sizeof(header),1,f);fclose(f);}ok=!animation_catalog_load(path);pass+=ok;fprintf(out,"catalog rejects oversized metadata before allocation: %s\n",ok?"PASS":"FAIL");remove(path);
  ok=animation_catalog_load("data/assets.idx");pass+=ok;fprintf(out,"catalog can reopen after invalid input: %s\nCATALOG RESULT %d/4\n",ok?"PASS":"FAIL",pass);return pass==4;
 }
-void animation_cache_report(FILE *out){if(out){struct mallinfo memory=mallinfo();fprintf(out,"Heap: %u allocated, %u free, %u arena bytes\n",(unsigned)memory.uordblks,(unsigned)memory.fordblks,(unsigned)memory.arena);fprintf(out,"Animation cache: bank peak %u, frame peak %u, static peak %u bytes, %u decoded frames, %u errors\n",(unsigned)bank_peak,(unsigned)frame_peak,(unsigned)static_peak,(unsigned)decode_count,(unsigned)cache_errors);fprintf(out,"Cache error kinds: bank %u, scratch %u, pool %u, pinned %u, decode %u\n",(unsigned)error_kinds[0],(unsigned)error_kinds[1],(unsigned)error_kinds[2],(unsigned)error_kinds[3],(unsigned)error_kinds[4]);fflush(out);}}
+void animation_cache_report(FILE *out){if(out){struct mallinfo memory=mallinfo();fprintf(out,"Heap: %u allocated, %u free, %u arena bytes\n",(unsigned)memory.uordblks,(unsigned)memory.fordblks,(unsigned)memory.arena);fprintf(out,"Animation cache: bank peak %u, frame peak %u, static peak %u bytes, %u decoded frames, %u errors\n",(unsigned)bank_peak,(unsigned)frame_peak,(unsigned)static_peak,(unsigned)decode_count,(unsigned)cache_errors);fprintf(out,"Cache error kinds: bank %u, scratch %u, pool %u, pinned %u, decode %u\n",(unsigned)error_kinds[0],(unsigned)error_kinds[1],(unsigned)error_kinds[2],(unsigned)error_kinds[3],(unsigned)error_kinds[4]);fprintf(out,"Animation IO: %u synchronous reads, %u asynchronous reads, %u lifecycle waits\n",(unsigned)sync_reads,(unsigned)async_reads,(unsigned)async_waits);fflush(out);}}
 void animation_cache_suspend(void){
+    prefetch_finish(1);
     for(int i=0;i<PAGES;i++)if(entries[i].owner)release_frame(i);
     for(Animation *a=animations;a;a=a->next)if(a->compressed){free(a->packed);a->packed=0;free(a->pixels);a->pixels=0;}
     /* A music-file allocation during the ending can split the freed small-cache

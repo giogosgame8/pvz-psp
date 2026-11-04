@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.18.7 startup and customization update"
+#define BUILD018_LABEL "PvZ PSP 0.18.8 face and gallery fixes"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -665,6 +665,7 @@ static int replay_selftest(FILE *out){
 #include "presentation_tests012.inc"
 #include "menu_tests013.inc"
 #include "menu_tests014.inc"
+#include "gallery_tests0188.inc"
 #include "extra_review.inc"
 #include "features018_tests.inc"
 #include "performance_tests0181.inc"
@@ -744,7 +745,7 @@ int main(int argc,char *argv[]){
     disc_font_init(&assets[A_DISC_FONT]);
     render_init();audio_init();if(audio_preferred_track()>=0){audio_set_preferred_track(-1);audio_queue_settings();}audio_write_status(log);
     if(benchmark&&ready){
-        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);fclose(ui_tests);}
+        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);test_ok&=gallery_io_selftest(ui_tests);fclose(ui_tests);}
         new_game();game_start_level(&game,9,123);screen=1;debug_info=1;game.sun=100000;game.spawn_timer=100000;game.seed_mask=255;
         for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){int kind=(r+c)%SEEDS;*game_seed_cooldown(&game,kind)=0;game_place(&game,r,c,kind);}
         for(int i=0;i<30;i++){
@@ -935,5 +936,5 @@ int main(int argc,char *argv[]){
     if(!benchmark){garden_flush();save_current();progress_save(&progress,progress_path);}
     write_profile(log,"EXIT");
     if(!benchmark){audio_queue_settings();if(ui_settings_dirty)ui_settings_save();if(performance_dirty)performance_save();}
-    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<AV_COUNT;i++)animation_free(&avatar_art[i]);for(int i=0;i<5;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_catalog_close();animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
+    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<2;i++)animation_free(&gallery_thumbnails[i]);for(int i=0;i<AV_COUNT;i++)animation_free(&avatar_art[i]);for(int i=0;i<5;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_catalog_close();animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
 }
