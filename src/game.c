@@ -695,7 +695,7 @@ void game_step(Game *g,float dt) {
         if(z->kind==Z_GARG&&!z->eating)g->special[i]=0;
         if(z->eating!=was_eating&&z->vault<=0)z->age=0;
         if(!z->eating)z->x-=game_zombie_walk(z,dt);
-        else if(z->vault<=0)z->age+=dt;
+        else if(z->vault<=0)z->age+=dt*(z->slow>0?.5f:1);
         if(z->x<GRID_X-13&&!g->mower_used[z->row]&&game_cleaner_active(g,z->row)){g->mower_used[z->row]=1;g->mower_x[z->row]=GRID_X-24;g->row_mowed_wave[z->row]=g->wave-1;sound_as(g,SFX_MOWER,game_water_row(g,z->row)?FOLEY_POOL_CLEANER:FOLEY_LAWNMOWER);}
         if(z->kind==Z_POGO&&z->vaulted)z->vaulted=0;
         if(z->x<12){if(headless)kill_zombie(g,z);else{g->status=LOST;cue(FOLEY_SCREAM);cue(GAME_SAMPLE(FX_LOSEMUSIC));return;}}

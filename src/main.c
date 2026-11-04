@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.18.8 face and gallery fixes"
+#define BUILD018_LABEL "PvZ PSP 0.18.9 synchronized chewing"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -201,6 +201,7 @@ static const Animation *gray_asset(int id,int stage){
 }
 #include "presentation012.inc"
 #include "gallery014.inc"
+#include "zombie_presentation0189.inc"
 static int draw_extra_hud(float);
 static void draw_extra_overlay(void);
 static int draw_mini_custom_board(void);
@@ -246,26 +247,14 @@ static void draw_board(void){
         }
         for(int i=0;i<MAX_ZOMBIES;i++){
             Zombie *z=&game.zombies[i];if(!z->used||z->row!=row||game_mini_active(&game,MINI_INVIS))continue;
-            int asset=z->death>0?A_ZOMBIE_DEATH:z->armor>0&&z->kind==1?(z->eating?A_CONE_EAT:A_CONE):z->armor>0&&z->kind==2?(z->eating?A_BUCKET_EAT:A_BUCKET):(z->eating?A_ZOMBIE_EAT:A_ZOMBIE);
-            if(z->kind==Z_POLE)asset=z->death>0?A_POLE_DEATH:z->vault>0?A_POLE_JUMP:z->eating?A_POLE_EAT:z->vaulted?A_POLE_WALK:A_POLE_RUN;
-            if(z->kind==Z_PAPER)asset=z->death>0?A_PAPER_DEATH:z->armor>0?(z->eating?A_PAPER_EAT:A_PAPER):(z->eating?A_PAPER_ANGRY_EAT:A_PAPER_ANGRY);
-            if(z->kind==Z_DOOR&&z->armor>0)asset=z->eating?A_DOOR_EAT:A_DOOR;
-            if(z->kind==Z_FOOTBALL)asset=z->death>0?A_FOOTBALL_DEATH:z->eating?A_FOOTBALL_EAT:A_FOOTBALL;
-            if(z->kind==Z_DANCER)asset=z->death>0?A_DANCER_DEATH:z->eating?A_DANCER_EAT:A_DANCER;
-            if(z->kind==Z_BACKUP)asset=z->death>0?A_BACKUP_DEATH:z->eating?A_BACKUP_EAT:A_BACKUP;
-            if(z->kind==Z_FLAG&&z->death<=0)asset=z->eating?A_FLAG_EAT:A_FLAG_WALK;
-            if(z->kind>=Z_DUCK)asset=A_DUCK_WALK+(z->kind-Z_DUCK)*3+(z->death>0?2:z->eating?1:0);
-            int body=(game.level==25||game_mini_active(&game,MINI_LITTLE))?0:game_zombie_body_stage(z),stage=z->armor>0&&z->death<=0?game_zombie_armor_stage(z):body;
-            if(body==2&&z->death<=0&&z->kind<Z_DUCK)asset=z->kind==Z_POLE?A_POLE_WALK:A_ZOMBIE;
+            int body;const Animation *animation=zombie_visible_clip(z,i,&body);
             uint32_t tint=game.hypnotized[i]?RGBA(240,150,255,255):z->slow>0||game.frozen[i]>0?RGBA(150,215,255,255):WHITE;
-            const Animation *animation=stage&&damaged[asset][stage-1].loaded?&damaged[asset][stage-1]:&assets[asset];
             float foot=baseline(row)+game_roof_offset(&game,z->x),scale=(game.level==25||game_mini_active(&game,MINI_LITTLE))?.465f:.93f;
-            int head=game.mini.zombie_heads[i];if(head&&z->death<=0)animation=&assets[z->eating?A_BOT_EAT:A_BOT_WALK];
+            int head=game.mini.zombie_heads[i];
             if(z->kind==Z_BALLOON)foot-=21;
             if(game.mode==MODE_BUNGEE&&game.special[i]<0){foot+=game.special[i]*40;render_anim(&assets[A_BUNGEE_EAT],z->x,foot-35,game.time,.85f,WHITE,1);render_rect(z->x,43,1,fmaxf(0,foot-65),RGBA(170,150,100,255));}
             if(z->kind==Z_BUNGEE){foot-=fmaxf(0,80-game.special[i]*25);render_rect(z->x,43,1,fmaxf(0,foot-35),RGBA(170,150,100,255));}
-            if(z->kind==Z_BOBSLED&&z->death<=0)animation=&assets[game.extra.bobsled_team[i]&&game.extra.bobsled_phase[i]>=0?A_BOBSLED_SEATED:A_BOBSLED_ONFOOT];
-            float anim=z->death>0?game_zombie_animation_time(z):z->kind>=Z_DUCK?game.time:game_zombie_animation_time(z);
+            float anim=zombie_visible_time(z,animation);
             if(z->death>0)tint=(tint&0xffffffu)|((uint32_t)(255*game_death_alpha(z))<<24);
             else if(game.mode==MODE_WHACK&&game.special[i]>0)tint=RGBA(255,210,140,255);
             int custom=z->kind==Z_FLAG&&z->death<=0&&body<2&&avatar.enabled&&avatar_draw(&avatar,z->x,foot,anim,scale,tint,!!z->eating,!!game.hypnotized[i],body==1);
@@ -668,6 +657,7 @@ static int replay_selftest(FILE *out){
 #include "gallery_tests0188.inc"
 #include "extra_review.inc"
 #include "features018_tests.inc"
+#include "chewing_tests0189.inc"
 #include "performance_tests0181.inc"
 
 static void review_chapter(int level){
@@ -745,7 +735,7 @@ int main(int argc,char *argv[]){
     disc_font_init(&assets[A_DISC_FONT]);
     render_init();audio_init();if(audio_preferred_track()>=0){audio_set_preferred_track(-1);audio_queue_settings();}audio_write_status(log);
     if(benchmark&&ready){
-        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);test_ok&=gallery_io_selftest(ui_tests);fclose(ui_tests);}
+        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);test_ok&=gallery_io_selftest(ui_tests);test_ok&=chewing_selftest(ui_tests);fclose(ui_tests);}
         new_game();game_start_level(&game,9,123);screen=1;debug_info=1;game.sun=100000;game.spawn_timer=100000;game.seed_mask=255;
         for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){int kind=(r+c)%SEEDS;*game_seed_cooldown(&game,kind)=0;game_place(&game,r,c,kind);}
         for(int i=0;i<30;i++){

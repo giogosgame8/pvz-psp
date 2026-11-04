@@ -35,3 +35,21 @@ No RPCS3 session was opened for this update.
 Emulator results prove the tested native code paths, checksums and memory limits,
 not exact PS3 choreography, physical PSP performance or every original event timing.
 See TEST-RESULTS.txt and BUILD.json in the delivered package for the exact binary.
+
+## Additional direct executable checks for 0.18.9
+
+- Eating cues: VA 0x2cc3bc-0x2cc4e4. The normalized loop positions are
+  0.14/0.68 normally, 0.38/0.80 for Pole Vaulter, 0.42 once for Newspaper
+  and Ladder, 0.53 once for Jack-in-the-Box, 0.33/0.83 for Bobsled, and
+  0.33/0.79 for Imp. Both tests call the timed-event helper at 0x2d9a48.
+  Equal positions lead to one sound through the original short-circuit test.
+- Eating playback: VA 0x2bca18-0x2bcacc. Normal playback uses 36 authored
+  frames/second, with a 20 frames/second branch for types 3, 16, 24, 17,
+  15, 11 and 19 (Pole, Balloon, Imp, Digger, Jack, Snorkel and Yeti).
+  These override the reanimation file's default FPS.
+- The native code shares its selected clip and playback clock between drawing
+  and sound. It handles cue crossings across loop boundaries and skipped
+  display frames, rather than counting down a separate 0.6-second timer.
+  Existing damaged/customizer clips remain prepared data, with no save-format
+  change. Other cinematic, combat and audio differences listed in the audit
+  remain outside this focused correction.

@@ -1,4 +1,4 @@
-# ISO content audit, 3 November 2026
+# ISO content audit, 4 November 2026 (0.18.9)
 
 This audits the current native PSP implementation against locally extracted
 resources and the project's PS3 comparison records. It is not an exhaustive
@@ -24,7 +24,12 @@ These counts describe implemented content, not exact PS3 parity.
 
 0.18.7 adds a PSP zombie customizer using the disc's available heads, glasses,
 headgear and mustaches. It saves a flag-zombie appearance separately from the
-campaign. The supported PS3 disc does not contain the original GOTY Zombatar
+campaign. 0.18.8 restores the separate jaw track and loads gallery clips asynchronously.
+0.18.9 replaces the fixed chewing timer with recovered PS3 loop cues and eating
+playback rates, shared by drawing and sound. These improve specific behaviors;
+they do not establish complete PS3 parity.
+
+The supported PS3 disc does not contain the original GOTY Zombatar
 creator resources; this addition does not reproduce that complete asset set.
 
 ## Confirmed missing functionality
@@ -50,17 +55,16 @@ creator resources; this addition does not reproduce that complete asset set.
 | Presentation | Handheld menu proportions, animation transitions, particles, reward timings, exact original garden choreography and spatial audio/gain/voice priorities. UI and controls have deliberate PSP adaptations. |
 | Ending | Song and reconstructed animation are included at 480x272/24 FPS. Recovered PS3 lyric timing is optional when preparing from a private executable; normal disc-only setup does not recover it from the encrypted executable. The result is not a verified frame-exact reproduction of the original live compositor. |
 
-## 0.18.5 verification limits
+## Verification limits
 
-The standalone Windows setup completed a full disc conversion without Python or
-the py launcher on PATH. All 3,810 generated ending frames decoded successfully.
-Native checks completed in PPSSPP with Street, PSP-2000 and PSP-1000 profiles;
-these checks are not physical-console certification.
+The 0.18.8 standalone Windows setup completed a full disc conversion without
+Python or the py launcher on PATH. The source counts above include the 3,810-frame
+reconstructed ending. Native checks use PPSSPP profiles; these checks are not
+physical-console certification. The 0.18.9 executable uses the same 0.18.8 data.
 
-PSP-1000 support remains experimental. Its conservative cache profile passed the
-checks but the dense stress scene ran at approximately 2.6 FPS in these emulator
-runs, even with a 60 FPS target. Menus remained responsive. A target setting does
-not guarantee that frame rate, and demanding scenes need further performance work.
+PSP-1000 support remains experimental. Its 30/60 FPS target is not a performance
+guarantee. Dense scenes can exceed its small graphics cache and need further
+performance work; see docs/PERFORMANCE.md for the workload-specific results.
 
 PSN leaderboards, PlayStation system trophies and other PS3 platform services
 remain excluded from the agreed offline scope. Local collectible trophies are

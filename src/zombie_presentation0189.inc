@@ -1,0 +1,29 @@
+/* Shared by drawing and chewing cues so both use the same clip and clock. */
+static const Animation *zombie_visible_clip(const Zombie *z,int index,int *body_result){
+ int asset=z->death>0?A_ZOMBIE_DEATH:z->armor>0&&z->kind==1?(z->eating?A_CONE_EAT:A_CONE):z->armor>0&&z->kind==2?(z->eating?A_BUCKET_EAT:A_BUCKET):(z->eating?A_ZOMBIE_EAT:A_ZOMBIE);
+ if(z->kind==Z_POLE)asset=z->death>0?A_POLE_DEATH:z->vault>0?A_POLE_JUMP:z->eating?A_POLE_EAT:z->vaulted?A_POLE_WALK:A_POLE_RUN;
+ if(z->kind==Z_PAPER)asset=z->death>0?A_PAPER_DEATH:z->armor>0?(z->eating?A_PAPER_EAT:A_PAPER):(z->eating?A_PAPER_ANGRY_EAT:A_PAPER_ANGRY);
+ if(z->kind==Z_DOOR&&z->armor>0)asset=z->eating?A_DOOR_EAT:A_DOOR;
+ if(z->kind==Z_FOOTBALL)asset=z->death>0?A_FOOTBALL_DEATH:z->eating?A_FOOTBALL_EAT:A_FOOTBALL;
+ if(z->kind==Z_DANCER)asset=z->death>0?A_DANCER_DEATH:z->eating?A_DANCER_EAT:A_DANCER;
+ if(z->kind==Z_BACKUP)asset=z->death>0?A_BACKUP_DEATH:z->eating?A_BACKUP_EAT:A_BACKUP;
+ if(z->kind==Z_FLAG&&z->death<=0)asset=z->eating?A_FLAG_EAT:A_FLAG_WALK;
+ if(z->kind>=Z_DUCK)asset=A_DUCK_WALK+(z->kind-Z_DUCK)*3+(z->death>0?2:z->eating?1:0);
+ int body=(game.level==25||game_mini_active(&game,MINI_LITTLE))?0:game_zombie_body_stage(z),stage=z->armor>0&&z->death<=0?game_zombie_armor_stage(z):body;
+ if(body==2&&z->death<=0&&z->kind<Z_DUCK)asset=z->kind==Z_POLE?A_POLE_WALK:A_ZOMBIE;
+ const Animation *clip=stage&&damaged[asset][stage-1].loaded?&damaged[asset][stage-1]:&assets[asset];
+ if(game.mini.zombie_heads[index]&&z->death<=0)clip=&assets[z->eating?A_BOT_EAT:A_BOT_WALK];
+ if(z->kind==Z_BOBSLED&&z->death<=0)clip=&assets[z->eating?A_BOBSLED_EAT:game.extra.bobsled_team[index]&&game.extra.bobsled_phase[index]>=0?A_BOBSLED_SEATED:A_BOBSLED_ONFOOT];
+ if(body_result)*body_result=body;return clip;
+}
+/* PS3 UpdateAnimSpeed, 0x2bca18-0x2bcacc: eating overrides the
+   reanimation file's default rate with 20 or 36 authored frames/second. */
+static float zombie_eating_rate(int kind){
+ switch(kind){case Z_POLE:case Z_BALLOON:case Z_IMP:case Z_DIGGER:case Z_JACK:case Z_SNORKEL:case Z_YETI:return 20;default:return 36;}
+}
+static int zombie_chewing_kind(int kind){return kind!=Z_GARG&&kind!=Z_ZOMBONI&&kind!=Z_CATAPULT&&kind!=Z_BUNGEE&&kind!=Z_BOSS;}
+static float zombie_visible_time(const Zombie *z,const Animation *clip){
+ if(z->death>0)return game_zombie_animation_time(z);
+ if(z->eating&&z->vault<=0&&zombie_chewing_kind(z->kind))return z->age*zombie_eating_rate(z->kind)/fmaxf(1,clip->fps);
+ return z->kind<Z_DUCK?game_zombie_animation_time(z):game.time;
+}
