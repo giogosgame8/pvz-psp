@@ -20,6 +20,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops
 from affine_render import composite_affine, render_frames
+from prepared_data import DATA_VERSION,write_catalog,write_launcher_images,write_integrity
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "importer"))
@@ -81,6 +82,13 @@ SPECS.extend([('portal_circle','Portal_Circle','anim_pulse',.40,''),('portal_squ
 
 from prepare_features010 import EXPANSION_SPECS
 SPECS.extend(EXPANSION_SPECS)
+
+# The PSP customizer reuses owned PS3 parts; its body banks omit the head.
+_avatar_omit=('anim_head1','anim_head2','anim_hair','Zombie_mustache','zombie_eye')
+for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
+    for _stage in range(2):
+        SPECS.append(('avatar_'+('wounded_' if _stage else 'body_')+_action,'Zombie',_marker,.48,
+                      dict(gear='flag',base='flag_'+_action,body=_stage,omit_track=_avatar_omit,padding=(8,28,8,2))))
 
 def frames_from_xml(path):
     root = ET.fromstring("<reanim>" + path.read_text(encoding="utf-8-sig") + "</reanim>")
@@ -299,6 +307,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         size = (max(1, round((box[2] - box[0]) * scale)), max(1, round((box[3] - box[1]) * scale)))
         if 'base' in damage:
             box,size=geometry[damage["base"]]
+            if damage.get("padding"):
+                left,top,right,bottom=damage["padding"];box=(box[0]-left,box[1]-top,box[2]+right,box[3]+bottom);size=(round((box[2]-box[0])*scale),round((box[3]-box[1])*scale))
         geometry[output_name]=(box,size)
         baked = [frame.crop(box).resize(size, Image.Resampling.LANCZOS) for frame in rendered]
         anchor=None
@@ -363,7 +373,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         print("Prepared original soundtrack sections", flush=True)
     else:
         print("FFmpeg not found: preparing a silent build; install FFmpeg for audio", flush=True)
-    manifest = {"schema": 1, "version": "0.18.5", "format": "PVA4 zlib GPU-tiled RGBA4444", "source_iso_sha256": source_manifest["source_sha256"],
+    manifest = {"schema": 1, "version": DATA_VERSION, "format": "PVA4 zlib GPU-tiled RGBA4444", "source_iso_sha256": source_manifest["source_sha256"],
                 "disc_title_id": "BLUS30852", "assets": assets,
                 "texture_bytes": sum(asset["bytes"] - 32 for asset in assets), "audio": audio,
                 "note": "Private game data, generated from the user's copy; do not redistribute."}
@@ -407,6 +417,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     if ffmpeg:
         songs=json.loads((destination/'music-index.json').read_text())
         manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in songs),'old_pcm_bytes':sum(s['pcm_bytes'] for s in songs)}
+    from prepare_customizer import prepare_customizer
+    assets.extend(prepare_customizer(imported,destination,previews,write_pva,geometry))
     from prepare_garden018 import prepare_garden018
     with tempfile.TemporaryDirectory(prefix='pvz-garden-') as garden_temp:
         garden_dir=Path(garden_temp)/'data'
@@ -420,6 +432,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         manifest['audio']={'file':'foley.pvf','samples':194,'groups':104,'bytes':bank['bank_bytes'],'sha256':bank['bank_sha256'],'codec':bank['codec']}
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    write_catalog(destination);write_launcher_images(destination);write_integrity(destination)
     print(f"Prepared {len(assets)} assets; texture memory {manifest['texture_bytes'] / 1048576:.2f} MiB")
 
 

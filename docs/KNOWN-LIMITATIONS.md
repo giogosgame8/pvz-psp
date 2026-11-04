@@ -22,6 +22,11 @@ with 104 recovered Foley group definitions are present. The ending song
 and a 158.75-second animated ending reconstructed from disc layers are present.
 These counts describe implemented content, not exact PS3 parity.
 
+0.18.7 adds a PSP zombie customizer using the disc's available heads, glasses,
+headgear and mustaches. It saves a flag-zombie appearance separately from the
+campaign. The supported PS3 disc does not contain the original GOTY Zombatar
+creator resources; this addition does not reproduce that complete asset set.
+
 ## Confirmed missing functionality
 
 | Feature | Current gap and evidence |

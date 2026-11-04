@@ -38,6 +38,19 @@ threads (PVZ_PREP_MUSIC_WORKERS for benchmarks) and a bit-identical normalizatio
 lookup table. Only the current streaming Foley bank is generated; obsolete
 resident PCM effects are no longer converted and discarded.
 
+Version 0.18.7 adds 16 private avatar layer banks, owned-disc launcher pictures,
+a CRC-checked assets.idx and integrity.json. Normal native startup reads the
+metadata index in one operation and skips developer tests; benchmark.flag still
+enables the full diagnostic suite. The main-thread first-frame time is written
+to runtime.log. Individual PVA loading remains a fallback when the index is
+absent or invalid.
+
+Setup verifies SHA-256 and size for all indexed content before installation and
+reuse, and checks the source ISO identity and preparation recipe. --rebuild
+requests a fresh conversion. Ordinary repeat runs reuse valid 0.18.7 data and
+repack the launcher pictures into the supplied executable. User saves are not
+part of the prepared-data cache. Zombie presets live in custom-zombie.dat.
+
 Full portable tests on an i5-14600K (14 cores/20 logical threads), with Python
 and py absent from PATH, took 235.915 seconds for 0.18.5 and 93.540 seconds for
 0.18.6. All 388 content/metadata files were byte-identical; only the diagnostic

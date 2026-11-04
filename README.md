@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.6/PvZ-PSP-0.18.6.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.7/PvZ-PSP-0.18.7.zip)**
 
 ## What you need
 
@@ -22,14 +22,15 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
-Already using 0.18.5? Your game files are compatible; 0.18.6 speeds up PC setup.
-For older versions, run setup and copy the new EBOOT.PBP and data folder together.
-Keep your player saves.
+For 0.18.7, run setup again and copy the new EBOOT.PBP and data folder together.
+Keep your player saves. Setup now adds the PSP icon/background automatically.
+Repeat setup runs verify and reuse compatible files instead of rebuilding them.
 
 ## Good to know
 
 - This is early access: some modes and original-game behavior still need work.
 - Multiplayer is not available yet.
+- Open **Player → Zombie customizer** to create a saved flag-zombie appearance using PS3 artwork.
 - PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
 
 **[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**

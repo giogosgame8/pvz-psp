@@ -178,6 +178,11 @@ void render_text(float x,float y,const char *text,uint32_t color,float scale){
     bind_texture(font_vram,128,64,scale<1?GU_LINEAR:GU_NEAREST);
     sceGuDrawArray(GU_SPRITES,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,used,0,vertices);stats.draw_calls++;
 }
+void render_anim_frame(const Animation *a,float x,float baseline,int frame,float scale,uint32_t tint,int mirrored){
+    if(!a->loaded||frame<0||frame>=(int)a->frames)return;
+    quad(animation_frame(a,frame),a->tw,a->th,mirrored?a->width:0,0,mirrored?-(float)a->width:a->width,a->height,
+         x-(mirrored?a->width-a->anchor_x:a->anchor_x)*scale,baseline-a->anchor_y*scale,a->width*scale,a->height*scale,tint);
+}
 void render_anim(const Animation *a,float x,float baseline,float seconds,float scale,uint32_t tint,int loop){
     if(!a->loaded||a->frames==0)return;
     int frame=(int)fmaxf(0,seconds*a->fps);if(loop)frame%=a->frames;else if(frame>=(int)a->frames)frame=a->frames-1;

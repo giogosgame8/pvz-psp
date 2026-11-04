@@ -14,6 +14,8 @@ import sys
 import tempfile
 import time
 from pc_runtime import hidden_process_options, is_frozen, package_root, preparation_command
+from prepared_data import DATA_VERSION,verify_integrity
+from launcher_media import repack_images
 
 ROOT = package_root()
 sys.path.insert(0, str(ROOT / 'importer'))
@@ -128,9 +130,9 @@ def ensure_dependencies(allow_install):
     return ffmpeg
 
 
-def validate_prepared(folder):
+def validate_prepared(folder, source_sha=None):
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    if manifest.get('version') != '0.18.5' or manifest.get('disc_title_id') != 'BLUS30852':
+    if manifest.get('version') != DATA_VERSION or manifest.get('disc_title_id') != 'BLUS30852':
         raise ValueError('Prepared files do not match this game package.')
     assets = manifest.get('assets', [])
     if not assets:
@@ -152,6 +154,7 @@ def validate_prepared(folder):
         relative = Path(song['file'])
         if relative.is_absolute() or '..' in relative.parts or not (folder / relative).is_file():
             raise ValueError('A prepared music track is missing.')
+    verify_integrity(folder,source_sha)
     return manifest
 
 
@@ -237,6 +240,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--iso', type=Path, help='Skip the ISO picker')
     parser.add_argument('--output', type=Path, help='Prepared data folder; default: PSP/GAME/PVZPSP/data')
+    parser.add_argument('--rebuild', action='store_true', help='Rebuild even if existing prepared data passes verification')
     parser.add_argument('--check-only', action='store_true', help='Check the source and installed dependencies without preparing')
     parser.add_argument('--no-install', action='store_true', help='Report missing dependencies without prompting to install')
     args = parser.parse_args()
@@ -259,8 +263,17 @@ def main():
         with log_path.open('w', encoding='utf-8') as log:
             print('Checking your PS3 disc...', flush=True)
             with contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
-                inspect_or_import(source, None)
+                disc=inspect_or_import(source, None)
             print('PS3 disc verified.', flush=True)
+            if destination.exists() and not args.check_only and not args.rebuild:
+                print('Checking existing game files...', flush=True)
+                try:validate_prepared(destination,disc['source_sha256'])
+                except (OSError,ValueError,KeyError,TypeError):
+                    print('A complete verified rebuild is needed.',flush=True)
+                else:
+                    repack_images(binary,binary,destination/'XMB_ICON0.PNG',destination/'XMB_PIC1.PNG')
+                    print('READY! Existing game files passed verification.\nCopy this folder to PSP/GAME on your PSP:\n'+str(binary.parent),flush=True)
+                    return 0
             ffmpeg = ensure_dependencies(not args.no_install and not args.check_only)
             if args.check_only:
                 print('Checks passed: supported PS3 disc, Pillow, FFmpeg music support and game executable.', flush=True)
@@ -269,6 +282,7 @@ def main():
                 print('Setup cancelled. Existing data was kept.')
                 return 0
             backup = prepare_game(source, destination, ffmpeg, log)
+            repack_images(binary,binary,destination/'XMB_ICON0.PNG',destination/'XMB_PIC1.PNG')
         print('\nREADY! Copy this folder to PSP/GAME on your PSP:\n' + str(binary.parent), flush=True)
         if backup:
             print('Old game data was kept at: ' + str(backup), flush=True)

@@ -5,6 +5,8 @@ static int compact_ui_selftest(FILE *out){
  #define PRESS(button) do{pad.Buttons=0;input(&pad,.016f);pad.Buttons=(button);input(&pad,.016f);pad.Buttons=0;input(&pad,.016f);}while(0)
  profile_init(&player);player.highest=50;player.money=1000;player.garden.story_seen=UINT64_MAX;hardware=platform_from_model(10);menu_modes=APP_BUILT_MODES;
  UI("More Ways contains only the three challenge families and Back",more_count()==4&&more_id(0)==1&&more_id(1)==8&&more_id(2)==7&&more_id(3)==12);
+ screen=6;more_cursor=0;PRESS(PSP_CTRL_LEFT);UI("Left moves from Mini-games to the nearest stone on its left",more_id(more_cursor)==7);PRESS(PSP_CTRL_LEFT);UI("Left moves from Survival to Puzzles",more_id(more_cursor)==8);PRESS(PSP_CTRL_LEFT);UI("Left wraps from Puzzles to Back",more_id(more_cursor)==12);PRESS(PSP_CTRL_RIGHT);UI("Right wraps from Back to Puzzles",more_id(more_cursor)==8);
+ screen=0;can_resume=1;menu_selected=0;PRESS(PSP_CTRL_CIRCLE);UI("Circle does not launch Adventure from the home screen",screen==0);PRESS(PSP_CTRL_TRIANGLE);UI("Triangle does not open Adventure options from the home screen",screen==0);
  UI("original paper backing fits behind all five notes",assets[A_NOTE_PAPER].loaded&&assets[A_NOTE_PAPER].width==372&&assets[A_NOTE_PAPER].height==236);
  int titles_fit=1;for(int i=0;i<20;i++){char name[80];ui_title_case(name,sizeof(name),puzzle_names[i]);titles_fit&=disc_text_height(name,68,ui_card_scale(name,82))<=20;}UI("all twenty puzzle titles stay inside their cards",titles_fit);
  titles_fit=1;for(int i=0;i<20;i++){char name[80];ui_title_case(name,sizeof(name),mini_names[i]);titles_fit&=disc_text_height(name,86,ui_card_scale(name,100))<=20;}UI("all twenty mini-game titles stay inside their cards",titles_fit);

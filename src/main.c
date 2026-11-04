@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.18.5 presentation fixes and automatic memory profile"
+#define BUILD018_LABEL "PvZ PSP 0.18.7 startup and customization update"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -70,6 +70,12 @@ static const int more_modes[]={APP_MINIGAMES,APP_PUZZLES,APP_SURVIVAL,APP_COOP,A
 static const int more_ids[]={1,8,7,5,6,12};
 static int more_count(void){int count=0;for(int i=0;i<6;i++)if(more_modes[i]<0||platform_mode_available(&hardware,more_modes[i],menu_modes))count++;return count;}
 static int more_id(int index){for(int i=0;i<6;i++)if(more_modes[i]<0||platform_mode_available(&hardware,more_modes[i],menu_modes)){if(!index--)return more_ids[i];}return 12;}
+static int more_position(int id){switch(id){case 8:return 154;case 7:return 196;case 1:return 247;case 5:return 286;case 6:return 324;default:return 365;}}
+static void more_horizontal(int direction){
+ int current=more_position(more_id(more_cursor)),best=-1,distance=10000,wrap=-1,edge=direction>0?10000:-10000;
+ for(int i=0;i<more_count();i++){int x=more_position(more_id(i)),delta=(x-current)*direction;if(delta>0&&delta<distance){distance=delta;best=i;}if(direction>0?x<edge:x>edge){edge=x;wrap=i;}}
+ if(best>=0)more_cursor=best;else if(wrap>=0)more_cursor=wrap;
+}
 static Profile player;static int store_cursor,book_cursor,book_zombies,book_scroll,imit_cursor;static const char *profile_path="profile.dat";
 static Progress progress;static Game adventure_backup;static int replaying,menu_selected,replay_cursor;
 static const char *adventure_path="save.dat",*progress_path="progress.dat";
@@ -104,6 +110,7 @@ static const char *level_advice[CAMPAIGN_LEVELS]={
     "THE NIGHTTIME CONVEYOR FINALE.\nUSE DELIVERED MUSHROOMS TO CLEAR THE LAWN.\nGRAVE BUSTERS REMOVE THE TOMBSTONES."};
 #include "menu_widgets.inc"
 #include "player_name.inc"
+#include "customizer.inc"
 #include "menu_logic013.inc"
 static void write_profile(FILE *log,const char *reason){
     if(!log||!profile_frames||profile_seconds<=0)return;
@@ -261,9 +268,11 @@ static void draw_board(void){
             float anim=z->death>0?game_zombie_animation_time(z):z->kind>=Z_DUCK?game.time:game_zombie_animation_time(z);
             if(z->death>0)tint=(tint&0xffffffu)|((uint32_t)(255*game_death_alpha(z))<<24);
             else if(game.mode==MODE_WHACK&&game.special[i]>0)tint=RGBA(255,210,140,255);
-            if(game.hypnotized[i]||(z->kind==Z_DIGGER&&z->vaulted))render_anim_mirrored(animation,z->x,foot,anim,scale,tint,z->death<=0);
+            int custom=z->kind==Z_FLAG&&z->death<=0&&body<2&&avatar.enabled&&avatar_draw(&avatar,z->x,foot,anim,scale,tint,!!z->eating,!!game.hypnotized[i],body==1);
+            if(custom){}
+            else if(game.hypnotized[i]||(z->kind==Z_DIGGER&&z->vaulted))render_anim_mirrored(animation,z->x,foot,anim,scale,tint,z->death<=0);
             else render_anim(animation,z->x,foot,anim,scale,tint,z->death<=0);
-            if(z->death<=0&&game.extra.hit_flash[i]>0)render_anim_glow(animation,z->x,foot,anim,scale,.5f);
+            if(!custom&&z->death<=0&&game.extra.hit_flash[i]>0)render_anim_glow(animation,z->x,foot,anim,scale,.5f);
             if(z->kind==Z_BOBSLED&&game.extra.bobsled_team[i]==i+1&&game.extra.bobsled_phase[i]>=0)render_anim(&assets[A_SLED],z->x+22,foot+4,0,1,WHITE,0);
             if(head&&z->death<=0){if(game.extra.zombotany_jump[i]>0)foot-=sinf((.95f-game.extra.zombotany_jump[i])/.95f*3.14159f)*45;int icon=head==1?A_PEA_HEAD:head==2?A_WALLNUT:head==3?A_JALAPENO:head==4?A_GATLING:head==5?A_SQUASH:A_TALLNUT;render_anim_mirrored(&assets[icon],z->x-3,foot-(head==1?9:22),game.time,head==1?.78f:.52f,tint,1);}
         }
@@ -448,6 +457,7 @@ static void input(SceCtrlData *pad,float dt){
     if(gallery){gallery_input(pressed);return;}
     if(!ready)return;
     if(screen==24){if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_CIRCLE)){screen=1;challenge_notice=-1;}return;}
+    if(avatar_input(pressed))return;
     if(hub_input(pressed))return;
     if(story_input(pressed))return;
     if(extra_menu_input(pressed,pad,dt))return;
@@ -462,10 +472,8 @@ static void input(SceCtrlData *pad,float dt){
             else if(menu_selected==1){screen=6;more_cursor=0;}
             else if(menu_selected==2){screen=11;collection_cursor=0;}
             else if(menu_selected==3){options_return=0;screen=4;menu_volume_row=0;}
-            else name_begin(0);
+            else {player_hub_row=0;screen=25;}
         }
-        if((pressed&PSP_CTRL_CIRCLE)&&can_resume)open_adventure();
-        if(pressed&PSP_CTRL_TRIANGLE){screen=21;adventure_cursor=1;}
         if(pressed&PSP_CTRL_START){options_return=0;screen=4;menu_volume_row=0;}return;
     }
     if(screen==23){name_input(pressed);return;}
@@ -489,7 +497,7 @@ static void input(SceCtrlData *pad,float dt){
         int count=more_count();if(more_cursor>=count)more_cursor=count-1;
         if(pressed&PSP_CTRL_UP)more_cursor=(more_cursor+count-1)%count;
         if(pressed&PSP_CTRL_DOWN)more_cursor=(more_cursor+1)%count;
-        if(pressed&PSP_CTRL_LEFT)more_cursor=(more_cursor+count-1)%count;if(pressed&PSP_CTRL_RIGHT)more_cursor=(more_cursor+1)%count;
+        if(pressed&PSP_CTRL_LEFT)more_horizontal(-1);if(pressed&PSP_CTRL_RIGHT)more_horizontal(1);
         if(pressed&PSP_CTRL_CROSS){int id=more_id(more_cursor);if(id==1&&challenge_enter(0)){screen=7;mini_cursor=0;}else if(id==8&&challenge_enter(2)){screen=15;puzzle_cursor=puzzle_family=0;}else if(id==7&&challenge_enter(1)){screen=14;survival_cursor=0;}else if(id==12)screen=0;}
 
         if(pressed&PSP_CTRL_CIRCLE)screen=0;return;
@@ -703,16 +711,22 @@ static int performance_selftest(FILE *out){
 }
 
 int main(int argc,char *argv[]){
+    uint64_t boot_start;sceRtcGetCurrentTick(&boot_start);int first_frame_logged=0;
     setup_callbacks();scePowerSetClockFrequency(333,333,166);sceCtrlSetSamplingCycle(0);sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
     if(argc>0&&argv[0]){char directory[512];snprintf(directory,sizeof(directory),"%s",argv[0]);char *slash=strrchr(directory,'/');if(slash){*slash=0;chdir(directory);}}
-    hardware=platform_detect();performance_load();performance_apply();animation_cache_configure(performance.low_memory);ui_settings_load();player_name_load();
+    hardware=platform_detect();performance_load();performance_apply();animation_cache_configure(performance.low_memory);ui_settings_load();player_name_load();avatar_load();
     FILE *log=fopen("runtime.log","w");performance_log=log;if(log){fprintf(log,BUILD018_LABEL "\nModel: %s (id %d)\nWLAN hardware: %s\nWireless modes implemented: NO\nCWD: ",hardware.name,hardware.model,hardware.wlan?"YES":"NO");char cwd[512];if(getcwd(cwd,sizeof(cwd)))fprintf(log,"%s\n",cwd);}
+    FILE *flag=fopen("benchmark.flag","rb");int benchmark=flag!=0;if(flag)fclose(flag);FILE *live_flag=fopen("live-benchmark.flag","rb");live_benchmark=live_flag!=0;if(live_flag)fclose(live_flag);FILE *ui_flag=fopen("review-ui.flag","rb");review_ui_only=ui_flag!=0;if(ui_flag)fclose(ui_flag);
     int motion_ok=game_load_motion("data/zombie_motion.bin");if(log){fprintf(log,"PS3 ground-motion profiles: %s\n",motion_ok?"OK":"MISSING");fflush(log);}
+    test_ok=1;
+    if(benchmark){
     FILE *tests=fopen("selftest.txt","w");test_ok=tests?game_selftest(tests):0;
     if(tests){test_ok&=game_mini_selftest(tests);test_ok&=game_extra_selftest(tests);test_ok&=garden_selftest(tests);test_ok&=platform_selftest(tests);test_ok&=performance_selftest(tests);test_ok&=audio_selftest(tests);test_ok&=foley_selftest(tests);test_ok&=game_audio018_selftest(tests);test_ok&=music_selftest(tests);test_ok&=progress_selftest(tests);test_ok&=profile_selftest(tests);int ok=render_selftest();test_ok&=ok;fprintf(tests,"texture swizzle pixel integrity: %s\n",ok?"PASS":"FAIL");fclose(tests);}
+    }
     profile_init(&player);profile_load(&player,profile_path);challenge_initialize();
     game_init(&game,1);can_resume=game_load(&game,"save.dat");ready=motion_ok&&load_shoot_alignment();
     progress_load(&progress,progress_path);if(can_resume){progress_import(&progress,&game);profile_apply(&player,&game);adventure_backup=game;}for(int l=1;l<=50;l++)if(progress_played(&progress,l)&&(uint32_t)l>player.highest)player.highest=l;reset_level_ui();
+    int catalog_ok=animation_catalog_load("data/assets.idx");if(log)fprintf(log,"Animation metadata index: %s\n",catalog_ok?"loaded":"individual-file fallback");
     for(int i=0;i<A_COUNT;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",asset_names[i]);
         if(!animation_load(&assets[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}
         else texture_memory+=(size_t)assets[i].frames*assets[i].stride;
@@ -723,14 +737,14 @@ int main(int argc,char *argv[]){
         }
     }
     for(int i=0;i<5;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",head_particle_names[i]);if(!animation_load(&head_particles[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}}
-    if(log){fprintf(log,"Assets: %s\nTexture bytes: %lu\nSelf tests: %s\nGame struct: %lu bytes\nUser partition free: %u bytes\n",ready?"OK":"MISSING",(unsigned long)texture_memory,test_ok?"PASS":"FAIL",(unsigned long)sizeof(Game),(unsigned)sceKernelTotalFreeMemSize());
+    if(log){fprintf(log,"Assets: %s\nTexture bytes: %lu\nSelf tests: %s\nGame struct: %lu bytes\nUser partition free: %u bytes\n",ready?"OK":"MISSING",(unsigned long)texture_memory,benchmark?(test_ok?"PASS":"FAIL"):"skipped (normal startup)",(unsigned long)sizeof(Game),(unsigned)sceKernelTotalFreeMemSize());
         fprintf(log,"Memory configuration: automatic heap, 1 MiB system reserve / %d MiB frame cache / %d MiB banks / %d MiB static cap\nRender target: %d FPS; simulation: 60 updates/s\n",performance.low_memory?12:24,performance.low_memory?2:8,performance.low_memory?0:6,performance.target_fps);
         fflush(log);}
+    ready=ready&&animation_warm(&assets[A_MENU_MAIN])&&animation_warm(&assets[A_DISC_FONT]);
     disc_font_init(&assets[A_DISC_FONT]);
     render_init();audio_init();if(audio_preferred_track()>=0){audio_set_preferred_track(-1);audio_queue_settings();}audio_write_status(log);
-    FILE *flag=fopen("benchmark.flag","rb");int benchmark=flag!=0;if(flag)fclose(flag);FILE *live_flag=fopen("live-benchmark.flag","rb");live_benchmark=live_flag!=0;if(live_flag)fclose(live_flag);FILE *ui_flag=fopen("review-ui.flag","rb");review_ui_only=ui_flag!=0;if(ui_flag)fclose(ui_flag);
     if(benchmark&&ready){
-        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);fclose(ui_tests);}
+        FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);fclose(ui_tests);}
         new_game();game_start_level(&game,9,123);screen=1;debug_info=1;game.sun=100000;game.spawn_timer=100000;game.seed_mask=255;
         for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){int kind=(r+c)%SEEDS;*game_seed_cooldown(&game,kind)=0;game_place(&game,r,c,kind);}
         for(int i=0;i<30;i++){
@@ -812,6 +826,8 @@ int main(int argc,char *argv[]){
         else if(screen==19){render_movie(movie_pixels());if(ending_paused){ui_dialog(120,88,240,101,"Paused");ui_center(136,135,208,"Start: Resume   O: Skip",WHITE,.7f);}}
         else if(screen==20)draw_credits_menu();
         else if(screen==23)draw_player_name();
+        else if(screen==25)draw_player_hub();
+        else if(screen==26)draw_customizer(clock);
         else if(screen==24)challenge_notice_draw();
         else if(screen==7)draw_mini_menu();
         else if(screen==8){render_background(&assets[A_MENU_BG]);ui_note(note_cursor);char caption[96];snprintf(caption,sizeof(caption),"Zombie note %d/5   L/R: Next   O: Back",note_cursor+1);ui_hint(caption);}
@@ -819,7 +835,8 @@ int main(int argc,char *argv[]){
             if(paused)draw_pause_menu();
             if(game.status==WON&&!(game.level_flags&LEVEL_REWARD_COLLECTED))draw_reward();else if(game.status!=PLAYING)draw_result();
         }
-        if(help)draw_help();if(message_time>0&&screen!=1&&screen!=19&&screen!=23){ui_dialog(65,207,350,44,"");disc_text(82,218,316,message,UI_GOLD,.62f);}render_end();last_render=render_stats();
+        if(help)draw_help();if(message_time>0&&screen!=1&&screen!=19&&screen!=23&&screen!=25&&screen!=26){ui_dialog(65,207,350,44,"");disc_text(82,218,316,message,UI_GOLD,.62f);}render_end();last_render=render_stats();if(!animation_cache_ok())ready=0;
+        if(!first_frame_logged){uint64_t boot_end;sceRtcGetCurrentTick(&boot_end);if(log){fprintf(log,"STARTUP FIRST FRAME: %.3f seconds; diagnostics %s\n",(boot_end-boot_start)/(double)sceRtcGetTickResolution(),benchmark?"enabled":"disabled");fflush(log);}first_frame_logged=1;}
         if(benchmark&&screen==19)ending_review_frame();
         if(screen==1&&!paused&&!help&&game.status==PLAYING&&(!benchmark||(review_phase==0&&clock>1.5f))){profile_seconds+=elapsed;profile_cpu+=last_render.cpu_ms;profile_gpu+=last_render.gpu_wait_ms;profile_frames++;}
         if(!was_paused&&paused)write_profile(log,"PAUSE");
@@ -918,5 +935,5 @@ int main(int argc,char *argv[]){
     if(!benchmark){garden_flush();save_current();progress_save(&progress,progress_path);}
     write_profile(log,"EXIT");
     if(!benchmark){audio_queue_settings();if(ui_settings_dirty)ui_settings_save();if(performance_dirty)performance_save();}
-    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<5;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
+    movie_close();audio_shutdown();render_shutdown();for(int i=0;i<AV_COUNT;i++)animation_free(&avatar_art[i]);for(int i=0;i<5;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_catalog_close();animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
 }

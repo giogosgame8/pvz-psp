@@ -14,6 +14,27 @@ NAMES = ('PARAM.SFO', 'ICON0.PNG', 'ICON1.PMF', 'PIC0.PNG', 'PIC1.PNG',
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
+
+def repack_images(source, destination, icon, background):
+    """Add owned-disc pictures during setup while retaining executable/audio."""
+    version,entries=read_pbp(source)
+    original=entries[6:]
+    for index,path,size in ((1,icon,(144,80)),(4,background,(480,272))):
+        data=Path(path).read_bytes()
+        with Image.open(io.BytesIO(data)) as image:
+            if image.format!='PNG' or image.size!=size or image.mode!='RGB':raise ValueError('Invalid PSP launcher picture')
+            image.load()
+        entries[index]=data
+    offsets=[];offset=40
+    for entry in entries:offsets.append(offset);offset+=len(entry)
+    packed=b'\0PBP'+version+struct.pack('<8I',*offsets)+b''.join(entries)
+    target=Path(destination)
+    with tempfile.NamedTemporaryFile(dir=target.parent,prefix=target.name+'.',suffix='.tmp',delete=False) as temporary:
+        temporary.write(packed);path=Path(temporary.name)
+    if read_pbp(path)[1][6:]!=original:
+        path.unlink();raise ValueError('Launcher preparation changed game code')
+    path.replace(target)
+
 def read_pbp(path):
     data = Path(path).read_bytes()
     if len(data) < 40 or data[:4] != b'\0PBP':

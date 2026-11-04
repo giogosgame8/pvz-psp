@@ -69,7 +69,11 @@ static int review_expansion(int n){
  case 70:render_debug_frame("review018-locked-endless.ppm");player.garden.survival_wins=1023;break;
  case 71:render_debug_frame("review018-unlocked-endless.ppm");screen=15;puzzle_family=0;player.garden.puzzle_wins=1;puzzle_cursor=2;break;
  case 72:render_debug_frame("review018-puzzle-progression.ppm");screen=24;challenge_notice=0;break;
- case 73:render_debug_frame("review018-challenge-present.ppm");challenge_notice=-1;if(review_ui_only){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ENDING PLAYBACK: UI-only model run; initial first/middle/final decoder checks performed; full playback rerun on Street.\n");fclose(f);}return 1;}ending_review_captured=ending_review_frames=0;ending_review_max_lag=0;if(!ending_begin(20)){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ending full synchronized playback opens after all game assets: FAIL\n");fclose(f);}test_ok=0;return 1;}break;
+ case 73:render_debug_frame("review018-challenge-present.ppm");challenge_notice=-1;message_time=0;screen=25;player_hub_row=1;break;
+ case 74:render_debug_frame("review0187-player.ppm");avatar_begin();avatar_draft=(Avatar){1,2,0,1,1};break;
+ case 75:render_debug_frame("review0187-customizer-cone.ppm");avatar_draft=(Avatar){4,3,1,2,1};avatar_row=5;break;
+ case 76:render_debug_frame("review0187-customizer-bucket.ppm");avatar=avatar_draft;game_start_level(&game,9,8765);screen=1;game.spawn_timer=1000;game.sun=1000;for(int row=0;row<5;row++)game_spawn_zombie(&game,row,Z_FLAG,260+row*18);break;
+ case 77:render_debug_frame("review0187-custom-flags.ppm");avatar.enabled=0;if(review_ui_only){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ENDING PLAYBACK: UI-only model run; initial first/middle/final decoder checks performed; full playback rerun on Street.\n");fclose(f);}return 1;}ending_review_captured=ending_review_frames=0;ending_review_max_lag=0;if(!ending_begin(20)){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ending full synchronized playback opens after all game assets: FAIL\n");fclose(f);}test_ok=0;return 1;}break;
  default:{FILE *f=fopen("selftest.txt","a");if(f){int ok=ending_review_frames>100&&ending_review_captured==3&&ending_clock>=158;fprintf(f,"ending full synchronized playback reaches final credits: %s\nENDING PLAYBACK: %d displayed frames, maximum lag %.3f s, audio position %.3f s\n",ok?"PASS":"FAIL",ending_review_frames,ending_review_max_lag,ending_clock);fclose(f);test_ok&=ok;}return 1;}
  }return 0;
 }
