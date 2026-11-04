@@ -2,14 +2,25 @@
 from pathlib import Path
 import tempfile
 import unittest
+import random
+import struct
 from PIL import Image
 
 from prepare_assets import write_pva
 from prepare_features09 import first_prepared_frame
 from reanim_scene import Scene
+from texture_layout import pack_rgba4444
 
 
 class PresentationPreparationTests(unittest.TestCase):
+    def test_fast_texture_packing_matches_reference_for_all_channel_values(self):
+        rng=random.Random(185)
+        pixels=[tuple((v if channel==fixed else rng.randrange(256)) for channel in range(4))
+                for fixed in range(4) for v in range(256)]
+        image=Image.new('RGBA',(32,32));image.putdata(pixels)
+        expected=b''.join(struct.pack('<H',(r>>4)|((g>>4)<<4)|((b>>4)<<8)|((a>>4)<<12)) for r,g,b,a in pixels)
+        self.assertEqual(pack_rgba4444(image),expected)
+
     def test_packet_portrait_reads_tiled_psp_texture_in_correct_pixel_order(self):
         image=Image.new('RGBA',(29,35))
         for y in range(image.height):

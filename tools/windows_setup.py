@@ -6,6 +6,10 @@ def main():
     for stream in (sys.stdout, sys.stderr):
         if stream is not None and hasattr(stream, 'reconfigure'):
             stream.reconfigure(encoding='utf-8', errors='replace')
+    if len(sys.argv) > 1 and sys.argv[1] == '--ending-worker':
+        from prepare_ending import ending_worker_main
+        ending_worker_main(sys.argv[2])
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == '--prepare-worker':
         # The same frozen program is the child, not an external Python install.
         sys.argv = [sys.argv[0], *sys.argv[2:]]

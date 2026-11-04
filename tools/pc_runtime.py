@@ -32,3 +32,10 @@ def preparation_command(source, destination, root):
     else:
         command = [sys.executable, '-u', str(root / 'tools/prepare_assets.py')]
     return [*command, '--iso', str(source), '--output', str(destination)]
+
+
+def ending_command(configuration):
+    if is_frozen():
+        return [sys.executable, '--ending-worker', str(configuration)]
+    return [sys.executable, str(package_root() / 'tools/prepare_ending.py'),
+            '--ending-worker', str(configuration)]

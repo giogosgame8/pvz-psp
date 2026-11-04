@@ -1,13 +1,13 @@
 """Limit affine rendering work while preserving the original pixel coordinates."""
 import math
-import os
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
+from preparation_workers import worker_count
 
 
 def render_frames(function, indices):
     indices = list(indices)
-    workers = min(8, max(1, (os.cpu_count() or 1) // 2), len(indices))
+    workers = min(worker_count('graphics'), len(indices))
     if workers <= 1:
         return [function(index) for index in indices]
     with ThreadPoolExecutor(max_workers=workers) as pool:

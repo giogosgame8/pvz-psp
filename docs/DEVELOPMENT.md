@@ -24,6 +24,26 @@ for a system Python. User data/logs live beside the executable; bundled Foley
 facts are read from its temporary runtime directory. The portable worker does
 not generate developer C headers.
 
+Version 0.18.6 uses compiled channel operations for RGBA4444 packing and parallel
+frame compression. Graphics use up to 16 threads, audio up to 8 workers, and the
+ending up to 8 hidden processes. CPU capacity and available memory can reduce
+those counts. Each ending process retains its own scene clock and caches; at
+most two chunks per worker wait for the ordered writer.
+
+For developer benchmarks, PVZ_PREP_GRAPHICS_WORKERS, PVZ_PREP_AUDIO_WORKERS and
+PVZ_PREP_ENDING_WORKERS override the requested worker counts (1-32); memory caps
+still apply. The ending and sound command-line tools also accept --jobs.
+The ordinary player flow selects counts automatically. Music uses up to four
+threads (PVZ_PREP_MUSIC_WORKERS for benchmarks) and a bit-identical normalization
+lookup table. Only the current streaming Foley bank is generated; obsolete
+resident PCM effects are no longer converted and discarded.
+
+Full portable tests on an i5-14600K (14 cores/20 logical threads), with Python
+and py absent from PATH, took 235.915 seconds for 0.18.5 and 93.540 seconds for
+0.18.6. All 388 content/metadata files were byte-identical; only the diagnostic
+ending-progress.json differed. The PSP executable and 0.18.5 data format remain
+unchanged. Setup timing depends on hardware and background workload.
+
 ## Manual preparation
 
 See [MANUAL-SETUP.txt](MANUAL-SETUP.txt). Commands run from the extracted package root:

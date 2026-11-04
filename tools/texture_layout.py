@@ -1,4 +1,18 @@
 """Lossless PSP GE texture tiling (16-byte by 8-row blocks)."""
+
+def pack_rgba4444(image):
+ """Pack little-endian RGBA4444 using compiled channel operations.
+
+ Each output byte combines non-overlapping nibbles, so saturating addition is
+ exactly equivalent to bitwise OR. LA storage interleaves those two bytes and
+ is independent of the computer's byte order.
+ """
+ from PIL import Image,ImageChops
+ red,green,blue,alpha=image.split()
+ low=[v>>4 for v in range(256)];high=[v&240 for v in range(256)]
+ lower=ImageChops.add(red.point(low),green.point(high))
+ upper=ImageChops.add(blue.point(low),alpha.point(high))
+ return Image.merge('LA',(lower,upper)).tobytes()
 def tile_rgba4444(raw,width,height):
  row=width*2
  if width<8 or height<8 or width%8 or height%8 or len(raw)!=row*height:raise ValueError('Invalid padded texture')

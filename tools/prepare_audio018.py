@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse,hashlib,json,os,re,struct,subprocess,tempfile,xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from pc_runtime import hidden_process_options,is_frozen,resource_root
+from preparation_workers import worker_count
 
 ROOT=Path(__file__).resolve().parents[1]
 REFERENCE=resource_root()/'tools/reference/FOLEY-REFERENCE-0.18.json'
@@ -45,8 +46,7 @@ def read_facts(elf,manifest):
     return groups,sounds
 
 def prepare(imported,dest,reference_elf=None,jobs=None):
-    jobs=min(4,max(1,(os.cpu_count() or 1)//2)) if jobs is None else jobs
-    if jobs<1:raise ValueError("Sound conversion jobs must be at least 1")
+    jobs=worker_count('audio',jobs)
     manifest=imported/'archives/compressed/properties/resources.xml'
     if reference_elf:groups,sounds=read_facts(reference_elf,manifest)
     else:
@@ -96,4 +96,4 @@ def prepare(imported,dest,reference_elf=None,jobs=None):
     (dest/'foley-index.json').write_text(json.dumps(result,indent=2));return result
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--imported',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--reference-elf',type=Path);p.add_argument('--jobs',type=int,help='Parallel sound conversions; default up to 4');a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True);prepare(a.imported,a.output,a.reference_elf,a.jobs)
+    p=argparse.ArgumentParser();p.add_argument('--imported',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--reference-elf',type=Path);p.add_argument('--jobs',type=int,help='Parallel sound conversions; default up to 8, limited by CPU and memory');a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True);prepare(a.imported,a.output,a.reference_elf,a.jobs)

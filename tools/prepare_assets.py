@@ -6,13 +6,11 @@ Animation transforms are evaluated offline to reduce PSP memory and CPU cost.
 from __future__ import annotations
 
 import argparse
-import array
 import hashlib
 import json
 import math
 import shutil
 import struct
-import subprocess
 import sys
 import tempfile
 import zlib
@@ -22,7 +20,6 @@ from pathlib import Path
 
 from PIL import Image, ImageChops
 from affine_render import composite_affine, render_frames
-from pc_runtime import hidden_process_options
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "importer"))
@@ -164,17 +161,12 @@ def write_pva(path, images, fps, anchor=None):
     tw, th = max(8,power2(width)), max(8,power2(height))
     if max(tw, th) > 512 or len(images) > 256:
         raise ValueError(f"Texture or frame count too large: {path}")
-    payloads=[]
-    for image in images:
-            padded = Image.new("RGBA", (tw, th))
-            padded.paste(image, (0, 0))
-            flat = padded.get_flattened_data() if hasattr(padded, "get_flattened_data") else padded.getdata()
-            pixels = array.array("H", ((r >> 4) | ((g >> 4) << 4) | ((b >> 4) << 8) | ((a >> 4) << 12)
-                                      for r, g, b, a in flat))
-            if sys.byteorder != "little":
-                pixels.byteswap()
-            from texture_layout import tile_rgba4444
-            payloads.append(zlib.compress(tile_rgba4444(pixels.tobytes(),tw,th),9))
+    def encode_frame(image):
+        padded = Image.new("RGBA", (tw, th))
+        padded.paste(image, (0, 0))
+        from texture_layout import pack_rgba4444,tile_rgba4444
+        return zlib.compress(tile_rgba4444(pack_rgba4444(padded),tw,th),9)
+    payloads=render_frames(lambda index:encode_frame(images[index]),range(len(images)))
     with path.open('wb') as output:
         output.write(struct.pack('<4s6If2f',b'PVA4',width,height,tw,th,len(images),tw*th*2,fps,*(anchor or (width*.5,height))))
         offset=0
@@ -365,18 +357,10 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     audio = []
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg:
-        print('Stage: audio conversion', flush=True)
-        sound_sources = ("plant", "throw", "points", "chomp", "cherrybomb", "groan", "lawnmower", "winmusic","hugewave","finalwave","seedlift","rain","thunder","swing","bonk","plastichit","shieldhit","crazydaveshort1","crazydavelong1","crazydavescream","crazydavescream2","squash_hmm","gargantuar_thump")
-        for index, name in enumerate(sound_sources):
-            source = imported / "archives" / "sounds" / "sounds" / (name + ".mpg")
-            target = destination / f"sfx{index}.pcm"
-            subprocess.run([ffmpeg, "-v", "error", "-i", str(source), "-t", "8", "-ac", "1", "-ar", "44100",
-                            "-f", "s16le", str(target)], check=True, **hidden_process_options())
-            audio.append(target.name)
         from prepare_music import prepare_music
         print('Stage: music', flush=True)
         audio.extend(prepare_music(imported,destination))
-        print("Prepared original effects and soundtrack sections", flush=True)
+        print("Prepared original soundtrack sections", flush=True)
     else:
         print("FFmpeg not found: preparing a silent build; install FFmpeg for audio", flush=True)
     manifest = {"schema": 1, "version": "0.18.5", "format": "PVA4 zlib GPU-tiled RGBA4444", "source_iso_sha256": source_manifest["source_sha256"],
@@ -433,8 +417,6 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         from prepare_audio018 import prepare as prepare_foley
         print('Stage: sound effects', flush=True)
         bank=prepare_foley(imported,destination,reference_elf)
-        # Old resident PCM files are superseded by the streaming effects bank.
-        for file in destination.glob('sfx*.pcm'):file.unlink()
         manifest['audio']={'file':'foley.pvf','samples':194,'groups':104,'bytes':bank['bank_bytes'],'sha256':bank['bank_sha256'],'codec':bank['codec']}
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

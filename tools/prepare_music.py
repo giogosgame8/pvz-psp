@@ -2,6 +2,9 @@
 from pathlib import Path
 import array,json,struct,subprocess,tempfile,shutil,sys,hashlib,math
 from pc_runtime import hidden_process_options
+from preparation_workers import worker_count
+from concurrent.futures import ThreadPoolExecutor
+from itertools import chain
 
 TRACKS=[('menu',0x98),('day',0),('seeds',0x7a),('bowling',0xa6),('conveyor',0xd4),
         ('night',0x30),('pool',0x5e),('fog',0x7d),('roof',0xb8),('puzzle',0xb1),('boss',0x9e),('zen',0xdd)]
@@ -51,21 +54,35 @@ def module_section(source,start):
         offset+=header+size
     return bytes(data),end
 
+def normalize_samples(samples):
+    peak=max(abs(min(samples,default=0)),abs(max(samples,default=0)))
+    if not peak:return samples,0
+    gain=5000/peak
+    # Signed sample values also index this table correctly from its far end.
+    # Reuse the exact existing float multiplication and round-to-even result,
+    # once per possible sample value instead of once per sample in every song.
+    lookup=array.array('h',(max(-32768,min(32767,round(value*gain)))
+                           for value in chain(range(32768),range(-32768,0))))
+    normalized=array.array('h',map(lookup.__getitem__,samples))
+    return normalized,5000
+
+
 def prepare_music(imported,destination):
     ffmpeg=shutil.which('ffmpeg');source=(imported/'music/MAINMUSIC.XM').read_bytes();files=[];facts=[]
     with tempfile.TemporaryDirectory(prefix='pvz-private-music-') as temporary:
         temp=Path(temporary)
-        for index,(name,start) in enumerate(TRACKS+[('credits',None)]):
-            target=temp/f'music{index}.pcm'
+        def prepare_track(item):
+            index,(name,start)=item;target=temp/f'music{index}.pcm'
             if start is None:input_path=imported/'music/ZOMBIESONYOURLAWN.OGG';end=None
             else:
                 section,end=module_section(source,start);input_path=temp/(name+'.xm');input_path.write_bytes(section)
             subprocess.run([ffmpeg,'-v','error','-i',str(input_path),'-t','180','-ac','1','-ar','22050','-f','s16le',str(target)],check=True,**hidden_process_options())
-            samples=array.array('h',target.read_bytes());peak=max((abs(s) for s in samples),default=0)
-            if peak:
-                gain=5000/peak;samples=array.array('h',(max(-32768,min(32767,round(s*gain))) for s in samples));target.write_bytes(samples.tobytes())
+            samples,peak=normalize_samples(array.array('h',target.read_bytes()));target.write_bytes(samples.tobytes())
             compressed=destination/f'music{index}.wav';info=encode_music(ffmpeg,target,compressed)
-            files.append(compressed.name);facts.append(dict(file=compressed.name,name=name,start_order=start,end_order=end,seconds=len(samples)/22050,normalized_peak=max((abs(s) for s in samples),default=0),**info))
-            print(f'Prepared original music: {name}, {len(samples)/22050:.1f}s',flush=True)
+            return dict(file=compressed.name,name=name,start_order=start,end_order=end,seconds=len(samples)/22050,normalized_peak=peak,**info)
+        with ThreadPoolExecutor(max_workers=worker_count('music')) as pool:
+            for fact in pool.map(prepare_track,enumerate(TRACKS+[('credits',None)])):
+                files.append(fact['file']);facts.append(fact)
+                print(f"Prepared original music: {fact['name']}, {fact['seconds']:.1f}s",flush=True)
     write_music_index(destination,facts)
     files.extend(['music-index.json','music-checks.bin']);return files

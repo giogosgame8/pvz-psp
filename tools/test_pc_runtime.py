@@ -5,7 +5,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from pc_runtime import package_root, preparation_command, resource_root
+from pc_runtime import package_root, preparation_command, resource_root, ending_command
 
 
 class PortableSetupTests(unittest.TestCase):
@@ -17,6 +17,8 @@ class PortableSetupTests(unittest.TestCase):
             self.assertEqual(resource_root(), Path(resources))
             command = preparation_command(Path('owned.iso'), Path('staging/data'), Path('source'))
             self.assertEqual(command, [executable, '--prepare-worker', '--iso', 'owned.iso', '--output', str(Path('staging/data'))])
+            self.assertEqual(ending_command(Path('chunk jobs.json')),
+                             [executable, '--ending-worker', 'chunk jobs.json'])
 
     def test_source_worker_entry_point_dispatches_to_converter(self):
         entry = Path(__file__).with_name('windows_setup.py')

@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.5/PvZ-PSP-0.18.5.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.6/PvZ-PSP-0.18.6.zip)**
 
 ## What you need
 
@@ -22,8 +22,9 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
-Updating from an older version? Run the new setup to fix seed portraits and the
-ending, then copy both the new EBOOT.PBP and data folder. Keep your player saves.
+Already using 0.18.5? Your game files are compatible; 0.18.6 speeds up PC setup.
+For older versions, run setup and copy the new EBOOT.PBP and data folder together.
+Keep your player saves.
 
 ## Good to know
 
