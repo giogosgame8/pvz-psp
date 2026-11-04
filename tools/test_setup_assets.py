@@ -1,4 +1,5 @@
 """Installer integrity tests without original resources or dependency downloads."""
+import contextlib
 import io
 import json
 from pathlib import Path
@@ -97,13 +98,29 @@ class SetupTests(unittest.TestCase):
             # A tiny stand-in exercises subprocess arguments, logs and final placement.
             script = '''import argparse,json\nfrom pathlib import Path\np=argparse.ArgumentParser()\np.add_argument('--iso');p.add_argument('--output');a=p.parse_args()\nf=Path(a.output);f.mkdir(parents=True)\n(f/'manifest.json').write_text(json.dumps({'version':'0.18.1','disc_title_id':'BLUS30852','assets':[{'file':'plant.pva'}]}))\nfor n in ['plant.pva','foley.pvf','ending.pvj','ending.json','music0.wav']:(f/n).write_bytes(b'fixture')\n(f/'music-index.json').write_text('[{"file":"music0.wav"}]')\nprint('Prepared test fixture',flush=True)\n'''
             (tools / 'prepare_assets.py').write_text(script, encoding='utf-8')
+            with (tools / 'prepare_assets.py').open('a', encoding='utf-8') as child:
+                child.write("print('Stage: music',flush=True)\n")
+                child.write("print('Prepared original music: roof, 108.1s',flush=True)\n")
+                child.write("print('Stage: menu graphics',flush=True)\n")
+                child.write("print('Stage: ending animation',flush=True)\n")
+                child.write("print(\"{'frames': 240, 'total': 3810}\",flush=True)\n")
+                child.write("print('Stage: sound effects',flush=True)\n")
+                child.write("print('Prepared 194/194 zombiesplash.mpg',flush=True)\n")
             destination = root / 'PSP/GAME/PVZPSP/data'
             log = io.StringIO()
-            backup = prepare_game(root / 'owned copy.iso', destination, Path(sys.executable), log, root=root)
+            console = io.StringIO()
+            with contextlib.redirect_stdout(console):
+                backup = prepare_game(root / 'owned copy.iso', destination, Path(sys.executable), log, root=root)
             self.assertIsNone(backup)
             self.assertIn('Prepared test fixture', log.getvalue())
             self.assertTrue((destination / 'manifest.json').is_file())
             self.assertEqual(list(destination.parent.glob('pvz-preparing-*')), [])
+            self.assertIn('Preparing music... 1/13 (roof)', console.getvalue())
+            self.assertIn('Preparing menu graphics...', console.getvalue())
+            self.assertIn('Preparing ending... 6%', console.getvalue())
+            self.assertIn('Preparing sound effects... 194/194', console.getvalue())
+            self.assertIn('Checking prepared files...', console.getvalue())
+            self.assertNotIn('Preparing graphics...', console.getvalue())
 
 
 if __name__ == '__main__':

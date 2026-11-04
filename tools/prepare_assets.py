@@ -212,6 +212,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         previews.mkdir(parents=True, exist_ok=True)
     assets = []
     geometry={}
+    print('Stage: garden animations' if animations_only else 'Stage: plant and zombie animations', flush=True)
     flag_fps,flag_tracks=frames_from_xml(files['reanim/zombie_flagpole.reanim'])
     def matrix(frame):
         kx,ky=math.radians(frame['kx']),math.radians(frame['ky'])
@@ -326,6 +327,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     if animations_only:
         (destination/'animations.json').write_text(json.dumps(assets,indent=2))
         return assets
+    print('Stage: backgrounds and seed data', flush=True)
     with Image.open(files["images/background1.ptx"]) as image:
         background = image.convert("RGBA").crop((350, 0, 1390, 720)).resize((480, 272), Image.Resampling.LANCZOS)
         assets.append(write_pva(destination / "background.pva", [background], 1))
@@ -362,6 +364,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     audio = []
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg:
+        print('Stage: audio conversion', flush=True)
         sound_sources = ("plant", "throw", "points", "chomp", "cherrybomb", "groan", "lawnmower", "winmusic","hugewave","finalwave","seedlift","rain","thunder","swing","bonk","plastichit","shieldhit","crazydaveshort1","crazydavelong1","crazydavescream","crazydavescream2","squash_hmm","gargantuar_thump")
         for index, name in enumerate(sound_sources):
             source = imported / "archives" / "sounds" / "sounds" / (name + ".mpg")
@@ -370,6 +373,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                             "-f", "s16le", str(target)], check=True)
             audio.append(target.name)
         from prepare_music import prepare_music
+        print('Stage: music', flush=True)
         audio.extend(prepare_music(imported,destination))
         print("Prepared original effects and soundtrack sections", flush=True)
     else:
@@ -379,6 +383,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 "texture_bytes": sum(asset["bytes"] - 32 for asset in assets), "audio": audio,
                 "note": "Private game data, generated from the user's copy; do not redistribute."}
     manifest["motion"]=write_motion_profiles(imported,destination)
+    print('Stage: menu and almanac graphics', flush=True)
     from prepare_ui import prepare_ui
     assets.extend(prepare_ui(imported,destination,previews,write_pva))
     from prepare_almanac import prepare_almanac
@@ -386,10 +391,12 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     from prepare_upgrades import prepare_upgrade_images
     assets.extend(prepare_upgrade_images(imported,destination,previews,write_pva))
     from prepare_rewards import prepare_rewards
+    print('Stage: rewards and story graphics', flush=True)
     assets.extend(prepare_rewards(imported,destination,previews,write_pva))
     from prepare_story import prepare_story
     assets.extend(prepare_story(imported,destination,previews,write_pva))
     from prepare_chapters import prepare_chapters
+    print('Stage: level and mini-game graphics', flush=True)
     assets.extend(prepare_chapters(imported,destination,previews,write_pva))
     from prepare_features09 import prepare_features09
     feature_assets=prepare_features09(imported,destination,previews,write_pva)
@@ -399,11 +406,14 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     assets.extend(prepare_expansion(imported,destination,previews,write_pva))
     assets.extend(prepare_features010(imported,destination,previews,write_pva))
     from prepare_menus011 import prepare_menus011
+    print('Stage: menu backgrounds', flush=True)
     assets.extend(prepare_menus011(imported,destination,previews,write_pva))
     from prepare_fixes012 import prepare_fixes012
+    print('Stage: plant animations and menu layouts', flush=True)
     fixes=prepare_fixes012(imported,destination,previews,write_pva)
     replaced={a["file"] for a in fixes};assets[:]=[a for a in assets if a["file"] not in replaced]+fixes
     from prepare_ending import prepare_ending, extract_timing
+    print('Stage: ending animation', flush=True)
     if reference_elf:credits_timing=extract_timing(reference_elf,destination)
     manifest['ending']=prepare_ending(imported,destination,previews,24,credits_timing)
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
@@ -418,6 +428,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         assets.extend(garden_assets)
     if ffmpeg:
         from prepare_audio018 import prepare as prepare_foley
+        print('Stage: sound effects', flush=True)
         bank=prepare_foley(imported,destination,reference_elf)
         # Old resident PCM files are superseded by the streaming effects bank.
         for file in destination.glob('sfx*.pcm'):file.unlink()
@@ -441,6 +452,7 @@ def main():
         if args.iso:
             with tempfile.TemporaryDirectory(prefix="pvz-import-") as temporary:
                 imported = Path(temporary) / "resources"
+                print('Stage: extracting disc files', flush=True)
                 inspect_or_import(args.iso, imported)
                 prepare(imported, args.output, args.previews, credits_timing=args.credits_timing, reference_elf=args.reference_elf)
         else:

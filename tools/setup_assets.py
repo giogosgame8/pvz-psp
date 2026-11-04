@@ -179,16 +179,30 @@ def prepare_game(source, destination, ffmpeg, log, root=ROOT):
     command = [sys.executable, '-u', str(root / 'tools/prepare_assets.py'), '--iso', str(source), '--output', str(staging)]
     print('Preparing game files. This can take several minutes; keep this window open.', flush=True)
     count = 0
+    music_count = 0
+    stage = 'animations'
     process = subprocess.Popen(command, cwd=root, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
     try:
         for line in process.stdout:
             log.write(line)
             log.flush()
-            if line.startswith('Prepared '):
+            if line.startswith('Stage: '):
+                stage = line.removeprefix('Stage: ').strip()
+                count = 0
+                print(f'Preparing {stage}...', flush=True)
+            elif line.startswith('Prepared original music: '):
+                music_count += 1
+                name = line.removeprefix('Prepared original music: ').split(',')[0]
+                print(f'Preparing music... {music_count}/13 ({name})', flush=True)
+            elif match := re.match(r'Prepared (\d+)/(\d+) ', line):
+                done, total = int(match[1]), int(match[2])
+                if done % 20 == 0 or done == total:
+                    print(f'Preparing sound effects... {done}/{total}', flush=True)
+            elif re.match(r'Prepared [^:]+: \d+ frames, ', line):
                 count += 1
                 if count % 20 == 0:
-                    print(f'Preparing graphics... {count} items processed', flush=True)
+                    print(f'Preparing {stage}... {count} animations processed', flush=True)
             if line.startswith("{'frames':"):
                 match = re.search(r"'frames': (\d+), 'total': (\d+)", line)
                 if match and (int(match[1]) % 240 == 0 or int(match[1]) == int(match[2])):
@@ -203,6 +217,7 @@ def prepare_game(source, destination, ffmpeg, log, root=ROOT):
         process.stdout.close()
     if code:
         raise ValueError('Preparation stopped. Details are in setup.log. Your existing game data and saves were kept.')
+    print('Checking prepared files...', flush=True)
     backup = install_prepared(staging, destination)
     try:
         staging.parent.rmdir()  # Only the empty directory created above.
