@@ -50,12 +50,12 @@ static void audio_scene_step(float dt){
  for(int n=0;n<MAX_ZOMBIES;n++){
   Zombie *z=&game.zombies[n];if(screen!=1||!z->used){memset(&sound_actors[n],0,sizeof(sound_actors[n]));continue;}
   if(!sound_actors[n].used||sound_actors[n].kind!=z->kind){sound_actors[n]=(SoundActor){.used=1,.kind=z->kind,.vaulted=z->vaulted};}
-  if(z->death<=0){jack|=z->kind==Z_JACK;digger|=z->kind==Z_DIGGER&&!z->vaulted;
+  if(z->death<=0){jack|=z->kind==Z_JACK&&game.polish.action[n]!=ACTION_JACK;digger|=z->kind==Z_DIGGER&&!z->vaulted;
    if(advance){int bites=zombie_chew_events(n,dt);for(int b=0;b<bites;b++)foley_play(zombie_chew_group(n));
     if(z->kind==Z_DIGGER&&z->vaulted&&!sound_actors[n].vaulted)foley_play(FOLEY_DIRT_RISE);
     sound_actors[n].vaulted=z->vaulted||z->vault>0;
    }
-  }else if(advance||game.status==WON){float normalized=1-z->death/game_death_duration(z),threshold=z->kind==Z_POLE?.68f:z->kind==Z_FOOTBALL?.52f:z->kind==Z_PAPER?.63f:z->kind==Z_DANCER||z->kind==Z_BACKUP?.83f:z->kind==Z_GARG?.86f:z->kind==Z_DIGGER?.85f:.77f;if(sound_actors[n].death<threshold&&normalized>=threshold)foley_play(FOLEY_ZOMBIE_FALLING);sound_actors[n].death=normalized;}
+  }else if(advance||game.status==WON){float normalized=1-z->death/game_death_duration_for(&game,z),threshold=z->kind==Z_POLE?.68f:z->kind==Z_FOOTBALL?.52f:z->kind==Z_PAPER?.63f:z->kind==Z_DANCER||z->kind==Z_BACKUP?.83f:z->kind==Z_GARG?.86f:z->kind==Z_DIGGER?.85f:.77f;if(!game.polish.death_style[n]&&sound_actors[n].death<threshold&&normalized>=threshold)foley_play(FOLEY_ZOMBIE_FALLING);sound_actors[n].death=normalized;}
  }
  foley_loop(FOLEY_JACKINTHEBOX,active&&jack);foley_loop(FOLEY_DIGGER,active&&digger);foley_loop(FOLEY_RAIN,active&&(game.level==40||(live_benchmark&&live_phase==1)));
  if(advance){groan_wait-=dt;if(groan_wait<=0){int live[MAX_ZOMBIES],count=0;for(int n=0;n<MAX_ZOMBIES;n++)if(game.zombies[n].used&&game.zombies[n].death<=0)live[count++]=n;if(count){Zombie *z=&game.zombies[live[scene_random()%count]];foley_play(z->kind==Z_GARG?FOLEY_LOW_GROAN:scene_random()%10==0?FOLEY_BRAINS:FOLEY_GROAN);}groan_wait=5+(scene_random()%1000)*.01f;}

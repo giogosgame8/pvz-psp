@@ -1,6 +1,6 @@
 static int boss_exposed(const Game *g){return g->extra.boss_action>=B_HEAD_ENTER&&g->extra.boss_action<=B_HEAD_LEAVE;}
 static void boss_set(Game *g,int action){g->extra.boss_action=action;g->extra.boss_action_time=0;if(action==B_HEAD_ENTER||action==B_HEAD_LEAVE)cue(FOLEY_HYDRAULIC);else if(action==B_SPAWN)cue(FOLEY_HYDRAULIC_SHORT);else if(action==B_RV)cue(GAME_SAMPLE(FX_RVTHROW));else if(action==B_HEAD_SPIT)cue(FOLEY_BOSS_BOULDER_ATTACK);if(action==B_RV||action==B_STOMP)cue(FOLEY_BOSS_EXPLOSION_SMALL);}
-static void boss_squish(Game *g,int row,int col,int width){for(int r=row;r<=row+1&&r<5;r++)for(int c=col;c<col+width&&c<9;c++){g->plants[r][c].kind=-1;g->pumpkin_hp[r][c]=0;g->support[r][c]=0;}g->flash=.13f;sound_as(g,SFX_EXPLODE,FOLEY_THUMP);}
+static void boss_squish(Game *g,int row,int col,int width){for(int r=row;r<=row+1&&r<5;r++)for(int c=col;c<col+width&&c<9;c++){destroy_square(g,r,c,1);}g->flash=.13f;sound_as(g,SFX_EXPLODE,FOLEY_THUMP);}
 static int boss_step(Game *g,float dt){
  if(g->boss_hp<=0){cue(GAME_SAMPLE(FX_BOSSEXPLOSION));g->status=WON;sound(g,SFX_WIN);return 1;}
  float maximum=g->mini.id==MINI_BOSS+1?60000:40000;int phase=g->boss_hp<maximum/3?2:g->boss_hp<maximum*2/3?1:0;
@@ -32,6 +32,6 @@ static int boss_step(Game *g,float dt){
   if(t>=5.5f)boss_set(g,B_IDLE);break;
  case B_RV:if(before<1.54f&&t>=1.54f)boss_squish(g,g->boss_row,g->extra.boss_target_col,3);if(t>=38/16.0f)boss_set(g,B_IDLE);break;
  }
- if(g->boss_ball_kind){g->boss_ball_x-=32*dt;int col=(int)((g->boss_ball_x-GRID_X)/CELL_W);if(col>=0&&col<COLS){g->plants[g->boss_ball_row][col].kind=-1;g->pumpkin_hp[g->boss_ball_row][col]=0;g->support[g->boss_ball_row][col]=0;}if(g->boss_ball_x<12)g->status=LOST;}
+ if(g->boss_ball_kind){g->boss_ball_x-=32*dt;int col=(int)((g->boss_ball_x-GRID_X)/CELL_W);if(col>=0&&col<COLS){destroy_square(g,g->boss_ball_row,col,1);}if(g->boss_ball_x<12)g->status=LOST;}
  g->wave=1+(int)((maximum-g->boss_hp)/maximum*g->num_waves);if(g->wave>g->num_waves)g->wave=g->num_waves;g->spawned=1;return 1;
 }

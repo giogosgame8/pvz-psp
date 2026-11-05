@@ -56,9 +56,9 @@ static void chapter_plant(Game *g,int r,int c,float dt){
             if(*time>=.1f){*phase=5;*time=0;}}
         else if(*phase==5&&*time>=1){p->kind=-1;*phase=0;}return;
     }
-    if(k==KELP){for(int z=0;z<MAX_ZOMBIES;z++){Zombie *enemy=&g->zombies[z];if(enemy->used&&enemy->death<=0&&enemy->row==r&&fabsf(enemy->x-x)<28&&enemy->kind!=Z_BALLOON){cue(FOLEY_FLOOP);kill_zombie(g,enemy);p->kind=-1;sound_as(g,SFX_CHOMP,FOLEY_SLURP);cue(FOLEY_ZOMBIESPLASH);return;}}}
+    if(k==KELP){for(int z=0;z<MAX_ZOMBIES;z++){Zombie *enemy=&g->zombies[z];if(enemy->used&&!g->hypnotized[z]&&enemy->death<=0&&enemy->row==r&&fabsf(enemy->x-x)<28&&enemy->vault<=0&&enemy->kind!=Z_BALLOON&&enemy->kind!=Z_BUNGEE&&!(enemy->kind==Z_DIGGER&&!enemy->vaulted)){cue(FOLEY_FLOOP);if(enemy->kind<=Z_DUCK)g->polish.death_style[z]=DEATH_WATER;kill_zombie(g,enemy);p->kind=-1;sound_as(g,SFX_CHOMP,FOLEY_SLURP);cue(FOLEY_ZOMBIESPLASH);return;}}}
     if(k==JALAPENO&&p->age>=1){
-        for(int z=0;z<MAX_ZOMBIES;z++)if(g->zombies[z].used&&g->zombies[z].row==r)hurt_zombie(g,&g->zombies[z],1800,0);
+        for(int z=0;z<MAX_ZOMBIES;z++)if(g->zombies[z].used&&!g->hypnotized[z]&&g->zombies[z].death<=0&&g->zombies[z].row==r)hurt_charred(g,&g->zombies[z],1800);
         for(int col=0;col<COLS;col++)g->ice_tiles[r][col]=0;
         if(g->mode==MODE_BOSS){if(g->boss_ball_kind==2&&r==g->boss_ball_row)g->boss_ball_kind=0;if(boss_exposed(g))g->boss_hp-=1800;}
         g->flash=.25f;p->kind=-1;sound_as(g,SFX_EXPLODE,FOLEY_JALAPENO_IGNITE);cue(FOLEY_JUICY);return;
@@ -79,13 +79,14 @@ static void chapter_shots(Game *g,float dt){
         int lobbed=(s->ice>=4&&s->ice<=7)||s->ice==12;
         if(s->ice==13){g->shot_remaining[i]-=dt;if(g->shot_remaining[i]>0)continue;
             if(g->shot_target[i]==-2){s->x=plant_x((int)g->shot_damage[i]);g->shot_y[i]=game_ground_y(g,s->row)+game_roof_offset(g,s->x)-334;g->shot_vy[i]=380;g->shot_remaining[i]=.88f;g->shot_target[i]=-3;continue;}
-            for(int j=0;j<MAX_ZOMBIES;j++)if(g->zombies[j].used&&abs(g->zombies[j].row-s->row)<=1&&fabsf(g->zombies[j].x-s->x)<CELL_W*1.5f)hurt_zombie(g,&g->zombies[j],1800,0);if(g->mode==MODE_BOSS&&boss_exposed(g))g->boss_hp-=1800;g->flash=.25f;sound(g,SFX_EXPLODE);s->used=0;continue;}
+            for(int j=0;j<MAX_ZOMBIES;j++)if(g->zombies[j].used&&g->zombies[j].death<=0&&!g->hypnotized[j]&&abs(g->zombies[j].row-s->row)<=1&&fabsf(g->zombies[j].x-s->x)<CELL_W*1.5f)hurt_zombie(g,&g->zombies[j],1800,0);if(g->mode==MODE_BOSS&&boss_exposed(g))g->boss_hp-=1800;g->flash=.25f;sound(g,SFX_EXPLODE);s->used=0;continue;}
         if(lobbed){g->shot_vy[i]+=300*dt;g->shot_remaining[i]-=dt;
             if(g->shot_remaining[i]>0)continue;
-            int target=g->shot_target[i];
-            if(target>=0&&g->zombies[target].used&&g->zombies[target].death<=0){Zombie *z=&g->zombies[target];float armor=z->armor;if(z->kind==Z_DOOR||z->kind==Z_PAPER)z->armor=0;hurt_zombie(g,z,g->shot_damage[i],0);if(z->kind==Z_DOOR||z->kind==Z_PAPER)z->armor=armor;if(s->ice==6)g->frozen[target]=4;cue(s->ice==6?FOLEY_BUTTER:s->ice==5?FOLEY_KERNEL_SPLAT:s->ice==7||s->ice==12?FOLEY_MELONIMPACT:FOLEY_SPLAT);
-                if(s->ice==12)z->slow=8;
-                if(s->ice==7||s->ice==12)for(int j=0;j<MAX_ZOMBIES;j++)if(j!=target&&g->zombies[j].used&&abs(g->zombies[j].row-z->row)<=1&&fabsf(g->zombies[j].x-z->x)<CELL_W)hurt_zombie(g,&g->zombies[j],26,s->ice==12);
+            int target=-1;float nearest=25;
+            for(int n=0;n<MAX_ZOMBIES;n++){Zombie *candidate=&g->zombies[n];float distance=fabsf(candidate->x-s->x);if(candidate->used&&candidate->death<=0&&!g->hypnotized[n]&&candidate->row==s->row&&candidate->kind!=Z_BALLOON&&candidate->kind!=Z_BUNGEE&&!(candidate->kind==Z_DIGGER&&!candidate->vaulted)&&distance<nearest){target=n;nearest=distance;}}
+            if(target>=0){Zombie *z=&g->zombies[target];float armor=z->armor;if(z->kind==Z_DOOR||z->kind==Z_PAPER)z->armor=0;hurt_zombie(g,z,g->shot_damage[i],0);if(z->kind==Z_DOOR||z->kind==Z_PAPER)z->armor=armor;if(s->ice==6&&can_freeze(g,z))g->frozen[target]=4;cue(s->ice==6?FOLEY_BUTTER:s->ice==5?FOLEY_KERNEL_SPLAT:s->ice==7||s->ice==12?FOLEY_MELONIMPACT:FOLEY_SPLAT);
+                if(s->ice==12&&can_chill(g,z))z->slow=8;
+                if(s->ice==7||s->ice==12)for(int j=0;j<MAX_ZOMBIES;j++)if(j!=target&&g->zombies[j].used&&g->zombies[j].death<=0&&!g->hypnotized[j]&&abs(g->zombies[j].row-z->row)<=1&&fabsf(g->zombies[j].x-z->x)<CELL_W)hurt_zombie(g,&g->zombies[j],26,s->ice==12);
             }else if(g->mode==MODE_BOSS&&boss_exposed(g))g->boss_hp-=g->shot_damage[i];s->used=0;continue;
         }
         if(s->ice==2){g->shot_remaining[i]-=fabsf(vx)*dt;if(g->shot_remaining[i]<=0){s->used=0;continue;}}
@@ -110,16 +111,16 @@ static int chapter_zombie(Game *g,int i,float dt){
     if(g->mode==MODE_BUNGEE&&g->special[i]<0&&z->kind!=Z_BUNGEE){g->special[i]=fminf(0,g->special[i]+dt);z->age+=dt;return 1;}
     if(z->kind==Z_BUNGEE){
         g->special[i]+=dt;z->age+=dt;int col=(int)((z->x-GRID_X)/CELL_W);if(col<0)col=0;if(col>=COLS)col=COLS-1;
-        if(g->special[i]>4){if(nearby_umbrella(g,z->row,col))cue(FOLEY_UMBRELLA);if(!nearby_umbrella(g,z->row,col)){extra_plant_damage(g,z->row,col,g->plants[z->row][col].hp,0);g->plants[z->row][col].kind=-1;g->pumpkin_hp[z->row][col]=0;}z->used=0;}return 1;
+        if(g->special[i]>4){if(nearby_umbrella(g,z->row,col))cue(FOLEY_UMBRELLA);if(!nearby_umbrella(g,z->row,col)){destroy_square(g,z->row,col,0);g->pumpkin_hp[z->row][col]=0;}z->used=0;}return 1;
     }
     if(g->frozen[i]>0)return 0;
     if(z->kind==Z_BALLOON){z->x-=game_zombie_walk(z,dt);if(z->x<12)g->status=LOST;return 1;}
     if(z->kind==Z_DIGGER&&!z->vaulted){z->x-=16*dt;z->age+=dt;if(z->x<GRID_X){z->vaulted=1;g->special[i]=2;}return 1;}
-    if(z->kind==Z_DIGGER&&z->vaulted){if(g->special[i]>0){g->special[i]-=dt;return 1;}int eating=0;for(int c=0;c<COLS;c++)if(g->plants[z->row][c].kind>=0&&fabsf(z->x-plant_x(c))<18){Plant *p=&g->plants[z->row][c];p->hp-=100*dt;if(p->hp<=0)p->kind=-1;eating=1;break;}z->eating=eating;if(!eating)z->x+=game_zombie_walk(z,dt);else z->age+=dt;if(z->x>510)z->used=0;return 1;}
-    if(z->kind==Z_JACK){g->special[i]+=dt;if(g->special[i]>12){for(int r=0;r<game_rows(g);r++)for(int c=0;c<COLS;c++)if(abs(r-z->row)<=1&&fabsf(plant_x(c)-z->x)<60){g->plants[r][c].kind=-1;g->support[r][c]=0;g->pumpkin_hp[r][c]=0;}kill_zombie(g,z);g->flash=.25f;sound_as(g,SFX_EXPLODE,FOLEY_JACK_SURPRISE);return 1;}}
+    if(z->kind==Z_DIGGER&&z->vaulted){if(g->special[i]>0){g->special[i]-=dt;return 1;}int eating=0;for(int c=0;c<COLS;c++)if(g->plants[z->row][c].kind>=0&&fabsf(z->x-plant_x(c))<18){Plant *p=&g->plants[z->row][c];p->hp-=100*dt*(z->slow>0?.5f:1);if(p->hp<=0)p->kind=-1;eating=1;break;}if(eating!=z->eating){z->age=0;g->polish.pose[i]=0;}z->eating=eating;if(!eating)z->x+=game_zombie_walk(z,dt);else z->age+=dt*(z->slow>0?.5f:1);if(z->x>510)z->used=0;return 1;}
+    if(z->kind==Z_JACK){g->special[i]+=dt;if(g->special[i]>12){g->polish.action[i]=ACTION_JACK;g->polish.action_time[i]=0;z->eating=0;cue(GAME_SAMPLE(FX_BOING));return 1;}}
     if(z->kind==Z_ZOMBONI){for(int c=0;c<COLS;c++)if(plant_x(c)>z->x)g->ice_tiles[z->row][c]=30;}
     if(z->kind==Z_CATAPULT&&z->x>360){g->special[i]-=dt;z->age+=dt;if(g->special[i]<=0){g->special[i]=3;cue(FOLEY_BASKETBALL);for(int c=0;c<COLS;c++)if(g->plants[z->row][c].kind>=0){if(nearby_umbrella(g,z->row,c))cue(FOLEY_UMBRELLA);if(!nearby_umbrella(g,z->row,c)){g->plants[z->row][c].hp-=75;if(g->plants[z->row][c].hp<=0)g->plants[z->row][c].kind=-1;}break;}}return 1;}
-    if(z->kind==Z_GARG&&z->hp<1500&&!z->vaulted){z->vaulted=1;game_spawn_zombie(g,z->row,Z_IMP,fmaxf(GRID_X+30,z->x-140));}
+    if(z->kind==Z_GARG&&z->hp<1500&&!z->vaulted){g->polish.action[i]=ACTION_GARG_THROW;g->polish.action_time[i]=0;g->special[i]=0;z->eating=0;return 1;}
     return 0;
 }
 #include "boss_rules.inc"

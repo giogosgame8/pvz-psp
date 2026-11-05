@@ -7,7 +7,7 @@ static void draw_squash_flight(int row,int col){
 static float current_wave_health(void){float health=0;for(int i=0;i<MAX_ZOMBIES;i++){const Zombie *z=&game.zombies[i];if(z->used&&z->death<=0&&!game.hypnotized[i]&&z->wave==game.wave)health+=fmaxf(0,z->hp)+fmaxf(0,z->armor);}return health;}
 static float wave_meter_target(void){
  if(game.status==WON)return 1;if(game.mode==MODE_BOSS)return fminf(1,fmaxf(0,1-game.boss_hp/(game.challenge?60000:40000)));
- if(game.num_waves<1||!game.spawned)return 0;
+ if(game.num_waves<1)return 0;if(game.polish.wave_pending)return fmaxf(0,(game.wave-1.0f)/game.num_waves);if(!game.spawned)return 0;
  float remaining=current_wave_health();if(meter_wave!=game.wave){meter_wave=game.wave;meter_start_timer=fmaxf(.01f,game.spawn_timer);meter_start_health=fmaxf(1,remaining);}
  float damage=(meter_start_health-remaining)/fmaxf(1,meter_start_health-(game.wave==game.num_waves?0:game.wave_health_threshold));
  float clock=game.wave==game.num_waves?0:1-fmaxf(0,game.spawn_timer)/meter_start_timer;

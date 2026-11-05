@@ -83,6 +83,15 @@ SPECS.extend([('portal_circle','Portal_Circle','anim_pulse',.40,''),('portal_squ
 from prepare_features010 import EXPANSION_SPECS
 SPECS.extend(EXPANSION_SPECS)
 
+# Original clips used by the explicit combat transitions.
+SPECS.extend([('garg_throw','Zombie_gargantuar','anim_throw',.38,''),
+ ('imp_thrown','Zombie_imp','anim_thrown',.48,''),('imp_land','Zombie_imp','anim_land',.48,''),
+ ('jack_pop','Zombie_jackbox','anim_pop',.48,''),('paper_gasp','Zombie_paper','anim_gasp',.48,''),
+ ('dolphin_jump','Zombie_dolphinrider','anim_dolphinjump',.48,''),
+ ('zombie_charred','Zombie_charred','anim_crumble',.48,''),('zombie_waterdeath','Zombie','anim_waterdeath',.48,'')])
+for _base,_clip in [('garg_walk','anim_walk'),('garg_eat','anim_smash'),('garg_death','anim_death'),('garg_throw','anim_throw')]:
+ SPECS.append((_base+'_noimp','Zombie_gargantuar',_clip,.38,dict(base=_base,omit_track=('Zombie_imp','Zombie_gargantuar_whiterope'))))
+
 # The PSP customizer reuses owned PS3 parts; its body banks omit the head.
 _avatar_omit=('anim_head1','anim_head2','anim_hair','Zombie_mustache','zombie_eye')
 for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
@@ -419,8 +428,6 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in songs),'old_pcm_bytes':sum(s['pcm_bytes'] for s in songs)}
     from prepare_customizer import prepare_customizer
     assets.extend(prepare_customizer(imported,destination,previews,write_pva,geometry))
-    from prepare_gallery import prepare_gallery
-    assets.extend(prepare_gallery(destination,previews,write_pva))
     from prepare_garden018 import prepare_garden018
     with tempfile.TemporaryDirectory(prefix='pvz-garden-') as garden_temp:
         garden_dir=Path(garden_temp)/'data'
@@ -432,6 +439,10 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         print('Stage: sound effects', flush=True)
         bank=prepare_foley(imported,destination,reference_elf)
         manifest['audio']={'file':'foley.pvf','samples':194,'groups':104,'bytes':bank['bank_bytes'],'sha256':bank['bank_sha256'],'codec':bank['codec']}
+    from prepare_combat0190 import align_zombie_clips
+    manifest['combat_alignment']=align_zombie_clips(destination,SPECS,geometry,assets)
+    from prepare_gallery import prepare_gallery
+    assets.extend(prepare_gallery(destination,previews,write_pva))
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     write_catalog(destination);write_launcher_images(destination);write_integrity(destination)

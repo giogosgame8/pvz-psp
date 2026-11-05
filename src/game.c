@@ -10,6 +10,7 @@
 #include "legacy_08.h"
 #include "legacy_09.h"
 _Static_assert(sizeof(Legacy09)==36424,"0.9 save layout");
+_Static_assert(offsetof(Game,polish)==42480,"version 10 complete prefix");
 #include "profile.h"
 #include "death_data.h"
 
@@ -226,6 +227,13 @@ static int placement_check(Game *g,int row,int col,int kind){
     if(game_world(g)==4&&g->support[row][col]!=POT+1)return -11;
     return 0;
 }
+static void destroy_square(Game *g,int row,int col,int layers){
+ if(row<0||row>=ROWS||col<0||col>=COLS)return;Plant *p=&g->plants[row][col];
+ if(p->kind==-2&&col>0&&g->plants[row][col-1].kind==COB)destroy_square(g,row,col-1,layers);
+ if(p->kind==COB&&col+1<COLS)g->plants[row][col+1].kind=-1;
+ extra_plant_damage(g,row,col,p->hp,0);p->kind=-1;g->morph_timer[row][col]=0;g->burst_left[row][col]=0;g->pea_shoot_time[row][col]=0;g->asleep[row][col]=0;
+ if(layers){g->pumpkin_hp[row][col]=0;g->support[row][col]=0;g->support_hp[row][col]=0;}
+}
 static void put_plant(Game *g,int row,int col,int kind){
     if(kind==IMITATER){g->morph_kind[row][col]=g->imitater_seed;g->morph_timer[row][col]=2+30.0f/26;g->morph_hp[row][col]=300;return;}
     if(kind==LILY||kind==POT){g->support[row][col]=kind+1;g->support_hp[row][col]=300;g->imitated[row][col]&=~2;return;}
@@ -303,7 +311,7 @@ static void coin_step(Game *g,float dt){for(int i=0;i<MAX_COINS;i++){Coin *c=&g-
 int game_spawn_zombie(Game *g,int row,int kind,float x) {
     if(row<0||row>=ROWS||kind<0||kind>=Z_TYPES)return -1;
     for(int i=0;i<MAX_ZOMBIES;i++)if(!g->zombies[i].used){
-        g->frozen[i]=0;g->special[i]=kind==Z_DANCER?3:0;g->hypnotized[i]=0;g->zombies[i]=(Zombie){.used=1,.row=row,.kind=kind,.x=x,.hp=kind==Z_POLE||kind==Z_DANCER?500:270,
+        g->polish.pose[i]=g->polish.action_time[i]=0;g->polish.action[i]=g->polish.target[i]=g->polish.death_style[i]=0;g->frozen[i]=0;g->special[i]=kind==Z_DANCER?3:0;g->hypnotized[i]=0;g->zombies[i]=(Zombie){.used=1,.row=row,.kind=kind,.x=x,.hp=kind==Z_POLE||kind==Z_DANCER?500:270,
                             .armor=kind==Z_CONE?370:kind==Z_BUCKET||kind==Z_DOOR?1100:kind==Z_PAPER?150:kind==Z_FOOTBALL?1400:0,.wave=g->wave,
                             .speed=kind==Z_DANCER?.5f:kind==Z_FOOTBALL?.67f:kind==Z_FLAG?.45f:kind==Z_POLE?.66f+random_unit(g)*.02f:.23f+random_unit(g)*.14f};
         Zombie *z=&g->zombies[i];g->extra.bobsled_team[i]=0;g->extra.bobsled_phase[i]=0;g->extra.last_portal_zombie[i]=0;g->extra.brain_eating[i]=0;g->extra.hit_flash[i]=0;
@@ -336,6 +344,7 @@ int game_zombie_armor_stage(const Zombie *z){
    death playback rate, preserving the existing on-disk Zombie layout. */
 static float death_rate(Game *g,int kind){return kind==Z_FOOTBALL?24:kind==Z_GARG||kind==Z_SNORKEL||kind==Z_YETI?14:kind==Z_DIGGER||kind==Z_BOSS?18:24+random_unit(g)*6;}
 float game_death_duration(const Zombie *z){return (death_frames[z->kind]-1)/z->vault_from+.60f;}
+float game_death_duration_for(const Game *g,const Zombie *z){int style=g->polish.death_style[z-g->zombies];return style==DEATH_CHARRED?42/15.0f+.60f:style==DEATH_WATER?24/12.0f+.60f:game_death_duration(z);}
 float game_death_alpha(const Zombie *z){return fminf(1,fmaxf(0,z->death/.30f));}
 static void tick_death(Zombie *z,float dt){z->age+=dt;z->death=fmaxf(0,z->death-dt);if(z->death<=0)z->used=0;}
 int game_dying_count(const Game *g){int n=0;for(int i=0;i<MAX_ZOMBIES;i++)n+=g->zombies[i].used&&g->zombies[i].death>0;return n;}
@@ -368,7 +377,7 @@ int game_head_particle(const Game *g,int index,HeadParticle *out){
 }
 void game_animate_deaths(Game *g,float dt){if(dt<=0)return;effects_step(g,dt);g->flash=fmaxf(0,g->flash-dt);for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used&&g->zombies[i].death>0)tick_death(&g->zombies[i],dt);}
 static void kill_zombie(Game *g,Zombie *z){
-    if(z->death<=0){if(z->kind==Z_GARG)cue(FOLEY_GARGANTUDEATH);else if(z->kind==Z_ZOMBONI)cue(FOLEY_EXPLOSION);z->vault_from=death_rate(g,z->kind);z->death=game_death_duration(z);z->age=0;z->eating=0;z->vault=0;g->kills++;
+    if(z->death<=0){if(z->kind==Z_GARG)cue(FOLEY_GARGANTUDEATH);else if(z->kind==Z_ZOMBONI)cue(FOLEY_EXPLOSION);z->vault_from=death_rate(g,z->kind);z->death=game_death_duration_for(g,z);z->age=0;z->eating=0;z->vault=0;g->polish.action[z-g->zombies]=0;g->kills++;
         if(!g->challenge&&g->wave>5&&((g->level==22&&!(g->store_flags&64))||(g->level==36&&!(g->store_flags&128)))){int value=g->level==22?-200:-201,exists=0;for(int k=0;k<MAX_COINS;k++)exists|=g->money[k].used&&g->money[k].value==value;if(!exists)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,value);}
         if(g->level>=11&&g->mode!=MODE_BOWLING){int factor=zombie_value[z->kind],hit=random_next(g)%30000;int present=(g->store_flags&STORE_GARDEN)&&g->extra.category!=EXTRA_IZOMBIE?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?3:12)*factor:0;int chocolate=(g->store_flags&STORE_CHOCOLATE)?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?9:36)*factor:0;if(g->wave+g->extra.stage*g->num_waves>70){present=chocolate=0;}if(g->level!=25||random_next(g)%4==0){if(z->kind==Z_YETI){for(int i=0;i<4;i++)game_add_coin(g,z->x-i*8,game_ground_y(g,z->row)-15,100);}else if(hit<present)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-1-(int)(random_next(g)%40));else if(hit<present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-100);else if(hit<14*factor+present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,g->seed_slots>6?100:5);else if(hit<250*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,5);else if(hit<2500*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,1);}}
 }
@@ -381,19 +390,22 @@ int game_reward_type(const Game *g){
 }
 int game_collect_reward(Game *g){if(g->status!=WON||game_dying_count(g)||(g->level_flags&LEVEL_REWARD_COLLECTED))return 0;g->level_flags|=LEVEL_REWARD_COLLECTED;game_collect_coins(g);return 1;}
 
+static int can_chill(const Game *g,const Zombie *z){int i=(int)(z-g->zombies);return z->death<=0&&!g->hypnotized[i]&&z->kind!=Z_ZOMBONI&&!(z->kind==Z_BOBSLED&&g->extra.bobsled_team[i]&&g->extra.bobsled_phase[i]>=0)&&!(z->kind==Z_DIGGER&&(!z->vaulted||g->special[i]>0));}
+static int can_freeze(const Game *g,const Zombie *z){int i=(int)(z-g->zombies);return can_chill(g,z)&&z->vault<=0&&z->kind!=Z_BALLOON&&g->polish.action[i]!=ACTION_IMP_FLIGHT&&g->polish.action[i]!=ACTION_IMP_LAND&&g->polish.action[i]!=ACTION_JACK&&!(z->kind==Z_BOBSLED&&g->extra.bobsled_team[i]&&g->extra.bobsled_phase[i]<0)&&!(z->kind==Z_BUNGEE&&g->special[i]<3.2f);}
 static void hurt_zombie(Game *g,Zombie *z,float damage,int ice) {
     if(z->death>0)return;
     float before_hp=z->hp;
     if(damage>0){g->extra.hit_flash[z-g->zombies]=.09f;if(damage>=10&&damage<1800){combat_effect(g,z->x-8,game_ground_y(g,z->row)-18,0);cue(z->armor>0?(z->kind==Z_CONE?FOLEY_PLASTIC_HIT:FOLEY_SHIELD_HIT):FOLEY_SPLAT);}}
     float before_armor=z->armor;
     if(z->armor>0){float used=fminf(z->armor,damage);z->armor-=used;damage-=used;}
-    if(before_armor>0&&z->armor==0&&z->kind==Z_PAPER){z->speed=.7f;z->age=0;cue(FOLEY_NEWSPAPER_RIP);cue(FOLEY_NEWSPAPER_RARRGH);}
-    z->hp-=damage;if(ice){z->slow=8;cue(FOLEY_SNOW_PEA_SPARKLES);}
+    if(before_armor>0&&z->armor==0&&z->kind==Z_PAPER){z->speed=.7f;z->age=0;g->polish.action[z-g->zombies]=ACTION_PAPER;g->polish.action_time[z-g->zombies]=0;cue(FOLEY_NEWSPAPER_RIP);}
+    z->hp-=damage;if(ice&&can_chill(g,z)){z->slow=8;cue(FOLEY_SNOW_PEA_SPARKLES);}
     int maximum=z->kind==Z_POLE||z->kind==Z_DANCER?500:270;if(before_hp>=maximum*2.0f/3&&z->hp<maximum*2.0f/3)cue(FOLEY_LIMBS_POP);
     if(z->kind<Z_DUCK&&g->level!=25&&!game_mini_active(g,MINI_LITTLE)&&!g->mini.zombie_heads[z-g->zombies]&&before_hp>=maximum/3.0f&&z->hp<maximum/3.0f&&z->hp>0)head_effect(g,z);
     if(z->hp<=0)kill_zombie(g,z);
 }
 
+static void hurt_charred(Game *g,Zombie *z,float damage){int i=(int)(z-g->zombies),old=g->polish.death_style[i];if(z->kind<Z_DUCK||z->kind==Z_DUCK)g->polish.death_style[i]=DEATH_CHARRED;hurt_zombie(g,z,damage,0);if(z->death<=0)g->polish.death_style[i]=old;}
 static void shoot(Game *g,int row,float x,int ice) {
     for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){g->shots[i]=(Shot){1,row,ice,x};g->shot_remaining[i]=ice==2?CELL_W*3:1000;g->shot_vx[i]=150;g->shot_vy[i]=0;g->shot_y[i]=game_ground_y(g,row)+game_roof_offset(g,x)-17;g->shot_damage[i]=20;g->shot_target[i]=-1;g->extra.last_portal_shot[i]=0;sound_as(g,SFX_SHOOT,ice==2?FOLEY_PUFF:ice==3?FOLEY_FUME:FOLEY_THROW);return;}
 }
@@ -508,12 +520,12 @@ static int choose_row(Game *g){
     for(int r=0;r<ROWS;r++)if(game_row_active(g,r)){g->row_history[r]++;g->row_second[r]++;}
     g->row_second[chosen]=g->row_history[chosen];g->row_history[chosen]=0;return chosen;
 }
-static void spawn_wave(Game *g){
-    g->level_flags|=LEVEL_TUTORIAL_COMPLETE;
-    if(g->spawned>0)g->wave++;
-    int index=g->wave-1;g->spawned=0;float health=0;
-    for(int i=0;i<g->wave_count[index];i++){
-        int kind=g->wave_types[index][i],row=choose_row(g);
+static void finish_wave_entries(Game *g){
+    if(!g->polish.wave_pending)return;int index=g->wave-1;
+    while(g->polish.wave_entry<g->wave_count[index]){
+        int kind=g->wave_types[index][g->polish.wave_entry],free=0;for(int n=0;n<MAX_ZOMBIES;n++)free+=!g->zombies[n].used;
+        if(free<(kind==Z_BOBSLED?4:1))return;
+        int row=choose_row(g);
         int aquatic=kind==Z_DUCK||kind==Z_SNORKEL||kind==Z_DOLPHIN;
         if(game_rows(g)==6){if(aquatic)row=2+random_next(g)%2;else if(game_water_row(g,row))row=(int[]){0,1,4,5}[random_next(g)%4];}
         float x=459+random_unit(g)*30;
@@ -522,17 +534,30 @@ static void spawn_wave(Game *g){
             if(n){int spot=graves[random_next(g)%n];row=spot/COLS;x=plant_x(spot%COLS);}kind=g->wave>6&&random_next(g)%4==0?Z_BUCKET:g->wave>3&&random_next(g)%3==0?Z_CONE:Z_NORMAL;
         }
         int id=game_spawn_zombie(g,row,kind,x);
-        if(id>=0){if(kind==Z_BOBSLED){g->extra.bobsled_team[id]=id+1;g->extra.bobsled_position[id]=0;for(int n=1;n<4;n++){int member=game_spawn_zombie(g,row,Z_BOBSLED,x+n*14);if(member>=0){g->extra.bobsled_team[member]=id+1;g->extra.bobsled_position[member]=n;}}}if(g->mode==MODE_BUNGEE&&kind!=Z_BUNGEE)g->special[id]=-2;g->spawned++;health+=g->zombies[id].hp+g->zombies[id].armor;}
+        if(id>=0){if(kind==Z_BOBSLED){g->extra.bobsled_team[id]=id+1;g->extra.bobsled_position[id]=0;for(int n=1;n<4;n++){int member=game_spawn_zombie(g,row,Z_BOBSLED,x+n*14);if(member>=0){g->extra.bobsled_team[member]=id+1;g->extra.bobsled_position[member]=n;g->polish.wave_health+=g->zombies[member].hp+g->zombies[member].armor;}}}if(g->mode==MODE_BUNGEE&&kind!=Z_BUNGEE)g->special[id]=-2;g->spawned++;g->polish.wave_health+=g->zombies[id].hp+g->zombies[id].armor;g->polish.wave_entry++;}
+
+    }
+    if(game_world(g)==1&&g->mode!=MODE_WHACK&&g->mode!=MODE_VASE&&g->wave==g->num_waves){
+        while(g->polish.grave_entry<ROWS*COLS){int cell=g->polish.grave_entry,r=cell/COLS,c=cell%COLS;
+            if(g->graves[r][c]){int id=game_spawn_zombie(g,r,Z_NORMAL,plant_x(c));if(id<0)return;g->polish.wave_health+=g->zombies[id].hp;}g->polish.grave_entry++;
+        }
     }
     int next_flag=game_flag_wave(g,g->wave);
-    g->wave_health_threshold=next_flag&&g->mode!=MODE_BOWLING?0:(.5f+random_unit(g)*.15f)*health;
+    g->polish.wave_fraction=next_flag&&g->mode!=MODE_BOWLING?0:(.5f+random_unit(g)*.15f);
+    g->wave_health_threshold=g->polish.wave_fraction*g->polish.wave_health;
     g->spawn_timer=next_flag&&g->mode!=MODE_BOWLING?45:(2500+(random_next(g)%600))/100.0f;
-    g->wave_delay=0;g->huge_wave_announced=0;
-    if(game_world(g)==1&&g->mode!=MODE_WHACK&&g->mode!=MODE_VASE&&g->wave==g->num_waves)for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++)if(g->graves[r][c])game_spawn_zombie(g,r,Z_NORMAL,plant_x(c));
+    g->wave_delay=0;g->huge_wave_announced=0;g->polish.wave_pending=0;
+}
+static void spawn_wave(Game *g){
+    if(g->polish.wave_pending){finish_wave_entries(g);return;}
+    g->level_flags|=LEVEL_TUTORIAL_COMPLETE;if(g->spawned>0)g->wave++;
+    g->spawned=0;g->polish.wave_pending=1;g->polish.wave_entry=0;g->polish.grave_entry=0;g->polish.wave_health=0;
+    g->polish.wave_fraction=0;finish_wave_entries(g);
 }
 
 #include "minigames.inc"
 #include "extra_rules.inc"
+#include "polish_rules0190.inc"
 
 void game_animate_attacks(Game *g,float dt){for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++)if(g->plants[r][c].kind==SQUASH&&g->burst_left[r][c]>0){g->plants[r][c].age+=dt;chapter_plant(g,r,c,dt);}}
 void game_step(Game *g,float dt) {
@@ -544,7 +569,7 @@ void game_step(Game *g,float dt) {
     if(g->shovel_tutorial){for(int c=0;c<COLS;c++)if(g->plants[2][c].kind>=0)g->plants[2][c].age+=dt;return;}
     for(int s=0;s<ALL_SEEDS;s++){float *cooldown=game_seed_cooldown(g,s);*cooldown=fmaxf(0,*cooldown-dt);}
     effects_step(g,dt);
-    if(extra_pre_step(g,dt))return;
+    if(extra_pre_step(g,dt)){for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used&&g->zombies[i].death>0)tick_death(&g->zombies[i],dt);return;}
     if(mini_pre_step(g,dt))return;
     conveyor_step(g,dt);
     if((g->mode==MODE_LAWN||g->mode==MODE_SLOT||g->mode==MODE_HEAVY)&&!game_is_night(g)&&!game_mini_active(g,MINI_LASTSTAND)){
@@ -574,8 +599,8 @@ void game_step(Game *g,float dt) {
         if(p->kind==GRAVEBUSTER&&p->age>=4.5f){g->graves[r][c]=0;p->kind=-1;cue(FOLEY_GRAVESTONE_RUMBLE);continue;}
         if((p->kind==ICESHROOM||p->kind==DOOM)&&p->age>=1){
             for(int z=0;z<MAX_ZOMBIES;z++)if(g->zombies[z].used&&!g->hypnotized[z]&&g->zombies[z].death<=0){
-                if(p->kind==ICESHROOM){g->frozen[z]=4;g->zombies[z].slow=15;}
-                else if(abs(g->zombies[z].row-r)<=2&&fabsf(g->zombies[z].x-x)<CELL_W*3.2f)hurt_zombie(g,&g->zombies[z],1800,0);
+                if(p->kind==ICESHROOM){if(can_freeze(g,&g->zombies[z]))g->frozen[z]=4;if(can_chill(g,&g->zombies[z]))g->zombies[z].slow=15;}
+                else if(abs(g->zombies[z].row-r)<=2&&fabsf(g->zombies[z].x-x)<CELL_W*3.2f)hurt_charred(g,&g->zombies[z],1800);
             }
             if(p->kind==DOOM){g->craters[r][c]=180;g->flash=.4f;sound_as(g,SFX_EXPLODE,GAME_SAMPLE(FX_DOOMSHROOM));}else cue(FOLEY_FROZEN);p->kind=-1;continue;
         }
@@ -608,7 +633,7 @@ void game_step(Game *g,float dt) {
         if(p->kind==CHERRY&&p->age>=1.2f){
             for(int i=0;i<MAX_ZOMBIES;i++){
                 Zombie *z=&g->zombies[i];
-                if(z->used&&abs(z->row-r)<=1&&fabsf(z->x-x)<CELL_W*1.65f)hurt_zombie(g,z,1800,0);
+                if(z->used&&!g->hypnotized[i]&&z->death<=0&&abs(z->row-r)<=1&&fabsf(z->x-x)<CELL_W*1.65f)hurt_charred(g,z,1800);
             }p->kind=-1;g->flash=.32f;sound(g,SFX_EXPLODE);cue(FOLEY_JUICY);
         }
         if(p->kind==MINE&&p->age>=MINE_ARM_SECONDS){
@@ -616,10 +641,10 @@ void game_step(Game *g,float dt) {
                 Zombie *z=&g->zombies[i];
                 // Trigger at the same contact distance used by the bite logic.
                 // Otherwise the zombie stops outside the old, smaller trigger radius.
-                if(z->used&&z->death<=0&&z->vault<=0&&z->row==r&&bite_contact(z->x,x)){
+                if(z->used&&!g->hypnotized[i]&&z->death<=0&&z->vault<=0&&z->kind!=Z_BALLOON&&z->kind!=Z_BUNGEE&&!(z->kind==Z_DIGGER&&!z->vaulted)&&z->row==r&&bite_contact(z->x,x)){
                     for(int j=0;j<MAX_ZOMBIES;j++){
                         Zombie *nearby=&g->zombies[j];
-                        if(nearby->used&&nearby->death<=0&&nearby->row==r&&fabsf(nearby->x-x)<=32)
+                        if(nearby->used&&!g->hypnotized[j]&&nearby->death<=0&&nearby->kind!=Z_BALLOON&&nearby->kind!=Z_BUNGEE&&nearby->vault<=0&&nearby->row==r&&fabsf(nearby->x-x)<=32)
                             hurt_zombie(g,nearby,1800,0);
                     }
                     p->kind=-1;g->flash=.16f;sound_as(g,SFX_EXPLODE,GAME_SAMPLE(FX_POTATO_MINE));break;
@@ -629,8 +654,8 @@ void game_step(Game *g,float dt) {
         if(p->kind==CHOMPER&&p->digest<=0){
             for(int i=0;i<MAX_ZOMBIES;i++){
                 Zombie *z=&g->zombies[i];
-                if(z->used&&z->death<=0&&z->row==r&&z->x>=x-8&&z->x<x+42){
-                    kill_zombie(g,z);p->digest=42;p->flash=1.0f;sound_as(g,SFX_CHOMP,FOLEY_BIGCHOMP);break;
+                if(z->used&&!g->hypnotized[i]&&z->death<=0&&z->kind!=Z_BALLOON&&z->kind!=Z_BUNGEE&&!(z->kind==Z_DIGGER&&!z->vaulted)&&z->vault<=0&&z->row==r&&z->x>=x-8&&z->x<x+42){
+                    if(z->kind==Z_GARG||z->kind==Z_BOSS){hurt_zombie(g,z,40,0);p->digest=1.2f;}else{kill_zombie(g,z);z->used=0;p->digest=42;}p->flash=1.0f;sound_as(g,SFX_CHOMP,FOLEY_BIGCHOMP);break;
                 }
             }
         }
@@ -641,15 +666,17 @@ void game_step(Game *g,float dt) {
         Zombie *z=&g->zombies[i];if(!z->used)continue;
         if(z->death>0){tick_death(z,dt);continue;}
         if(g->mode==MODE_WHACK)g->special[i]=fmaxf(0,g->special[i]-dt);
+        if(g->frozen[i]>0){g->frozen[i]=fmaxf(0,g->frozen[i]-dt);continue;}
+        z->slow=fmaxf(0,z->slow-dt);g->polish.pose[i]+=dt*(z->slow>0?.5f:1);
+        if(polish_actor_step(g,i,dt))continue;
         if(extra_iz_zombie(g,i,dt))continue;
         if(bobsled_step(g,i,dt))continue;
         if(chapter_zombie(g,i,dt))continue;
         if(mini_zombie(g,i,dt))continue;
-        if(g->frozen[i]>0){g->frozen[i]=fmaxf(0,g->frozen[i]-dt);continue;}
         if(g->hypnotized[i]){
             int target=-1;for(int j=0;j<MAX_ZOMBIES;j++)if(g->zombies[j].used&&g->zombies[j].death<=0&&!g->hypnotized[j]&&g->zombies[j].row==z->row&&fabsf(g->zombies[j].x-z->x)<25){target=j;break;}
-            if(target>=0){hurt_zombie(g,&g->zombies[target],100*dt,0);hurt_zombie(g,z,100*dt,0);z->eating=1;z->age+=dt;}
-            else{z->eating=0;z->x+=game_zombie_walk(z,dt);if(z->x>520)z->used=0;}continue;
+            if(target>=0){hurt_zombie(g,&g->zombies[target],100*dt,0);hurt_zombie(g,z,100*dt,0);if(!z->eating){z->age=0;g->polish.pose[i]=0;}z->eating=1;z->age+=dt*(z->slow>0?.5f:1);}
+            else{if(z->eating){z->age=0;g->polish.pose[i]=0;}z->eating=0;z->x+=game_zombie_walk(z,dt);if(z->x>520)z->used=0;}continue;
         }
         if(z->kind==Z_DANCER&&game_zombie_body_stage(z)!=2){g->special[i]-=dt;if(g->special[i]<=0){g->special[i]=12;
             for(int slot=0;slot<4;slot++){
@@ -658,7 +685,7 @@ void game_step(Game *g,float dt) {
                 if(!backup)game_spawn_zombie(g,row,Z_BACKUP,x);
             }
         }}
-        int was_eating=z->eating;z->slow=fmaxf(0,z->slow-dt);z->eating=0;
+        int was_eating=z->eating;z->eating=0;
         int headless=g->level!=25&&!game_mini_active(g,MINI_LITTLE)&&z->kind<Z_DUCK&&game_zombie_body_stage(z)==2;
         if(headless){
             if(z->kind==Z_POLE&&!z->vaulted){z->vaulted=1;z->vault=0;z->age=0;z->speed=.23f+random_unit(g)*.14f;}
@@ -679,21 +706,22 @@ void game_step(Game *g,float dt) {
                 if(g->ladders[z->row][c])continue;
                 if(z->kind==Z_LADDER&&z->armor>0){g->ladders[z->row][c]=1;z->armor=0;continue;}
                 if(z->kind==Z_GARG){float old=g->special[i];g->special[i]+=dt*(z->slow>0?.5f:1);z->eating=1;
-                    if(old<1.28f&&g->special[i]>=1.28f){cue(FOLEY_THUMP);
+                    if(old<.64f*(33/16.0f)&&g->special[i]>=.64f*(33/16.0f)){cue(FOLEY_THUMP);
                         if(p->kind==SPIKEROCK){p->hp-=50;hurt_zombie(g,z,20,0);if(p->hp<=0)p->kind=-1;}
-                        else{extra_plant_damage(g,z->row,plant_col,p->hp,0);if(p->kind==COB&&plant_col+1<COLS)g->plants[z->row][plant_col+1].kind=-1;p->kind=-1;g->morph_timer[z->row][c]=0;g->support[z->row][c]=0;g->pumpkin_hp[z->row][c]=0;}
-                    }if(g->special[i]>=2)g->special[i]-=2;break;}
+                        else destroy_square(g,z->row,plant_col,1);
+                    }if(g->special[i]>=33/16.0f)g->special[i]-=33/16.0f;break;}
                 float damage=100*dt*(z->slow>0?.5f:1);if(z->kind==Z_GARG||z->kind==Z_ZOMBONI)damage=10000*dt;
                 if(g->pumpkin_hp[z->row][c]>0)g->pumpkin_hp[z->row][c]=fmaxf(0,g->pumpkin_hp[z->row][c]-damage);
                 else if(g->morph_timer[z->row][c]>0){g->morph_hp[z->row][c]-=damage;if(g->morph_hp[z->row][c]<=0)g->morph_timer[z->row][c]=0;}
                 else if(p->kind>=0){extra_plant_damage(g,z->row,plant_col,p->hp,p->hp-damage);p->hp-=damage;}else{g->support_hp[z->row][c]-=damage;if(g->support_hp[z->row][c]<=0)g->support[z->row][c]=0;}z->eating=1;
-                if(p->kind==GARLIC){int row=z->row+(random_next(g)%2?1:-1);if(game_row_active(g,row)&&!game_water_row(g,row)){z->row=row;z->x-=2;p->hp-=20;cue(FOLEY_YUCK);}}
+                if(p->kind==GARLIC&&!g->polish.action[i]){int rows[2],count=0;for(int row=z->row-1;row<=z->row+1;row+=2)if(game_row_active(g,row)&&!game_water_row(g,row))rows[count++]=row;
+                    int target=count?rows[random_next(g)%count]:z->row;g->polish.target[i]=z->row*ROWS+target;g->polish.action[i]=ACTION_GARLIC;g->polish.action_time[i]=0;p->hp-=20;}
                 if(p->hp<=0){if(p->kind==COB&&plant_col+1<COLS)g->plants[z->row][plant_col+1].kind=-1;if(p->kind==HYPNO){g->hypnotized[i]=1;z->age=0;cue(GAME_SAMPLE(FX_MINDCONTROLLED));}p->kind=-1;}
                 break;
             }
         }
         if(z->kind==Z_GARG&&!z->eating)g->special[i]=0;
-        if(z->eating!=was_eating&&z->vault<=0)z->age=0;
+        if(z->eating!=was_eating&&z->vault<=0){z->age=0;g->polish.pose[i]=0;}
         if(!z->eating)z->x-=game_zombie_walk(z,dt);
         else if(z->vault<=0)z->age+=dt*(z->slow>0?.5f:1);
         if(z->x<GRID_X-13&&!g->mower_used[z->row]&&game_cleaner_active(g,z->row)){g->mower_used[z->row]=1;g->mower_x[z->row]=GRID_X-24;g->row_mowed_wave[z->row]=g->wave-1;sound_as(g,SFX_MOWER,game_water_row(g,z->row)?FOLEY_POOL_CLEANER:FOLEY_LAWNMOWER);}
@@ -708,6 +736,7 @@ void game_step(Game *g,float dt) {
             if(z->used&&!g->hypnotized[i]&&z->death<=0&&z->row==(g->extra.mower_row[r]?g->extra.mower_row[r]-1:r)&&fabsf(z->x-g->mower_x[r])<24)kill_zombie(g,z);
         }
     }
+    if(g->polish.wave_pending){finish_wave_entries(g);return;}
     if(extra_progress(g))return;
     if(mini_progress(g))return;
     if(chapter_progress(g,dt))return;
@@ -721,7 +750,7 @@ void game_step(Game *g,float dt) {
         g->wave_delay+=dt;float remaining=0;
         for(int i=0;i<MAX_ZOMBIES;i++){
             Zombie *z=&g->zombies[i];
-            if(z->used&&z->death<=0&&z->wave==g->wave)remaining+=z->hp+z->armor;
+            if(z->used&&z->death<=0&&!g->hypnotized[i]&&z->wave==g->wave)remaining+=z->hp+z->armor;
         }
         if(g->wave_delay>4&&remaining<=g->wave_health_threshold&&g->spawn_timer>2)g->spawn_timer=2;
     }
@@ -739,10 +768,13 @@ static uint32_t checksum(const void *memory,size_t count) {
 int game_save(const Game *g,const char *filename) {
     char temp[512];snprintf(temp,sizeof(temp),"%s.tmp",filename);
     FILE *f=fopen(temp,"wb");if(!f)return 0;
-    uint32_t header[4]={0x31535650,10,sizeof(*g),checksum(g,sizeof(*g))};
+    uint32_t header[4]={0x31535650,11,sizeof(*g),checksum(g,sizeof(*g))};
     int ok=fwrite(header,sizeof(header),1,f)==1&&fwrite(g,sizeof(*g),1,f)==1;
     if(fclose(f)!=0)ok=0;
-    if(ok){remove(filename);ok=rename(temp,filename)==0;}return ok;
+    if(ok){char backup[512];snprintf(backup,sizeof(backup),"%s.bak",filename);FILE *old=fopen(filename,"rb");int existed=old!=0;if(old)fclose(old);
+        if(existed){remove(backup);if(rename(filename,backup))return 0;}
+        if(rename(temp,filename)){if(existed)rename(backup,filename);return 0;}
+    }return ok;
 }
 static void legacy_import(Game *g,const LegacyGame *old){
  game_start_level(g,old->level,old->rng);
@@ -1060,9 +1092,10 @@ static void legacy08_import(Game *g,const Legacy08 *old){
  memcpy(g->morph_hp,old->morph_hp,sizeof(old->morph_hp));
  if(g->challenge==1)g->mini.id=2;else if(g->challenge==2)g->mini.id=15;
 }
-int game_load(Game *g,const char *filename){
+static int game_load_one(Game *g,const char *filename){
  FILE *f=fopen(filename,"rb");if(!f)return 0;uint32_t h[4];Game loaded;int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x31535650;
- if(ok&&h[1]==10&&h[2]==sizeof(Game))ok=fread(&loaded,sizeof(loaded),1,f)==1&&checksum(&loaded,sizeof(loaded))==h[3];
+ if(ok&&h[1]==11&&h[2]==sizeof(Game))ok=fread(&loaded,sizeof(loaded),1,f)==1&&checksum(&loaded,sizeof(loaded))==h[3];
+ else if(ok&&h[1]==10&&h[2]==offsetof(Game,polish)){memset(&loaded,0,sizeof(loaded));ok=fread(&loaded,h[2],1,f)==1&&checksum(&loaded,h[2])==h[3];}
  else if(ok&&h[1]==9&&h[2]==sizeof(Legacy09)){Legacy09 old;ok=fread(&old,sizeof(old),1,f)==1&&checksum(&old,sizeof(old))==h[3];if(ok){memset(&loaded,0,sizeof(loaded));memcpy(&loaded,&old,sizeof(old));}}
  else if(ok&&h[1]==8&&h[2]==sizeof(Legacy08)){Legacy08 old;ok=fread(&old,sizeof(old),1,f)==1&&checksum(&old,sizeof(old))==h[3];if(ok)legacy08_import(&loaded,&old);}
  else if(ok&&(h[1]==6||h[1]==7)&&h[2]==sizeof(Legacy071)){Legacy071 old;ok=fread(&old,sizeof(old),1,f)==1&&checksum(&old,sizeof(old))==h[3];if(ok){legacy071_import(&loaded,&old);if(loaded.mode==MODE_BOWLING)for(int i=0;i<loaded.packet_count;i++)if(loaded.packets[i]==40)loaded.packets[i]=EXPLODE_NUT;}}
@@ -1078,14 +1111,24 @@ int game_load(Game *g,const char *filename){
   if(e->category==EXTRA_IZOMBIE)ok=ok&&e->card_count>0;for(int i=0;i<e->card_count&&ok;i++)ok=e->zombie_cards[i]>=0&&e->zombie_cards[i]<Z_TYPES;
   for(int i=0;i<MAX_ZOMBIES&&ok;i++)if(loaded.zombies[i].used){Zombie *z=&loaded.zombies[i];ok=z->row>=0&&z->row<ROWS&&z->kind>=0&&z->kind<Z_TYPES&&isfinite(z->hp)&&isfinite(z->x)&&isfinite(z->age);}
   for(int i=0;i<loaded.packet_count&&ok;i++)ok=loaded.packets[i]>=0&&loaded.packets[i]<=LEFT_PACKET;
+  for(int w=0;w<loaded.num_waves&&ok;w++){ok=loaded.wave_count[w]>=0&&loaded.wave_count[w]<=WAVE_CAPACITY;for(int n=0;n<loaded.wave_count[w]&&ok;n++)ok=loaded.wave_types[w][n]<Z_TYPES;}
+  if(h[1]==11){PolishState *p=&loaded.polish;ok=ok&&p->wave_pending>=0&&p->wave_pending<=1&&p->wave_entry>=0&&p->wave_entry<=WAVE_CAPACITY&&(!p->wave_pending||p->wave_entry<=loaded.wave_count[loaded.wave-1])&&p->grave_entry>=0&&p->grave_entry<=ROWS*COLS&&isfinite(p->wave_health)&&p->wave_health>=0&&p->wave_health<1e9f&&isfinite(p->wave_fraction)&&p->wave_fraction>=0&&p->wave_fraction<=1;
+   for(int i=0;i<MAX_ZOMBIES&&ok;i++)ok=isfinite(p->pose[i])&&p->pose[i]>=0&&isfinite(p->action_time[i])&&p->action_time[i]>=0&&p->action[i]>=ACTION_NONE&&p->action[i]<=ACTION_IMP_LAND&&p->death_style[i]>=DEATH_NORMAL&&p->death_style[i]<=DEATH_WATER&&p->target[i]>=0&&p->target[i]<=1000&&(p->action[i]!=ACTION_GARLIC||p->target[i]<ROWS*ROWS);
+  }
  }
  if(ok){
+  if(h[1]<11)for(int i=0;i<MAX_ZOMBIES;i++)loaded.polish.pose[i]=loaded.zombies[i].kind>=Z_DUCK?loaded.time:loaded.zombies[i].age;
   if(h[1]==3)for(int i=0;i<MAX_ZOMBIES;i++)if(loaded.zombies[i].used){Zombie *z=&loaded.zombies[i];float speed=z->speed/47.5f;z->speed=z->kind==Z_FLAG?.45f:z->kind==Z_POLE&&!z->vaulted?.66f+fminf(1,fmaxf(0,(speed-.23f)/.14f))*.02f:speed;if(z->death<=0&&!z->eating&&z->vault<=0)z->age=0;}
   if(loaded.level==2&&!loaded.total_spawned&&!(loaded.level_flags&LEVEL_TUTORIAL_COMPLETE)&&game_sunflower_count(&loaded)>=3){loaded.spawn_timer=fminf(loaded.spawn_timer,10);loaded.level_flags|=LEVEL_TUTORIAL_COMPLETE;}
   if(h[1]<7)for(int i=0;i<MAX_ZOMBIES;i++)if(loaded.zombies[i].used&&loaded.zombies[i].death>0){Zombie *z=&loaded.zombies[i];z->vault_from=27;if(z->kind==Z_GARG||z->kind==Z_SNORKEL||z->kind==Z_YETI)z->vault_from=14;else if(z->kind==Z_DIGGER||z->kind==Z_BOSS)z->vault_from=18;z->death=fmaxf(.01f,game_death_duration(z)-z->age);}
   if(loaded.challenge&&!loaded.extra.category&&!loaded.mini.id)loaded.mini.id=loaded.challenge==1?MINI_BOWLING+1:MINI_WHACK+1;
   *g=loaded;
  }return ok;
+}
+int game_load(Game *g,const char *filename){
+ if(game_load_one(g,filename))return 1;
+ FILE *primary=fopen(filename,"rb");if(primary){fclose(primary);return 0;}
+ char backup[512];snprintf(backup,sizeof(backup),"%s.bak",filename);return game_load_one(g,backup);
 }
 static int legacy_fixture(const Game *g,const char *path,int version){LegacyGame old;legacy_export(&old,g);int bytes=version==5?sizeof(old):16528;uint32_t h[4]={0x31535650,version,bytes,checksum(&old,bytes)};FILE *f=fopen(path,"wb");if(!f)return 0;int ok=fwrite(h,sizeof(h),1,f)==1&&fwrite(&old,bytes,1,f)==1;fclose(f);return ok;}
 
@@ -1448,6 +1491,7 @@ int game_selftest(FILE *out) {
     #include "chapter_tests.inc"
     #include "interaction_tests.inc"
     #include "upgrade_tests.inc"
+    #include "polish_tests0190.inc"
     fprintf(out,"RESULT %d/%d\n",passed,total);fflush(out);
     #undef CHECK
     return passed==total;

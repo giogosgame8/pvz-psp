@@ -40,9 +40,9 @@ static int chewing_selftest(FILE *out){
  z->kind=Z_PAPER;z->hp=270;z->armor=0;C("an angry Newspaper uses the same clip for drawing and sound",zombie_visible_clip(z,id,0)==&assets[A_PAPER_ANGRY_EAT]);
  z->kind=Z_BOBSLED;C("Bobsled eating uses its actual eating animation",zombie_visible_clip(z,id,0)==&assets[A_BOBSLED_EAT]);
  z->kind=Z_POLE;z->vault=1;C("the eating rate never changes a Pole Vaulter jump",zombie_visible_time(z,&assets[A_POLE_JUMP])==z->age);z->vault=0;
- z->kind=Z_GARG;C("Gargantuar attacks do not use the chewing rate",zombie_visible_time(z,&assets[A_GARG_EAT])==game.time&&!zombie_chewing_kind(z->kind));
- z->kind=Z_ZOMBONI;C("Zomboni driving does not use the chewing rate",zombie_visible_time(z,&assets[A_ZAMBONI_EAT])==game.time&&!zombie_chewing_kind(z->kind));
- z->kind=Z_CATAPULT;C("Catapult attacks do not use the chewing rate",zombie_visible_time(z,&assets[A_CATAPULT_EAT])==game.time&&!zombie_chewing_kind(z->kind));
+ z->kind=Z_GARG;C("Gargantuar attacks do not use the chewing rate",fabsf(zombie_visible_time(z,&assets[A_GARG_EAT])-game.special[id]*16/assets[A_GARG_EAT].fps)<.001f&&!zombie_chewing_kind(z->kind));
+ z->kind=Z_ZOMBONI;C("Zomboni driving does not use the chewing rate",zombie_visible_time(z,&assets[A_ZAMBONI_EAT])==game.polish.pose[id]&&!zombie_chewing_kind(z->kind));
+ z->kind=Z_CATAPULT;C("Catapult attacks do not use the chewing rate",zombie_visible_time(z,&assets[A_CATAPULT_EAT])==game.polish.pose[id]&&!zombie_chewing_kind(z->kind));
  C("custom flag bodies keep the same eating clock as the original flag clip",avatar_assets()&&avatar_art[AV_BODY+1].frames==assets[A_FLAG_EAT].frames&&avatar_art[AV_BODY+1].fps==assets[A_FLAG_EAT].fps);
  for(int chill=0;chill<2;chill++){
   game_start_level(&game,9,9190+chill);game.level_flags|=LEVEL_READY;game.spawn_timer=10000;memset(game.zombies,0,sizeof(game.zombies));memset(sound_actors,0,sizeof(sound_actors));

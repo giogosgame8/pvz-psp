@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.18.9/PvZ-PSP-0.18.9.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.19.0/PvZ-PSP-0.19.0.zip)**
 
 ## What you need
 
@@ -22,10 +22,10 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
-Updating from 0.18.8? Extract this ZIP over your existing PC setup folder and
-run Setup.exe again. It reuses verified data and restores the launcher pictures.
-Then copy the updated EBOOT.PBP to your PSP. Keep your saves.
-For older installs, run setup and copy EBOOT.PBP and data together.
+Updating? Extract this ZIP over your existing PC setup folder and run Setup.exe.
+Version 0.19.0 rebuilds the game files for new animations. Copy **EBOOT.PBP and
+data together** to your PSP, keeping your save files. Back up saves first:
+once saved by 0.19.0, they cannot be loaded by older builds.
 Repeat setup runs verify and reuse compatible files instead of rebuilding them.
 
 ## Good to know

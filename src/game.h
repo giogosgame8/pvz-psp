@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "minigame_state.h"
 #include "extra_state.h"
+#include "polish_state.h"
 #include "foley_defs.h"
 /* Transient presentation hook, excluded from every saved Game layout. */
 void game_sound_listener(void (*listener)(int event));
@@ -85,6 +86,8 @@ typedef struct {
 
     MiniState mini;float pea_shoot_time[ROWS][COLS];
     ExtraState extra;
+    uint32_t legacy_pad10;
+    PolishState polish;
 } Game;
 
 extern const char *seed_names[ALL_SEEDS];
@@ -114,6 +117,7 @@ int game_dying_count(const Game *g);
 void game_animate_deaths(Game *g,float dt);
 void game_animate_attacks(Game *g,float dt);
 float game_death_duration(const Zombie *z);
+float game_death_duration_for(const Game *g,const Zombie *z);
 float game_death_alpha(const Zombie *z);
 int game_whack(Game *g,int row,int col);
 void game_start_minigame(Game *g,int kind,uint32_t seed);

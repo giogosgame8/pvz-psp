@@ -3,10 +3,22 @@ from pathlib import Path
 import tempfile
 import unittest
 from PIL import Image
-from prepare_ending import ending_chunks
+from unittest.mock import patch
+from prepare_ending import ending_chunks,ending_file_access
 
 
 class EndingWorkerTests(unittest.TestCase):
+    def test_temporary_windows_sharing_failure_retries_without_altering_data(self):
+        with patch('prepare_ending.time.sleep'),patch('pathlib.Path.read_bytes',side_effect=[PermissionError('locked'),b'exact original bytes']) as read:
+            self.assertEqual(ending_file_access(Path('chunk').read_bytes),b'exact original bytes')
+            self.assertEqual(read.call_count,2)
+
+    def test_persistent_permission_failure_and_corrupt_data_errors_are_not_hidden(self):
+        with patch('prepare_ending.time.sleep'),patch('pathlib.Path.read_bytes',side_effect=PermissionError('locked')) as read:
+            with self.assertRaises(PermissionError):ending_file_access(Path('chunk').read_bytes)
+            self.assertEqual(read.call_count,40)
+        with self.assertRaises(ValueError):ending_file_access(lambda:(_ for _ in ()).throw(ValueError('bad frame')))
+
     def test_parallel_output_matches_serial_across_chunk_boundaries(self):
         with tempfile.TemporaryDirectory(prefix='ending worker test ') as temporary:
             imported=Path(temporary)

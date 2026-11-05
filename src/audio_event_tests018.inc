@@ -8,7 +8,7 @@ int game_audio018_selftest(FILE *out){
  game_spawn_zombie(&g,2,Z_DOLPHIN,400);game_spawn_zombie(&g,2,Z_BALLOON,420);E("dolphin and balloon have their specific appearance cues",event018[FOLEY_DOLPHIN_APPEARS]==1&&event018[FOLEY_BALLOONINFLATE]==1);
  int z=game_spawn_zombie(&g,2,Z_CONE,400);hurt_zombie(&g,&g.zombies[z],20,0);E("cone armor uses plastic impact variants",event018[FOLEY_PLASTIC_HIT]==1);
  z=game_spawn_zombie(&g,2,Z_BUCKET,400);hurt_zombie(&g,&g.zombies[z],20,0);E("metal armor uses shield impact variants",event018[FOLEY_SHIELD_HIT]==1);
- z=game_spawn_zombie(&g,2,Z_PAPER,400);hurt_zombie(&g,&g.zombies[z],150,0);E("newspaper destruction emits rip and angry variants",event018[FOLEY_NEWSPAPER_RIP]&&event018[FOLEY_NEWSPAPER_RARRGH]);
+ z=game_spawn_zombie(&g,2,Z_PAPER,400);hurt_zombie(&g,&g.zombies[z],150,0);E("newspaper destruction emits rip before its recovery",event018[FOLEY_NEWSPAPER_RIP]&&!event018[FOLEY_NEWSPAPER_RARRGH]);g.spawn_timer=10000;advance(&g,1.7f);E("newspaper anger emits once after gasp recovery",event018[FOLEY_NEWSPAPER_RARRGH]==1);
  memset(event018,0,sizeof(event018));g.suns[0]=(Sun){.used=1,.x=100,.y=100};game_collect(&g);E("sun pickup uses original points Foley",event018[FOLEY_SUN]==1);
  memset(event018,0,sizeof(event018));game_add_coin(&g,100,100,5);game_collect(&g);E("coin-only pickup does not play the sun effect",event018[FOLEY_COIN]==1&&!event018[FOLEY_SUN]);
  memset(event018,0,sizeof(event018));shoot(&g,2,100,2);shoot(&g,2,100,3);E("mushrooms use puff and fume instead of pea sounds",event018[FOLEY_PUFF]==1&&event018[FOLEY_FUME]==1);

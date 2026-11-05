@@ -56,6 +56,16 @@ def render_ending_chunk(job):
  return frames,tuple(_ending_scene.missing)
 
 
+def ending_file_access(operation):
+ # Windows may briefly keep a newly published file open (for example, during
+ # indexing). Retry only sharing/permission failures; never accept partial data.
+ for attempt in range(40):
+  try:return operation()
+  except PermissionError:
+   if attempt==39:raise
+   time.sleep(.025)
+
+
 def ending_worker_main(configuration):
  config=json.loads(Path(configuration).read_text(encoding='utf-8'))
  folder=Path(config['folder']);initialize_ending_worker(config['imported'],config['timings'])
@@ -72,7 +82,7 @@ def ending_worker_main(configuration):
   # Publish a complete chunk atomically; the parent never reads partial JPEGs.
   temporary=folder/f'{index}.pending'
   temporary.write_text(json.dumps({'frames':len(frames),'missing':missing}),encoding='utf-8')
-  temporary.replace(folder/f'{index}.json')
+  ending_file_access(lambda:temporary.replace(folder/f'{index}.json'))
 
 
 def ending_chunks(jobs,workers,imported,timings):
@@ -99,13 +109,13 @@ def ending_chunks(jobs,workers,imported,timings):
       details=(folder/f'worker-{index%workers}.log').read_text(encoding='utf-8',errors='replace')
       raise ValueError('Ending render worker stopped before finishing. '+details[-2000:])
      time.sleep(.03)
-    meta=json.loads(report.read_text(encoding='utf-8'));frames=[];file=folder/f'{index}.bin'
-    with file.open('rb') as source:
+    meta=json.loads(ending_file_access(lambda:report.read_text(encoding='utf-8')));frames=[];file=folder/f'{index}.bin'
+    with ending_file_access(lambda:file.open('rb')) as source:
      for _ in range(meta['frames']):
       length=struct.unpack('<I',source.read(4))[0];data=source.read(length)
       if len(data)!=length:raise ValueError('Incomplete ending frame')
       frames.append(data)
-    file.unlink();report.unlink();consumed+=1
+    ending_file_access(file.unlink);ending_file_access(report.unlink);consumed+=1
     yield frames,tuple(meta['missing'])
   finally:
    errors=[]
