@@ -85,7 +85,18 @@ verified/reused it in **3.708 seconds** on this PC with neither Python nor the
 The generated launcher contains the owned icon and background. These are local
 measurements, not an average setup time or physical-console startup benchmark.
 
-Final native and Python results are recorded with the release validation files.
+The final executable passed **1,124 checks in the Street profile (60 FPS target)**
+and **1,123 in PSP-1000 (30 FPS target)**, with zero failures and zero cache
+errors. This includes 62 additional native checks: 48 gameplay/state cases,
+13 presentation cases and one additional audio-event case. All 27 preparation
+tests and six importer tests passed. The Street run played the entire ending;
+the PSP-1000 run checked initial, middle and final decoding plus the UI suite.
+These functional profile runs are not performance certification.
+
+Bare executable SHA-256:
+`8b60366b9c2509505bd6a0c9abb7302b47beba295428272a8be74a87f5e18a83`.
+
+Native and Python results are recorded with the local release validation files.
 Native testing uses PPSSPP profiles, including Street and PSP-1000. Physical
 PSP performance, memory-card I/O, sound output and WLAN have not been certified
 by this pass. A 60 FPS target is not a guarantee on PSP-1000.
