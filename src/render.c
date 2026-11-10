@@ -234,6 +234,13 @@ void render_anim_rotated(const Animation *a,float x,float baseline,float seconds
     uint16_t *pixels=animation_frame(a,frame);if(!pixels)return;bind_texture(pixels,a->tw,a->th,GU_LINEAR);
     sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);stats.draw_calls++;
 }
+void render_image_affine(const Animation *a,const float m[6],uint32_t tint){
+    if(!a->loaded||!a->frames)return;uint16_t *pixels=animation_frame(a,0);if(!pixels)return;
+    TexturedVertex *v=sceGuGetMemory(4*sizeof(*v));
+    for(int i=0;i<4;i++){float x=i%2?a->width:0,y=i/2?a->height:0;v[i]=(TexturedVertex){x,y,tint,m[0]*x+m[1]*y+m[4],m[2]*x+m[3]*y+m[5],0};}
+    bind_texture(pixels,a->tw,a->th,GU_LINEAR);
+    sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);stats.draw_calls++;
+}
 int animation_load_legacy(Animation *a,const char *filename){
     memset(a,0,sizeof(*a));FILE *f=fopen(filename,"rb");if(!f)return 0;
     char magic[4];uint32_t words[6]={0};float fps;

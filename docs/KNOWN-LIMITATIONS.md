@@ -1,4 +1,4 @@
-# ISO content audit, 5 November 2026 (0.19.0)
+# ISO content audit, 10 November 2026 (0.20.0)
 
 This audits the current native PSP implementation against locally extracted
 resources and the project's PS3 comparison records. It is not an exhaustive
@@ -35,6 +35,12 @@ queues. The [full combat and wave report](reference/COMBAT-WAVES-0.19.0.md)
 covers every approved checklist item and its remaining differences. This does
 not complete the missing modes or certify all original combat behavior.
 
+0.20.0 adds the saved lead-dancer art choice, interpolated ambient menu layers,
+a crow, and hidden locked Extras entries. Backup dancers retain their current
+artwork. First-time setup graphics stages were optimized; total setup timings
+remain variable. See the [completion review](reference/COMPLETION-0.20.0.md) and
+[first-setup measurements](reference/SETUP-SPEED-0.20.0.md).
+
 The supported PS3 disc does not contain the original GOTY Zombatar
 creator resources; this addition does not reproduce that complete asset set.
 
@@ -66,7 +72,7 @@ creator resources; this addition does not reproduce that complete asset set.
 The 0.18.8 standalone Windows setup completed a full disc conversion without
 Python or the py launcher on PATH. The source counts above include the 3,810-frame
 reconstructed ending. Native checks use PPSSPP profiles; these checks are not
-physical-console certification. Version 0.19.0 requires its new prepared data;
+physical-console certification. Version 0.20.0 requires its new prepared data;
 the standalone setup has also completed a fresh conversion without system Python.
 
 PSP-1000 support remains experimental. Its 30/60 FPS target is not a performance

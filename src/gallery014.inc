@@ -32,7 +32,7 @@ static const Animation *gallery_zombie(int kind,int pose){
  if(kind>=Z_TYPES)return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_BOT_EAT:A_BOT_WALK];
  if(kind>=Z_DUCK)return &assets[A_DUCK_WALK+(kind-Z_DUCK)*3+pose];
  if(kind==Z_NORMAL||kind==Z_CONE||kind==Z_BUCKET)return &assets[pose==2?A_ZOMBIE_DEATH:kind==Z_CONE?(pose?A_CONE_EAT:A_CONE):kind==Z_BUCKET?(pose?A_BUCKET_EAT:A_BUCKET):(pose?A_ZOMBIE_EAT:A_ZOMBIE)];
- switch(kind){case Z_POLE:return &assets[pose==2?A_POLE_DEATH:pose?A_POLE_EAT:A_POLE_RUN];case Z_FLAG:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_FLAG_EAT:A_FLAG_WALK];case Z_PAPER:return &assets[A_PAPER+pose];case Z_DOOR:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_DOOR_EAT:A_DOOR];case Z_FOOTBALL:return &assets[A_FOOTBALL+pose];case Z_DANCER:return &assets[A_DANCER+pose];default:return &assets[A_BACKUP+pose];}
+ switch(kind){case Z_POLE:return &assets[pose==2?A_POLE_DEATH:pose?A_POLE_EAT:A_POLE_RUN];case Z_FLAG:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_FLAG_EAT:A_FLAG_WALK];case Z_PAPER:return &assets[A_PAPER+pose];case Z_DOOR:return &assets[pose==2?A_ZOMBIE_DEATH:pose?A_DOOR_EAT:A_DOOR];case Z_FOOTBALL:return &assets[A_FOOTBALL+pose];case Z_DANCER:return &assets[(classic_dancer?A_CLASSIC_DANCER:A_DANCER)+pose];default:return &assets[A_BACKUP+pose];}
 }
 static const Animation *gallery_head(int index){return &assets[(int[]){A_PEA_HEAD,A_WALLNUT,A_JALAPENO,A_GATLING,A_SQUASH,A_TALLNUT}[index-Z_TYPES]];}
 static void gallery_schedule(void){

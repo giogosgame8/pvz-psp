@@ -5,8 +5,8 @@ from pathlib import Path
 import struct
 import zlib
 
-DATA_VERSION = '0.19.0'
-RECIPE = 'ps3-0190-1'
+DATA_VERSION = '0.20.0'
+RECIPE = 'ps3-0200-1'
 
 
 def file_hash(path):
@@ -68,7 +68,7 @@ def verify_integrity(folder,source_sha=None):
             raise ValueError('Prepared file failed verification: '+name)
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('source_iso_sha256')!=report.get('source_iso_sha256'):raise ValueError('Prepared source identity does not match')
-    required={a['file'] for a in manifest['assets']}|{'assets.idx','shoot-alignment.bin','foley.pvf','ending.pvj','ending.json','XMB_ICON0.PNG','XMB_PIC1.PNG','zombie_motion.bin','seeds.bin','disc_font.bin','strings.bin','almanac.bin','story-index.json','music-index.json','music-checks.bin'}
+    required={a['file'] for a in manifest['assets']}|{'assets.idx','menu-motion.bin','menu-motion.json','shoot-alignment.bin','foley.pvf','ending.pvj','ending.json','XMB_ICON0.PNG','XMB_PIC1.PNG','zombie_motion.bin','seeds.bin','disc_font.bin','strings.bin','almanac.bin','story-index.json','music-index.json','music-checks.bin'}
     required|={song['file'] for song in json.loads((folder/'music-index.json').read_text(encoding='utf-8'))}
     if not required.issubset(report['files']):raise ValueError('Integrity index omits required game files')
     return report

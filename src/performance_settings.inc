@@ -25,7 +25,7 @@ static int performance_option(void){
  return hardware.known&&hardware.model==0;
  #endif
 }
-static int options_count(void){return performance_option()?8:7;}
+static int options_count(void){return performance_option()?9:8;}
 static int options_back(void){return options_count()-1;}
 static void performance_apply(void){performance=platform_frame_preference(&hardware,psp1000_fps);render_set_fps(performance.target_fps);}
 static void performance_select(int fps){

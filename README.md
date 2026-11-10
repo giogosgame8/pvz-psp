@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.19.0/PvZ-PSP-0.19.0.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.20.0/PvZ-PSP-0.20.0.zip)**
 
 ## What you need
 
@@ -23,15 +23,16 @@ Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
 Updating? Extract this ZIP over your existing PC setup folder and run Setup.exe.
-Version 0.19.0 rebuilds the game files for new animations. Copy **EBOOT.PBP and
+Version 0.20.0 rebuilds the game files for animated menus and the dancer choice. Copy **EBOOT.PBP and
 data together** to your PSP, keeping your save files. Back up saves first:
-once saved by 0.19.0, they cannot be loaded by older builds.
+the gameplay save format is unchanged from 0.19.0.
 Repeat setup runs verify and reuse compatible files instead of rebuilding them.
 
 ## Good to know
 
 - This is early access: some modes and original-game behavior still need work.
 - Multiplayer is not available yet.
+- Choose **Disco / Michael Jackson** under **Options > Dancing zombie**.
 - Open **Player → Zombie customizer** to create a saved flag-zombie appearance using PS3 artwork.
 - PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
 

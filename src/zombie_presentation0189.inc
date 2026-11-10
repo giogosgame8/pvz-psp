@@ -10,7 +10,8 @@ static const Animation *zombie_visible_clip(const Zombie *z,int index,int *body_
  if(z->kind==Z_FLAG&&z->death<=0)asset=z->eating?A_FLAG_EAT:A_FLAG_WALK;
  if(z->kind>=Z_DUCK)asset=A_DUCK_WALK+(z->kind-Z_DUCK)*3+(z->death>0?2:z->eating?1:0);
  int body=(game.level==25||game_mini_active(&game,MINI_LITTLE))?0:game_zombie_body_stage(z),stage=z->armor>0&&z->death<=0?game_zombie_armor_stage(z):body;
- if(body==2&&z->death<=0&&z->kind<Z_DUCK)asset=z->kind==Z_POLE?A_POLE_WALK:A_ZOMBIE;
+ if(body==2&&z->death<=0&&z->kind<Z_DUCK&&!(classic_dancer&&z->kind==Z_DANCER))asset=z->kind==Z_POLE?A_POLE_WALK:A_ZOMBIE;
+ if(z->kind==Z_DANCER&&classic_dancer)asset=z->death>0?A_CLASSIC_DANCER_DEATH:z->eating?A_CLASSIC_DANCER_EAT:A_CLASSIC_DANCER;
  const Animation *clip=stage&&damaged[asset][stage-1].loaded?&damaged[asset][stage-1]:&assets[asset];
  if(game.mini.zombie_heads[index]&&z->death<=0)clip=&assets[z->eating?A_BOT_EAT:A_BOT_WALK];
  if(z->kind==Z_BOBSLED&&z->death<=0)clip=&assets[z->eating?A_BOBSLED_EAT:game.extra.bobsled_team[index]&&game.extra.bobsled_phase[index]>=0?A_BOBSLED_SEATED:A_BOBSLED_ONFOOT];
@@ -27,11 +28,12 @@ static float zombie_eating_rate(int kind){
 }
 static int zombie_chewing_kind(int kind){return kind!=Z_GARG&&kind!=Z_ZOMBONI&&kind!=Z_CATAPULT&&kind!=Z_BUNGEE&&kind!=Z_BOSS;}
 static float zombie_visible_time(const Zombie *z,const Animation *clip){
- if(z->death>0){int style=game.polish.death_style[z-game.zombies];return style?fminf((clip->frames-1)/fmaxf(1,clip->fps),z->age*(style==DEATH_CHARRED?15:12)/fmaxf(1,clip->fps)):game_zombie_animation_time(z);}
+ if(z->death>0){int style=game.polish.death_style[z-game.zombies];return style?fminf((clip->frames-1)/fmaxf(1,clip->fps),z->age*(style==DEATH_CHARRED?15:12)/fmaxf(1,clip->fps)):classic_dancer&&z->kind==Z_DANCER?fminf(1,z->age/fmaxf(.01f,game_death_duration(z)-.6f))*(clip->frames-1)/fmaxf(1,clip->fps):game_zombie_animation_time(z);}
  int index=(int)(z-game.zombies),action=game.polish.action[index];
  if(z->kind==Z_DOLPHIN&&z->vault>0)return z->age*clip->frames/((43/24.0f)*fmaxf(1,clip->fps));
  if(action==ACTION_PAPER||action==ACTION_JACK||action==ACTION_GARG_THROW||action==ACTION_IMP_FLIGHT||action==ACTION_IMP_LAND){float rate=action==ACTION_PAPER?8:action==ACTION_JACK?28:action==ACTION_IMP_FLIGHT?18:24;return fminf((clip->frames-1)/fmaxf(1,clip->fps),game.polish.action_time[index]*rate/fmaxf(1,clip->fps));}
  if(z->eating&&z->vault<=0&&zombie_chewing_kind(z->kind))return z->age*zombie_eating_rate(z->kind)/fmaxf(1,clip->fps);
  if(z->kind==Z_GARG&&z->eating)return game.special[index]*16/fmaxf(1,clip->fps);
+ if(classic_dancer&&z->kind==Z_DANCER&&!z->eating)return z->age*clip->frames/fmaxf(1,clip->fps);
  return z->kind<Z_DUCK?game_zombie_animation_time(z):game.polish.pose[index];
 }

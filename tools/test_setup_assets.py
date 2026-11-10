@@ -17,7 +17,7 @@ def fixture(folder):
     (folder / 'manifest.json').write_text(json.dumps({
         'version': DATA_VERSION, 'disc_title_id': 'BLUS30852', 'source_iso_sha256': 'test-iso',
         'assets': [{'file': 'plant.pva'}]}), encoding='utf-8')
-    for name in ('plant.pva', 'foley.pvf', 'ending.pvj', 'ending.json', 'music0.wav', 'assets.idx', 'XMB_ICON0.PNG', 'XMB_PIC1.PNG', 'zombie_motion.bin', 'seeds.bin', 'disc_font.bin', 'strings.bin', 'almanac.bin', 'story-index.json', 'music-checks.bin'):
+    for name in ('menu-motion.bin','menu-motion.json','plant.pva', 'foley.pvf', 'ending.pvj', 'ending.json', 'music0.wav', 'assets.idx', 'XMB_ICON0.PNG', 'XMB_PIC1.PNG', 'zombie_motion.bin', 'seeds.bin', 'disc_font.bin', 'strings.bin', 'almanac.bin', 'story-index.json', 'music-checks.bin'):
         (folder / name).write_bytes(b'test fixture')
     (folder / 'shoot-alignment.bin').write_bytes(b'PPA1'+bytes.fromhex('03000000500000003c000000')+bytes(1920))
     (folder / 'music-index.json').write_text('[{"file":"music0.wav"}]', encoding='utf-8')

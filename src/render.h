@@ -24,6 +24,7 @@ void render_anim_rotated(const Animation *animation,float x,float baseline,float
 void render_background(const Animation *animation);
 void render_movie(const uint16_t *pixels);
 void render_image(const Animation *a,float x,float y,float w,float h,int frame,uint32_t tint);
+void render_image_affine(const Animation *a,const float matrix[6],uint32_t tint);
 void render_part(const Animation *a,int frame,float sx,float sy,float sw,float sh,float x,float y,float w,float h,uint32_t tint);
 int animation_load(Animation *animation,const char *filename);
 int animation_catalog_load(const char *filename);

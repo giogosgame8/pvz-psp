@@ -77,7 +77,17 @@ static int review_expansion(int n){
   for(int r=0;r<5;r++){int i=game_spawn_zombie(&game,r,(int[]){Z_PAPER,Z_JACK,Z_GARG,Z_IMP,Z_DOLPHIN}[r],300);game.frozen[i]=100;game.polish.action[i]=(int[]){ACTION_PAPER,ACTION_JACK,ACTION_GARG_THROW,ACTION_IMP_FLIGHT,0}[r];game.polish.action_time[i]=.6f;game.zombies[i].vault_from=330;game.zombies[i].vault_to=190;if(r==4)game.zombies[i].vault=1;}break;
  case 78:render_debug_frame("review0190-action-windups.ppm");for(int i=0;i<5;i++)game.polish.action_time[i]=1.2f;game.zombies[2].vaulted=1;game.polish.action[3]=ACTION_IMP_LAND;break;
  case 79:render_debug_frame("review0190-action-recovery.ppm");game_start_level(&game,9,19079);screen=1;game.spawn_timer=10000;reset_level_ui();for(int r=0;r<3;r++){int i=game_spawn_zombie(&game,r,Z_NORMAL,300);game.polish.death_style[i]=r;game.zombies[i].vault_from=27;game.zombies[i].death=2;game.zombies[i].age=.3f;}break;
- case 80:render_debug_frame("review0190-death-styles.ppm");
+ case 80:render_debug_frame("review0190-death-styles.ppm");profile_init(&player);player.highest=1;screen=11;collection_cursor=4;menu_clock=0;break;
+ case 81:render_debug_frame("review0200-extras-fresh.ppm");player.highest=15;collection_cursor=1;menu_clock=1;break;
+ case 82:render_debug_frame("review0200-extras-almanac.ppm");player.highest=25;collection_cursor=0;menu_clock=2;break;
+ case 83:render_debug_frame("review0200-extras-shop.ppm");player.highest=45;collection_cursor=2;menu_clock=3;break;
+ case 84:render_debug_frame("review0200-extras-garden.ppm");screen=0;menu_selected=0;menu_clock=0;crow_clock=.5f;break;
+ case 85:render_debug_frame("review0200-home-flight.ppm");menu_clock=2.5f;crow_clock=2.5f;break;
+ case 86:render_debug_frame("review0200-home-perched.ppm");screen=6;more_cursor=0;menu_clock=2;break;
+ case 87:render_debug_frame("review0200-modes-motion.ppm");screen=4;menu_volume_row=6;classic_dancer=1;break;
+ case 88:render_debug_frame("review0200-dancer-options.ppm");game_start_level(&game,9,20088);screen=1;game.spawn_timer=10000;reset_level_ui();for(int r=0;r<3;r++){int i=game_spawn_zombie(&game,r*2,Z_DANCER,260+r*65);game.zombies[i].age=.4f;game.zombies[i].speed=0;if(r==1){game.zombies[i].eating=1;game.zombies[i].age=.5f;}if(r==2)game.zombies[i].hp=100;}break;
+ case 89:render_debug_frame("review0200-classic-dancer.ppm");classic_dancer=0;break;
+ case 90:render_debug_frame("review0200-disco-dancer.ppm");
 if(review_ui_only){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ENDING PLAYBACK: UI-only model run; initial first/middle/final decoder checks performed; full playback rerun on Street.\n");fclose(f);}return 1;}ending_review_captured=ending_review_frames=0;ending_review_max_lag=0;if(!ending_begin(20)){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ending full synchronized playback opens after all game assets: FAIL\n");fclose(f);}test_ok=0;return 1;}break;
  default:{FILE *f=fopen("selftest.txt","a");if(f){int ok=ending_review_frames>100&&ending_review_captured==3&&ending_clock>=158;fprintf(f,"ending full synchronized playback reaches final credits: %s\nENDING PLAYBACK: %d displayed frames, maximum lag %.3f s, audio position %.3f s\n",ok?"PASS":"FAIL",ending_review_frames,ending_review_max_lag,ending_clock);fclose(f);test_ok&=ok;}return 1;}
  }return 0;

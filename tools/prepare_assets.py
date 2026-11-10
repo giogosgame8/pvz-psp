@@ -92,6 +92,15 @@ SPECS.extend([('garg_throw','Zombie_gargantuar','anim_throw',.38,''),
 for _base,_clip in [('garg_walk','anim_walk'),('garg_eat','anim_smash'),('garg_death','anim_death'),('garg_throw','anim_throw')]:
  SPECS.append((_base+'_noimp','Zombie_gargantuar',_clip,.38,dict(base=_base,omit_track=('Zombie_imp','Zombie_gargantuar_whiterope'))))
 
+# Both original dancer art sets remain on the supported PS3 disc.
+for _pose in ('walk','eat','death'):
+ _name='classic_dancer_'+_pose
+ SPECS.append((_name,'Zombie_dancer','anim_'+_pose,.48,''))
+ for _stage in ((1,2) if _pose!='death' else (2,)):
+  SPECS.append((_name+'_damage'+str(_stage),'Zombie_dancer','anim_'+_pose,.48,dict(base=_name,body=_stage)))
+for _pose in ('idle','idle2','idle3','talk','fly','land'):
+ SPECS.append(('menu_crow_'+_pose,'Crow','anim_'+_pose,.09,''))
+
 # The PSP customizer reuses owned PS3 parts; its body banks omit the head.
 _avatar_omit=('anim_head1','anim_head2','anim_hair','Zombie_mustache','zombie_eye')
 for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
@@ -245,7 +254,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         start, stop = clip_range(tracks, marker)
         # A generous source canvas handles rotation and negative source coordinates.
         def render_frame(index):
-            canvas_size=1536 if animation in ("Zombie_boss","treeofWisdom") else 768 if animation in ("Zombie_gargantuar","CrazyDave") else 384
+            canvas_size=1024 if animation=="Crow" else 1536 if animation in ("Zombie_boss","treeofWisdom") else 768 if animation in ("Zombie_gargantuar","CrazyDave") else 384
+            origin=192 if animation=="Crow" else 96
             canvas = Image.new("RGBA", (canvas_size, canvas_size))
             for name, frames in tracks:
                 if damage.get('only_track') and name not in damage['only_track']:continue
@@ -258,6 +268,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 if body>=2 and (name.startswith(("anim_head","anim_hair","anim_tongue","zombie_eye")) or
                                 (animation=="Zombie_polevaulter" and (name.lower().startswith("zombie_polevaulter_pole") or any(part in name.lower() for part in ("_innerarm","_innerhand"))))):
                     continue
+                if animation=='Zombie_dancer' and body>=2 and any(part in name.lower() for part in ('_head','_jaw','_hair','_eye')):continue
                 frame = frames[index]
                 if animation=="GatlingPea":
                     if output_name=='gatling' and (frame['f']<0 or not frame['i']):
@@ -292,7 +303,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 determinant = a * d - b * c
                 if abs(determinant) < 1e-6:
                     continue
-                tx, ty = frame["x"] + 96, frame["y"] + 96
+                tx, ty = frame["x"] + origin, frame["y"] + origin
                 inverse = (d / determinant, -b / determinant, (b * ty - d * tx) / determinant,
                            -c / determinant, a / determinant, (c * tx - a * ty) / determinant)
                 composite_affine(canvas,image,(a,b,c,d,tx,ty),inverse,frame["a"],layer_cache)
@@ -312,6 +323,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         box = union.getbbox()
         if box is None:
             raise ValueError(f"Empty animation {output_name}")
+        if animation=="Crow" and (box[0]<=0 or box[1]<=0 or box[2]>=rendered[0].width or box[3]>=rendered[0].height):
+            raise ValueError(f"Crow source canvas would crop {output_name}")
         box = (max(0, box[0] - 2), max(0, box[1] - 2), min(rendered[0].width, box[2] + 2), min(rendered[0].height, box[3] + 2))
         size = (max(1, round((box[2] - box[0]) * scale)), max(1, round((box[3] - box[1]) * scale)))
         if 'base' in damage:
@@ -326,6 +339,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
             root=output_name.split('_death')[0]
             parent=root+'_walk' if root+'_walk' in geometry else parent
         if output_name.startswith('boss_') and output_name not in ('boss_walk','boss_death') and 'boss_walk' in geometry:parent='boss_walk'
+        if output_name.startswith('classic_dancer_eat'):parent='classic_dancer_walk'
+        if output_name.startswith('menu_crow_') and output_name!='menu_crow_idle':parent='menu_crow_idle'
         if parent:
             base_box,_=geometry[parent]
             anchor=(((base_box[0]+base_box[2])*.5-box[0])*size[0]/(box[2]-box[0]),(base_box[3]-box[1])*size[1]/(box[3]-box[1]))

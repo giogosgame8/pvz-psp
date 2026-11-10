@@ -14,15 +14,15 @@ static int performance_settings_selftest(FILE *out){
  FILE *f=fopen(performance_path,"r+b");if(f){fseek(f,12,SEEK_SET);fputc(0,f);fclose(f);}psp1000_fps=30;P("damaged preference cannot enable 60 FPS",!performance_load()&&psp1000_fps==30);
  f=fopen(performance_path,"wb");if(f){fputs("short",f);fclose(f);}P("truncated settings preserve the safe setting",!performance_load()&&psp1000_fps==30);
  #ifndef LOW_MEMORY
- SceCtrlData pad;memset(&pad,0,sizeof(pad));pad.Lx=pad.Ly=128;hardware=fat;psp1000_fps=30;performance_apply();screen=4;menu_volume_row=6;previous_buttons=0;help=gallery=0;
- P("1000 Options exposes a separate frame-rate row",options_count()==8&&options_back()==7);
+ SceCtrlData pad;memset(&pad,0,sizeof(pad));pad.Lx=pad.Ly=128;hardware=fat;psp1000_fps=30;performance_apply();screen=4;menu_volume_row=7;previous_buttons=0;help=gallery=0;
+ P("1000 Options exposes a separate frame-rate row",options_count()==9&&options_back()==8);
  KEY(PSP_CTRL_RIGHT);P("Right enables 60 FPS immediately",psp1000_fps==60&&performance.target_fps==60&&screen==4);
  KEY(PSP_CTRL_CROSS);P("X restores the 30 FPS fallback immediately",psp1000_fps==30&&performance.target_fps==30);
  KEY(PSP_CTRL_LEFT);P("Left cannot cycle below 30 FPS",psp1000_fps==30);
  KEY(PSP_CTRL_RIGHT);psp1000_fps=30;P("the controller-selected 60 FPS setting is saved",performance_load()&&psp1000_fps==60);
  P("changing render targets never resets the current level",!memcmp(&game,&original,sizeof(game)));
- KEY(PSP_CTRL_DOWN);P("Down reaches Back after the new option",menu_volume_row==7);options_return=0;KEY(PSP_CTRL_CROSS);P("Back still closes Options",screen==0);
- hardware=street;P("other PSP models keep the existing compact Options",options_count()==7&&options_back()==6);
+ KEY(PSP_CTRL_DOWN);P("Down reaches Back after the new option",menu_volume_row==8);options_return=0;KEY(PSP_CTRL_CROSS);P("Back still closes Options",screen==0);
+ hardware=street;P("other PSP models keep the existing compact Options",options_count()==8&&options_back()==7);
  #endif
  remove(performance_path);performance_path=old_path;performance_log=old_log;hardware=old_hardware;psp1000_fps=old_fps;performance_dirty=old_dirty;performance_apply();screen=old_screen;menu_volume_row=old_row;previous_buttons=0;volume_repeat=0;
  #undef KEY

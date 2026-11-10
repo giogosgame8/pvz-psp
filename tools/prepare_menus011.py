@@ -82,6 +82,8 @@ def prepare_menus011(imported,destination,previews,write_pva):
  save('shop_icons',icons)
  # Generic blast clouds use particle art and never include a Cherry Bomb plant.
  dust=im('particles/dust_puffs.ptx');save('impact_dust',[dust.crop((i*24,0,(i+1)*24,27)) for i in range(4)],12)
+ from prepare_menu_scene020 import prepare_menu_scene
+ assets.extend(prepare_menu_scene(imported,destination,write_pva))
  return assets
 
 if __name__=='__main__':
