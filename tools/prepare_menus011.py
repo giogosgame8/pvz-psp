@@ -2,6 +2,7 @@
 from pathlib import Path
 import math,json
 from PIL import Image
+from affine_render import AffineLayerCache,composite_affine,render_frames
 
 def prepare_menus011(imported,destination,previews,write_pva):
  from prepare_assets import frames_from_xml
@@ -30,6 +31,7 @@ def prepare_menus011(imported,destination,previews,write_pva):
   src=Image.open(p).convert('RGBA');kx,ky=map(math.radians,(f['kx'],f['ky']));a,b=math.cos(kx)*f['sx'],-math.sin(ky)*f['sy'];c,d=math.sin(kx)*f['sx'],math.cos(ky)*f['sy'];det=a*d-b*c
   if abs(det)<1e-8:continue
   layers.append((n,f,src,(a,b,c,d,det)))
+ layer_cache=AffineLayerCache()
  def page(offset,selected,adventure='adventure'):
   out=Image.new('RGBA',(1280,720))
   for n,f,src,(a,b,c,d,det) in layers:
@@ -39,13 +41,11 @@ def prepare_menus011(imported,destination,previews,write_pva):
     if suffix!=(' selected' if base==selected else ''):continue
    x,y=f['x']-offset,f['y']
    if x>1300 or x+src.width*abs(a)+src.height*abs(b)<-20:continue
-   layer=src.transform(out.size,Image.Transform.AFFINE,(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det),resample=Image.Resampling.BICUBIC)
-   if f['a']<1:layer.putalpha(layer.getchannel('A').point(lambda v:round(v*f['a'])))
-   out.alpha_composite(layer)
+   composite_affine(out,src,(a,b,c,d,x,y),(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det),f['a'],layer_cache)
   return out.resize((480,272),Image.Resampling.LANCZOS)
- save('menu_main',[page(1360,s,a) for a in ('adventure','start adventure') for s in (a,'more ways','more','help','player name')])
- save('menu_modes',[page(0,s) for s in ('minigames button','puzzle button','survival button','back stone button')])
- save('menu_collection',[page(2560,s) for s in ('shop button','almanac button','zengardenbutton','mail button','back ball button')])
+ save('menu_main',render_frames(lambda args:page(*args),[(1360,s,a) for a in ('adventure','start adventure') for s in (a,'more ways','more','help','player name')]))
+ save('menu_modes',render_frames(lambda s:page(0,s),('minigames button','puzzle button','survival button','back stone button')))
+ save('menu_collection',render_frames(lambda s:page(2560,s),('shop button','almanac button','zengardenbutton','mail button','back ball button')))
  # Original nine-piece stone dialog and three-piece stone button.
  def panel(width,height):
   out=Image.new('RGBA',(width,height));xs=[0,34,width-34];ys=[0,31,height-18];ws=[34,width-68,34];hs=[31,height-49,18]

@@ -19,7 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageChops
-from affine_render import composite_affine, render_frames
+from affine_render import AffineLayerCache, composite_affine, render_frames
 from prepared_data import DATA_VERSION,write_catalog,write_launcher_images,write_integrity
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -221,7 +221,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     if previews:
         previews.mkdir(parents=True, exist_ok=True)
     assets = []
-    geometry={}
+    geometry={};layer_cache=AffineLayerCache()
     print('Stage: garden animations' if animations_only else 'Stage: plant and zombie animations', flush=True)
     flag_fps,flag_tracks=frames_from_xml(files['reanim/zombie_flagpole.reanim'])
     def matrix(frame):
@@ -236,7 +236,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     def draw_matrix(canvas,im,m,alpha=1):
         a,b,c,d,x,y=m;inverse=invert((a,b,c,d,x+96,y+96))
         ia,ib,ic,id,ix,iy=inverse
-        composite_affine(canvas,im,(a,b,c,d,x+96,y+96),(ia,ib,ix,ic,id,iy),alpha)
+        composite_affine(canvas,im,(a,b,c,d,x+96,y+96),(ia,ib,ix,ic,id,iy),alpha,layer_cache)
     for output_name, animation, marker, scale, equipment in SPECS:
         damage=equipment if isinstance(equipment,dict) else {}
         gear=damage.get("gear",equipment)
@@ -295,7 +295,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 tx, ty = frame["x"] + 96, frame["y"] + 96
                 inverse = (d / determinant, -b / determinant, (b * ty - d * tx) / determinant,
                            -c / determinant, a / determinant, (c * tx - a * ty) / determinant)
-                composite_affine(canvas,image,(a,b,c,d,tx,ty),inverse,frame["a"])
+                composite_affine(canvas,image,(a,b,c,d,tx,ty),inverse,frame["a"],layer_cache)
                 if gear=="flag" and name=="Zombie_flaghand":
                     overlay=multiply(matrix(frame),invert(matrix(frames[0])))
                     for child_name,child_frames in flag_tracks:
@@ -336,6 +336,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         if previews:
             baked[0].resize((size[0] * 4, size[1] * 4)).save(previews / (output_name + ".png"))
         print(f"Prepared {output_name}: {len(baked)} frames, {size[0]}x{size[1]}", flush=True)
+    print(f'Layer reuse: {layer_cache.hits} hits, {layer_cache.misses} renders',flush=True)
+    layer_cache.clear()
     if animations_only:
         (destination/'animations.json').write_text(json.dumps(assets,indent=2))
         return assets

@@ -3,7 +3,8 @@ from pathlib import Path
 import math,re,struct,zlib,array
 from PIL import Image,ImageChops,ImageDraw
 from prepare_almanac import PLANT_KEYS
-from texture_layout import untile_rgba4444
+from texture_layout import untile_rgba4444,unpack_rgba4444
+from affine_render import AffineLayerCache,composite_affine,render_frames
 
 
 def first_prepared_frame(path):
@@ -13,9 +14,7 @@ def first_prepared_frame(path):
     off,length=struct.unpack_from('<II',b,40)
     raw=zlib.decompress(b[40+8*n+off:40+8*n+off+length])
     if magic==b'PVA4':raw=untile_rgba4444(raw,tw,th)
-    values=array.array('H',raw)
-    rgba=bytes(v for p in values for v in ((p&15)*17,((p>>4)&15)*17,((p>>8)&15)*17,((p>>12)&15)*17))
-    return Image.frombytes('RGBA',(tw,th),rgba).crop((0,0,w,h))
+    return unpack_rgba4444(raw,tw,th).crop((0,0,w,h))
 
 def prepare_features09(imported,destination,previews,write_pva):
     from prepare_assets import frames_from_xml,clip_range
@@ -28,16 +27,15 @@ def prepare_features09(imported,destination,previews,write_pva):
         i=int(pos);f=frames[min(i,len(frames)-1)].copy();n=frames[min(i+1,len(frames)-1)];t=pos-i
         for k in ('x','y','kx','ky','sx','sy','a'):f[k]+=(n[k]-f[k])*t
         return f
-    textures={}
+    textures={};layer_cache=AffineLayerCache()
     def draw(canvas,f):
         if f['f']<0 or f['a']<=0 or not f['i']:return
         key='reanim/'+f['i'].lower().removeprefix('image_reanim_')+'.ptx'
         if key not in textures:textures[key]=im(key)
         image=textures[key];kx,ky=map(math.radians,(f['kx'],f['ky']));a,b=math.cos(kx)*f['sx'],-math.sin(ky)*f['sy'];c,d=math.sin(kx)*f['sx'],math.cos(ky)*f['sy'];det=a*d-b*c
         if abs(det)<1e-7:return
-        x,y=f['x']+96,f['y']+96;layer=image.transform(canvas.size,Image.Transform.AFFINE,(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det),resample=Image.Resampling.BICUBIC)
-        if f['a']<1:layer.putalpha(layer.getchannel('A').point(lambda v:round(v*f['a'])))
-        canvas.alpha_composite(layer)
+        x,y=f['x']+96,f['y']+96
+        composite_affine(canvas,image,(a,b,c,d,x,y),(d/det,-b/det,(b*y-d*x)/det,-c/det,a/det,(c*x-a*y)/det),f['a'],layer_cache)
     alignment=[]
     for prefix,source,rate in [('pea','PeaShooterSingle',35),('repeater','PeaShooter',45),('snow','SnowPea',35)]:
         _,tracks=frames_from_xml(files['reanim/'+source.lower()+'.reanim']);clips={}
@@ -49,15 +47,15 @@ def prepare_features09(imported,destination,previews,write_pva):
             idle=sample(face,79+min(24,n/60*18))
             alignment.extend(((idle['x']-origin['x'])*.66,(idle['y']-origin['y'])*.66))
         for mode,start,playrate,part in [('idle',79,18,'all'),('body',79,18,'body'),('head',79,18,'head'),('fire',54,rate,'head'),('shoot',54,rate,'all')]:
-            frames=[];count=math.ceil(24/playrate*60)+(mode in ('fire','shoot'))
-            for n in range(count):
+            count=math.ceil(24/playrate*60)+(mode in ('fire','shoot'))
+            def render(n):
                 canvas=Image.new('RGBA',(384,384));pos=min(24,n/60*playrate)
                 for name,keys in tracks:
                     body=any(v in name.lower() for v in ('backleaf','frontleaf','stalk','stem'))
                     if (part=='body' and not body) or (part=='head' and body):continue
                     draw(canvas,sample(keys,(79 if body else start)+pos))
-                frames.append(canvas)
-            clips[mode]=frames
+                return canvas
+            clips[mode]=render_frames(render,range(count))
         union=Image.new('L',(384,384))
         for frames in clips.values():
             for f in frames:union=ImageChops.lighter(union,f.getchannel('A'))

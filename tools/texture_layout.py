@@ -22,6 +22,14 @@ def tile_rgba4444(raw,width,height):
    for dy in range(8):
     start=(y+dy)*row+x;dest[at:at+16]=source[start:start+16];at+=16
  return bytes(out)
+
+def unpack_rgba4444(raw,width,height):
+ """Decode both interleaved bytes with compiled, exact nibble lookup tables."""
+ from PIL import Image
+ if width<1 or height<1 or len(raw)!=width*height*2:raise ValueError('Invalid linear texture')
+ lower,upper=Image.frombytes('LA',(width,height),raw).split()
+ low=[(v&15)*17 for v in range(256)];high=[(v>>4)*17 for v in range(256)]
+ return Image.merge('RGBA',(lower.point(low),lower.point(high),upper.point(low),upper.point(high)))
 def untile_rgba4444(raw,width,height):
  row=width*2;blocks=width//8;out=bytearray(len(raw));dest=memoryview(out);source=memoryview(raw)
  for y in range(height):

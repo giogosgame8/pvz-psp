@@ -9,10 +9,16 @@ from PIL import Image
 from prepare_assets import write_pva
 from prepare_features09 import first_prepared_frame
 from reanim_scene import Scene
-from texture_layout import pack_rgba4444
+from texture_layout import pack_rgba4444,unpack_rgba4444
 
 
 class PresentationPreparationTests(unittest.TestCase):
+    def test_compiled_decoding_roundtrips_every_16_bit_pixel_value(self):
+        raw=b''.join(struct.pack('<H',value) for value in range(65536))
+        image=unpack_rgba4444(raw,256,256)
+        self.assertEqual(pack_rgba4444(image),raw)
+        self.assertEqual(image.getpixel((52,18)),(68,51,34,17))
+
     def test_fast_texture_packing_matches_reference_for_all_channel_values(self):
         rng=random.Random(185)
         pixels=[tuple((v if channel==fixed else rng.randrange(256)) for channel in range(4))
