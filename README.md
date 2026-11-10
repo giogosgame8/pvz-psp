@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.20.0/PvZ-PSP-0.20.0.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.20.1/PvZ-PSP-0.20.1.zip)**
 
 ## What you need
 
@@ -22,10 +22,10 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
-Updating? Extract this ZIP over your existing PC setup folder and run Setup.exe.
-Version 0.20.0 rebuilds the game files for animated menus and the dancer choice. Copy **EBOOT.PBP and
-data together** to your PSP, keeping your save files. Back up saves first:
-the gameplay save format is unchanged from 0.19.0.
+Updating from **0.20.0**? Only replace **EBOOT.PBP**; the data files are unchanged.
+Updating from an older version? Extract this ZIP over your PC setup folder, run
+Setup.exe, then copy **EBOOT.PBP and data together**, keeping your save files.
+Back up saves first. The gameplay save format is unchanged from 0.19.0.
 Repeat setup runs verify and reuse compatible files instead of rebuilding them.
 
 ## Good to know

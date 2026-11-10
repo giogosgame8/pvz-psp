@@ -1,4 +1,4 @@
-# ISO content audit, 10 November 2026 (0.20.0)
+# ISO content audit, 10 November 2026 (0.20.1)
 
 This audits the current native PSP implementation against locally extracted
 resources and the project's PS3 comparison records. It is not an exhaustive
@@ -40,6 +40,10 @@ a crow, and hidden locked Extras entries. Backup dancers retain their current
 artwork. First-time setup graphics stages were optimized; total setup timings
 remain variable. See the [completion review](reference/COMPLETION-0.20.0.md) and
 [first-setup measurements](reference/SETUP-SPEED-0.20.0.md).
+
+0.20.1 removes Animation Gallery from the player-facing Credits menu. The
+Almanac remains available. The [feature and test backlog](reference/FEATURE-BACKLOG.md)
+lists 40 known additions, matching tasks and acceptance work.
 
 The supported PS3 disc does not contain the original GOTY Zombatar
 creator resources; this addition does not reproduce that complete asset set.

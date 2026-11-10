@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.20.0 animated menus and dancer choice"
+#define BUILD018_LABEL "PvZ PSP 0.20.1 compact credits menu"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -546,9 +546,8 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_CIRCLE)screen=21;return;
     }
     if(screen==20){
-        if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT))credits_cursor=(credits_cursor+2)%3;
-        if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT))credits_cursor=(credits_cursor+1)%3;
-        if(pressed&PSP_CTRL_CROSS){if(credits_cursor==0)ending_begin(20);else if(credits_cursor==1)gallery_open();else screen=4;}
+        if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT|PSP_CTRL_DOWN|PSP_CTRL_RIGHT))credits_cursor=(credits_cursor+1)%2;
+        if(pressed&PSP_CTRL_CROSS){if(credits_cursor==0)ending_begin(20);else screen=4;}
         if(pressed&PSP_CTRL_CIRCLE)screen=4;return;
     }
     if(screen==2){
