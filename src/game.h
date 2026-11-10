@@ -5,6 +5,7 @@
 #include "minigame_state.h"
 #include "extra_state.h"
 #include "polish_state.h"
+#include "completion_state.h"
 #include "foley_defs.h"
 /* Transient presentation hook, excluded from every saved Game layout. */
 void game_sound_listener(void (*listener)(int event));
@@ -40,7 +41,7 @@ enum { MODE_LAWN, MODE_BOWLING, MODE_CONVEYOR, MODE_WHACK, MODE_VASE, MODE_BUNGE
 #define GIANT_NUT 50
 #define LEFT_PACKET 51
 enum { PLAYING, WON, LOST };
-enum { REWARD_SEED,REWARD_SHOVEL,REWARD_ALMANAC,REWARD_KEYS,REWARD_TACO,REWARD_WATERING_CAN,REWARD_NOTE,REWARD_TROPHY,REWARD_SILVER_SUNFLOWER };
+enum { REWARD_SEED,REWARD_SHOVEL,REWARD_ALMANAC,REWARD_KEYS,REWARD_TACO,REWARD_WATERING_CAN,REWARD_NOTE,REWARD_TROPHY,REWARD_SILVER_SUNFLOWER,REWARD_MONEY_BAG };
 enum { LEVEL_READY=1, LEVEL_TUTORIAL_COMPLETE=2, LEVEL_REWARD_COLLECTED=4 };
 enum { SFX_PLANT, SFX_SHOOT, SFX_SUN, SFX_CHOMP, SFX_EXPLODE, SFX_ZOMBIE, SFX_MOWER, SFX_WIN, SFX_COUNT };
 
@@ -88,6 +89,7 @@ typedef struct {
     ExtraState extra;
     uint32_t legacy_pad10;
     PolishState polish;
+    CompletionState completion;
 } Game;
 
 extern const char *seed_names[ALL_SEEDS];
@@ -137,6 +139,11 @@ int game_zombie_cost(int kind);
 extern const char *puzzle_names[20];
 void game_init(Game *g, uint32_t seed);
 void game_start_level(Game *g,int level,uint32_t seed);
+void game_start_adventure(Game *g,int level,uint32_t seed,uint32_t run);
+void game_restart_adventure(Game *g);
+int game_seed_locked(const Game *g,int kind);
+int game_seed_slot(const Game *g,int slot);
+int game_spawn_giga(Game *g,int row,float x);
 int game_next_level(Game *g);
 int game_row_active(const Game *g,int row);
 int game_seed_available(const Game *g,int kind);
@@ -163,4 +170,5 @@ int game_audio018_selftest(FILE*);
 int game_campaign_selftest(FILE *out);
 int game_save(const Game *g, const char *filename);
 int game_load(Game *g, const char *filename);
+int game_load_backup_used(void);
 #endif

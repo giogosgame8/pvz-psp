@@ -23,8 +23,10 @@ def align_zombie_clips(destination,specs,geometry,assets):
         box,size=geometry[name];ref,_=geometry[families[source]]
         anchor=(((ref[0]+ref[2])*.5-box[0])*size[0]/(box[2]-box[0]),(ref[3]-box[1])*size[1]/(box[3]-box[1]))
         patch(name,anchor)
-    for action in ('walk','eat'):
-        anchor=struct.unpack_from('<2f',(destination/('avatar_body_'+action+'.pva')).read_bytes(),32)
+    for action in ('walk','eat','dance'):
+        base='zombie_dance' if action=='dance' else 'avatar_body_'+action
+        if not (destination/(base+'.pva')).exists():continue
+        anchor=struct.unpack_from('<2f',(destination/(base+'.pva')).read_bytes(),32)
         for path in destination.glob('avatar_*_'+action+'.pva'):patch(path.stem,anchor)
     for asset in assets:
         if asset['file'][:-4] in changed:asset['sha256']=hashlib.sha256((destination/asset['file']).read_bytes()).hexdigest()

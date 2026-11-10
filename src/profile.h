@@ -10,8 +10,9 @@ enum { SHOP_GATLING,SHOP_TWIN,SHOP_GLOOM,SHOP_CATTAIL,SHOP_WINTER,SHOP_GOLDMAGNE
 #define CHALLENGE_MIGRATED (UINT64_C(1)<<59)
 enum { STORE_MINI=64,STORE_PUZZLE=128,STORE_SURVIVAL=256 };
 enum { STORE_POOL=1,STORE_ROOF=2,STORE_FIRST_AID=4,STORE_RAKE=8,STORE_GARDEN=16,STORE_CHOCOLATE=32 };
+enum { COS_FUTURE=1,COS_MUSTACHE=2,COS_TRICKED=4,COS_DAISIES=8,COS_PINATA=16,COS_DANCE=32,COS_SUKHBIR=64 };
 typedef struct { uint32_t id,total; } CoinCheckpoint;
-typedef struct {uint32_t money,purchases[SHOP_ITEMS],highest,adventure_finished,next_session,seen_zombies;uint64_t seen_plants;CoinCheckpoint credited[16];uint32_t journal_next;uint32_t mini_trophies;GardenState garden;} Profile;
+typedef struct {uint32_t money,purchases[SHOP_ITEMS],highest,adventure_finished,next_session,seen_zombies;uint64_t seen_plants;CoinCheckpoint credited[16];uint32_t journal_next;uint32_t mini_trophies;GardenState garden;CompletionProfile completion;} Profile;
 enum { SHOP_VISIBLE_COUNT=28 };
 extern const int shop_visible_items[SHOP_VISIBLE_COUNT];
 extern const char *shop_item_names[SHOP_ITEMS];
@@ -23,5 +24,12 @@ int profile_item_available(const Profile *p,int item);
 int profile_purchase(Profile *p,int item);
 int profile_save(const Profile *p,const char *path);
 int profile_load(Profile *p,const char *path);
+int profile_load_backup_used(void);
 int profile_selftest(FILE *out);
+int profile_trophy_count(const Profile *p);
+int profile_gold_eligible(const Profile *p);
+int profile_apply_code(Profile *p,const char *code);
+int profile_collect_gold(Profile *p);
+int profile_choose_house(Profile *p,int choice);
+int profile_house_tier(const Profile *p);
 #endif

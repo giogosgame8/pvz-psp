@@ -120,7 +120,7 @@ static int chapter_zombie(Game *g,int i,float dt){
     if(z->kind==Z_JACK){g->special[i]+=dt;if(g->special[i]>12){g->polish.action[i]=ACTION_JACK;g->polish.action_time[i]=0;z->eating=0;cue(GAME_SAMPLE(FX_BOING));return 1;}}
     if(z->kind==Z_ZOMBONI){for(int c=0;c<COLS;c++)if(plant_x(c)>z->x)g->ice_tiles[z->row][c]=30;}
     if(z->kind==Z_CATAPULT&&z->x>360){g->special[i]-=dt;z->age+=dt;if(g->special[i]<=0){g->special[i]=3;cue(FOLEY_BASKETBALL);for(int c=0;c<COLS;c++)if(g->plants[z->row][c].kind>=0){if(nearby_umbrella(g,z->row,c))cue(FOLEY_UMBRELLA);if(!nearby_umbrella(g,z->row,c)){g->plants[z->row][c].hp-=75;if(g->plants[z->row][c].hp<=0)g->plants[z->row][c].kind=-1;}break;}}return 1;}
-    if(z->kind==Z_GARG&&z->hp<1500&&!z->vaulted){g->polish.action[i]=ACTION_GARG_THROW;g->polish.action_time[i]=0;g->special[i]=0;z->eating=0;return 1;}
+    if(z->kind==Z_GARG&&z->hp<(g->completion.giga[i]?3000:1500)&&!z->vaulted){g->polish.action[i]=ACTION_GARG_THROW;g->polish.action_time[i]=0;g->special[i]=0;z->eating=0;return 1;}
     return 0;
 }
 #include "boss_rules.inc"

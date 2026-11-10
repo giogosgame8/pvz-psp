@@ -10,14 +10,16 @@ static const Animation *zombie_visible_clip(const Zombie *z,int index,int *body_
  if(z->kind==Z_FLAG&&z->death<=0)asset=z->eating?A_FLAG_EAT:A_FLAG_WALK;
  if(z->kind>=Z_DUCK)asset=A_DUCK_WALK+(z->kind-Z_DUCK)*3+(z->death>0?2:z->eating?1:0);
  int body=(game.level==25||game_mini_active(&game,MINI_LITTLE))?0:game_zombie_body_stage(z),stage=z->armor>0&&z->death<=0?game_zombie_armor_stage(z):body;
+ if((game.completion.cosmetics&COS_DANCE)&&z->kind<=Z_BUCKET&&!z->eating&&z->death<=0&&body<2)asset=z->kind==Z_CONE&&z->armor>0?A_CONE_DANCE:z->kind==Z_BUCKET&&z->armor>0?A_BUCKET_DANCE:A_ZOMBIE_DANCE;
  if(body==2&&z->death<=0&&z->kind<Z_DUCK&&!(classic_dancer&&z->kind==Z_DANCER))asset=z->kind==Z_POLE?A_POLE_WALK:A_ZOMBIE;
  if(z->kind==Z_DANCER&&classic_dancer)asset=z->death>0?A_CLASSIC_DANCER_DEATH:z->eating?A_CLASSIC_DANCER_EAT:A_CLASSIC_DANCER;
  const Animation *clip=stage&&damaged[asset][stage-1].loaded?&damaged[asset][stage-1]:&assets[asset];
  if(game.mini.zombie_heads[index]&&z->death<=0)clip=&assets[z->eating?A_BOT_EAT:A_BOT_WALK];
  if(z->kind==Z_BOBSLED&&z->death<=0)clip=&assets[z->eating?A_BOBSLED_EAT:game.extra.bobsled_team[index]&&game.extra.bobsled_phase[index]>=0?A_BOBSLED_SEATED:A_BOBSLED_ONFOOT];
  if(z->kind==Z_GARG&&z->vaulted)clip=&assets[z->death>0?A_GARG_DEATH_NOIMP:z->eating?A_GARG_EAT_NOIMP:A_GARG_WALK_NOIMP];
+ if(game.completion.giga[index])clip=&assets[z->death>0?(z->vaulted?A_GIGA_DEATH_NOIMP:A_GIGA_DEATH):z->eating?(z->vaulted?A_GIGA_EAT_NOIMP:A_GIGA_EAT):(z->vaulted?A_GIGA_WALK_NOIMP:A_GIGA_WALK)];
  int action=game.polish.action[index];
- if(z->death<=0){if(action==ACTION_PAPER)clip=&assets[A_PAPER_GASP];else if(action==ACTION_JACK)clip=&assets[A_JACK_POP];else if(action==ACTION_GARG_THROW)clip=&assets[z->vaulted?A_GARG_THROW_NOIMP:A_GARG_THROW];else if(action==ACTION_IMP_FLIGHT)clip=&assets[A_IMP_THROWN];else if(action==ACTION_IMP_LAND)clip=&assets[A_IMP_LAND];else if(z->kind==Z_DOLPHIN&&z->vault>0)clip=&assets[A_DOLPHIN_JUMP];}
+ if(z->death<=0){if(action==ACTION_PAPER)clip=&assets[A_PAPER_GASP];else if(action==ACTION_JACK)clip=&assets[A_JACK_POP];else if(action==ACTION_GARG_THROW)clip=&assets[game.completion.giga[index]?(z->vaulted?A_GIGA_THROW_NOIMP:A_GIGA_THROW):(z->vaulted?A_GARG_THROW_NOIMP:A_GARG_THROW)];else if(action==ACTION_IMP_FLIGHT)clip=&assets[A_IMP_THROWN];else if(action==ACTION_IMP_LAND)clip=&assets[A_IMP_LAND];else if(z->kind==Z_DOLPHIN&&z->vault>0)clip=&assets[A_DOLPHIN_JUMP];}
  if(z->death>0){if(game.polish.death_style[index]==DEATH_CHARRED)clip=&assets[A_ZOMBIE_CHARRED];else if(game.polish.death_style[index]==DEATH_WATER)clip=&assets[A_ZOMBIE_WATERDEATH];}
  if(body_result)*body_result=body;return clip;
 }
@@ -34,6 +36,7 @@ static float zombie_visible_time(const Zombie *z,const Animation *clip){
  if(action==ACTION_PAPER||action==ACTION_JACK||action==ACTION_GARG_THROW||action==ACTION_IMP_FLIGHT||action==ACTION_IMP_LAND){float rate=action==ACTION_PAPER?8:action==ACTION_JACK?28:action==ACTION_IMP_FLIGHT?18:24;return fminf((clip->frames-1)/fmaxf(1,clip->fps),game.polish.action_time[index]*rate/fmaxf(1,clip->fps));}
  if(z->eating&&z->vault<=0&&zombie_chewing_kind(z->kind))return z->age*zombie_eating_rate(z->kind)/fmaxf(1,clip->fps);
  if(z->kind==Z_GARG&&z->eating)return game.special[index]*16/fmaxf(1,clip->fps);
+ if((game.completion.cosmetics&COS_DANCE)&&z->kind<=Z_BUCKET&&!z->eating&&game_zombie_body_stage(z)<2)return z->age*clip->frames/fmaxf(1,clip->fps);
  if(classic_dancer&&z->kind==Z_DANCER&&!z->eating)return z->age*clip->frames/fmaxf(1,clip->fps);
  return z->kind<Z_DUCK?game_zombie_animation_time(z):game.polish.pose[index];
 }

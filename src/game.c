@@ -1,3 +1,4 @@
+#include "save_file.h"
 #include "game.h"
 #include <math.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 #include "legacy_09.h"
 _Static_assert(sizeof(Legacy09)==36424,"0.9 save layout");
 _Static_assert(offsetof(Game,polish)==42480,"version 10 complete prefix");
+_Static_assert(offsetof(Game,completion)==44424,"version 11 complete prefix");
 #include "profile.h"
 #include "death_data.h"
 
@@ -90,8 +92,7 @@ float game_zombie_animation_time(const Zombie *z){
 }
 
 static const int seed_unlock[ALL_SEEDS]={1,2,4,3,6,7,8,9,11,12,13,14,16,17,18,19,21,22,23,24,26,27,28,29,31,32,33,34,36,37,38,39,41,42,43,44,46,47,48,49,99,99,99,99,99,99,99,99,99};
-static const int zombie_value[Z_TYPES]={1,2,4,2,1,2,4,7,5,1,1,3,7,3,3,3,2,4,2,4,3,4,5,10,1,20};
-static const int zombie_weight[Z_TYPES]={4000,4000,3000,2000,0,1000,1000,1000,1000,0,2000,2000,1000,500,1500,1000,2000,1000,1000,0,1000,1000,1000,1500,0,0};
+#include "zombie_spawn_data.h"
 int game_zombie_allowed(int level,int kind){
     return kind>=0&&kind<Z_TYPES&&kind!=Z_FLAG&&kind!=Z_BACKUP&&level>=1&&level<=50&&campaign_allowed[kind][level-1];
 }
@@ -102,19 +103,55 @@ static int allowed_in_game(const Game *g,int kind){
     if(g->mini.id)return mini_allowed(g,kind);
     if(g->challenge==1)return kind==Z_NORMAL||kind==Z_CONE||kind==Z_BUCKET||kind==Z_PAPER||kind==Z_DOOR;
     if(g->challenge==2)return kind==Z_NORMAL||kind==Z_CONE||kind==Z_BUCKET;
+    if(kind==Z_YETI)return g->completion.adventure_run&&(g->completion.adventure_run>=2||g->level>40)&&g->level!=40;
     return game_zombie_allowed(g->level,kind);
 }
 int game_flag_wave(const Game *g,int index){
     if(g->mode==MODE_VASE||g->mode==MODE_BOSS)return 0;
     int span=g->mode==MODE_WHACK?g->num_waves:g->num_waves<10?g->num_waves:10;
-    return g->level!=1&&index>=0&&index<g->num_waves&&index%span==span-1;
+    return (g->level!=1||g->completion.adventure_run)&&index>=0&&index<g->num_waves&&index%span==span-1;
+}
+/* Supporting reconstruction interprets the flag-scaled caps; values and
+   first-allowed waves themselves are checked against the owned PS3 table. */
+static int flag_curve(int flags,int start,int end,int low,int high){if(flags<=start)return low;if(flags>=end)return high;return low+(high-low)*(flags-start)/(end-start);}
+static int spawn_first_wave(const Game *g,int kind){
+    int first=zombie_first_wave[kind];
+    if(game_mini_active(g,MINI_BOBSLED)||game_mini_active(g,MINI_POGO))return 1;
+    if(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS){first-=flag_curve(g->extra.flags,18,50,0,15);if(first<1)first=1;}
+    return first;
+}
+static int garg_pick_weight(const Game *g,int wave,int giga){
+    if(wave+1<spawn_first_wave(g,Z_GARG))return 0;
+    if(giga?!g->completion.giga_allowed:!allowed_in_game(g,Z_GARG))return 0;
+    if(!giga&&g->extra.category==EXTRA_SURVIVAL&&!(g->extra.allowed_zombies&(1u<<Z_GARG)))return 0;
+    int weight=giga?6000:zombie_weight[Z_GARG];
+    if(g->extra.category!=EXTRA_SURVIVAL)return giga?0:weight;
+    int flag=game_flag_wave(g,wave),count=0,limit=flag_curve(g->extra.flags,10,50,2,50);
+    if(giga){limit=flag?flag_curve(g->extra.flags,14,100,1,50):flag_curve(g->extra.flags,10,110,1,50);if(!flag)weight=1000;}
+    for(int w=0;w<=wave;w++)if(w==wave||(giga&&!flag&&!game_flag_wave(g,w)))for(int n=0;n<g->wave_count[w];n++)
+        count+=g->wave_types[w][n]==Z_GARG&&!!g->completion.wave_giga[w][n]==giga;
+    return count<limit?weight:0;
+}
+static int wave_pick_weight(const Game *g,int wave,int kind){
+    if(kind==Z_GARG)return garg_pick_weight(g,wave,0)+garg_pick_weight(g,wave,1);
+    if(wave+1<spawn_first_wave(g,kind))return 0;
+    int weight=zombie_weight[kind];
+    if(g->extra.category==EXTRA_SURVIVAL){
+        if(g->extra.difficulty==SURVIVAL_ENDLESS&&kind==Z_BUNGEE&&!game_flag_wave(g,wave))return 0;
+        if(kind==Z_NORMAL)weight=flag_curve(g->extra.flags,10,50,weight,weight/10);
+        else if(kind==Z_CONE)weight=flag_curve(g->extra.flags,10,50,weight,weight/4);
+        else if(kind==Z_ZOMBONI){int count=0;for(int n=0;n<g->wave_count[wave];n++)count+=g->wave_types[wave][n]==kind;if(count>=flag_curve(g->extra.flags,10,50,2,50))return 0;}
+    }return weight;
 }
 static void put_wave(Game *g,int wave,int kind,int *points,int *counts){
     int *count=&g->wave_count[wave];if(*count>=WAVE_CAPACITY)return;
-    g->wave_types[wave][(*count)++]=kind;*points-=zombie_value[kind];counts[kind]++;
+    int giga=0;if(kind==Z_GARG){int normal_weight=garg_pick_weight(g,wave,0),red_weight=garg_pick_weight(g,wave,1),total=normal_weight+red_weight;if(!total)return;giga=red_weight&&(!normal_weight||random_next(g)%(uint32_t)total>=(uint32_t)normal_weight);}
+    int entry=(*count)++;g->wave_types[wave][entry]=kind;g->completion.wave_giga[wave][entry]=giga;
+    *points-=zombie_value[kind];counts[kind]++;
 }
 static void plan_waves(Game *g){
     int introduced=g->level==3?Z_CONE:g->level==6?Z_POLE:g->level==8?Z_BUCKET:g->level==11?Z_PAPER:g->level==13?Z_DOOR:g->level==16?Z_FOOTBALL:g->level==18?Z_DANCER:-1;
+    memset(g->completion.wave_giga,0,sizeof(g->completion.wave_giga));
     for(int w=0;w<g->num_waves;w++){
         int points=w/3+1,counts[Z_TYPES]={0};
         if(g->extra.category==EXTRA_SURVIVAL&&(g->extra.stage||g->extra.difficulty==SURVIVAL_ENDLESS))points=(g->extra.stage*g->num_waves+w+(g->extra.difficulty==SURVIVAL_ENDLESS?10:0))*2/5+1;
@@ -129,10 +166,10 @@ static void plan_waves(Game *g){
         if(g->level%10==0)points*=3;
         if(!g->challenge&&introduced>=0&&(w==g->num_waves/2||w==g->num_waves-1))put_wave(g,w,introduced,&points,counts);
         if(w==g->num_waves-1)for(int k=0;k<Z_TYPES;k++)
-            if(allowed_in_game(g,k)&&counts[k]==0)put_wave(g,w,k,&points,counts);
+            if(k!=Z_YETI&&allowed_in_game(g,k)&&counts[k]==0)put_wave(g,w,k,&points,counts);
         while(points>0&&g->wave_count[w]<WAVE_CAPACITY){
             int weights[Z_TYPES]={0},total=0;
-            for(int k=0;k<Z_TYPES;k++)if(allowed_in_game(g,k)&&zombie_value[k]<=points&&(k!=Z_POLE||w>=4))total+=(weights[k]=zombie_weight[k]);
+            for(int k=0;k<Z_TYPES;k++)if(allowed_in_game(g,k)&&zombie_value[k]<=points)total+=(weights[k]=wave_pick_weight(g,w,k));
             if(!total){put_wave(g,w,Z_NORMAL,&points,counts);continue;}
             int pick=(int)(random_next(g)%(uint32_t)total),kind=0;
             for(;kind<Z_TYPES-1;kind++){if(pick<weights[kind])break;pick-=weights[kind];}
@@ -180,6 +217,7 @@ void game_start_level(Game *g,int level,uint32_t seed) {
     plan_waves(g);
     chapter_start(g);
 }
+#include "completion_rules.inc"
 void game_init(Game *g,uint32_t seed){game_start_level(g,1,seed);}
 int game_sunflower_count(const Game *g){
     int count=0;for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++)count+=g->plants[r][c].kind==SUNFLOWER;return count;
@@ -197,7 +235,7 @@ static void tutorial_planting(Game *g){
 }
 int game_next_level(Game *g){
     if(g->status!=WON||!(g->level_flags&LEVEL_REWARD_COLLECTED)||g->level>=CAMPAIGN_LEVELS)return 0;
-    int level=g->level+1;uint32_t seed=g->rng;game_start_level(g,level,seed);return 1;
+    int level=g->level+1;uint32_t seed=g->rng,run=g->completion.adventure_run;game_start_adventure(g,level,seed,run);return 1;
 }
 
 int game_upgrade_base(int kind){static const int bases[8]={REPEATER,SUNFLOWER,FUME,LILY,MELON,MAGNET,SPIKEWEED,KERNEL};return kind>=GATLING&&kind<=COB?bases[kind-GATLING]:-1;}
@@ -270,7 +308,7 @@ int game_place(Game *g,int row,int col,int kind){
     }sound_as(g,SFX_PLANT,game_water_row(g,row)?FOLEY_PLANT_WATER:FOLEY_PLANT);if(kind==GRAVEBUSTER)cue(FOLEY_GRAVEBUSTERCHOMP);if(kind==POT)cue(FOLEY_CERAMIC);if(kind==PLANTERN)cue(GAME_SAMPLE(FX_PLANTERN));if(kind==DOOM)cue(FOLEY_REVERSE_EXPLOSION);return 0;
 }
 void game_shovel(Game *g,int row,int col){
-    if(g->level<5||!game_row_active(g,row)||col<0||col>=COLS)return;
+    if((g->level<5&&!g->completion.adventure_run)||!game_row_active(g,row)||col<0||col>=COLS)return;
     if(g->morph_timer[row][col]>0){g->morph_timer[row][col]=0;sound_as(g,SFX_PLANT,FOLEY_USE_SHOVEL);return;}
     if(g->plants[row][col].kind==-2&&col>0)col--;
     if(g->plants[row][col].kind>=0){if(g->plants[row][col].kind==COB&&col+1<COLS)g->plants[row][col+1].kind=-1;g->plants[row][col].kind=-1;if(g->shovel_tutorial)g->shovel_tutorial--;}
@@ -317,6 +355,9 @@ int game_spawn_zombie(Game *g,int row,int kind,float x) {
         Zombie *z=&g->zombies[i];g->extra.bobsled_team[i]=0;g->extra.bobsled_phase[i]=0;g->extra.last_portal_zombie[i]=0;g->extra.brain_eating[i]=0;g->extra.hit_flash[i]=0;
         if(kind==Z_ZOMBONI||kind==Z_CATAPULT){z->hp=1350;z->speed=.45f;}
         if(kind==Z_GARG){z->hp=3000;z->speed=.28f;}
+        g->completion.yeti_timer[i]=0;g->completion.yeti_retreat[i]=0;
+        if(kind==Z_YETI){z->hp=1350;z->speed=.4f;g->completion.yeti_timer[i]=15+random_unit(g)*5;g->completion.yeti_spawned=1;}
+        g->completion.giga[i]=0;
         if(kind==Z_IMP){z->hp=270;z->speed=.65f;}
         if(kind==Z_LADDER){z->hp=500;z->armor=500;z->speed=.5f;}
         if(kind==Z_DOLPHIN||kind==Z_POGO||kind==Z_JACK||kind==Z_BOBSLED)z->speed=.65f;
@@ -348,7 +389,7 @@ float game_death_duration_for(const Game *g,const Zombie *z){int style=g->polish
 float game_death_alpha(const Zombie *z){return fminf(1,fmaxf(0,z->death/.30f));}
 static void tick_death(Zombie *z,float dt){z->age+=dt;z->death=fmaxf(0,z->death-dt);if(z->death<=0)z->used=0;}
 int game_dying_count(const Game *g){int n=0;for(int i=0;i<MAX_ZOMBIES;i++)n+=g->zombies[i].used&&g->zombies[i].death>0;return n;}
-static void effects_step(Game *g,float dt){for(int i=0;i<32;i++)g->extra.effect_time[i]=fmaxf(0,g->extra.effect_time[i]-dt);for(int i=0;i<MAX_ZOMBIES;i++)g->extra.hit_flash[i]=fmaxf(0,g->extra.hit_flash[i]-dt);}
+static void effects_step(Game *g,float dt){completion_effects_step(g,dt);for(int i=0;i<32;i++)g->extra.effect_time[i]=fmaxf(0,g->extra.effect_time[i]-dt);for(int i=0;i<MAX_ZOMBIES;i++)g->extra.hit_flash[i]=fmaxf(0,g->extra.hit_flash[i]-dt);}
 static void combat_effect(Game *g,float x,float y,int kind){for(int i=0;i<32;i++)if(g->extra.effect_time[i]<=0){g->extra.effect_time[i]=kind?.5f:.2f;g->extra.effect_x[i]=x;g->extra.effect_y[i]=y;g->extra.effect_kind[i]=kind;break;}}
 /* Keep cosmetic debris in the existing effect pool, without changing saves or
    drawing random numbers from the gameplay generator. The owned particle XML
@@ -377,18 +418,20 @@ int game_head_particle(const Game *g,int index,HeadParticle *out){
 }
 void game_animate_deaths(Game *g,float dt){if(dt<=0)return;effects_step(g,dt);g->flash=fmaxf(0,g->flash-dt);for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used&&g->zombies[i].death>0)tick_death(&g->zombies[i],dt);}
 static void kill_zombie(Game *g,Zombie *z){
-    if(z->death<=0){if(z->kind==Z_GARG)cue(FOLEY_GARGANTUDEATH);else if(z->kind==Z_ZOMBONI)cue(FOLEY_EXPLOSION);z->vault_from=death_rate(g,z->kind);z->death=game_death_duration_for(g,z);z->age=0;z->eating=0;z->vault=0;g->polish.action[z-g->zombies]=0;g->kills++;
+    if(z->death<=0){if(z->kind==Z_GARG)cue(FOLEY_GARGANTUDEATH);else if(z->kind==Z_ZOMBONI)cue(FOLEY_EXPLOSION);z->vault_from=death_rate(g,z->kind);z->death=game_death_duration_for(g,z);z->age=0;z->eating=0;z->vault=0;g->polish.action[z-g->zombies]=0;g->kills++;completion_death_effect(g,z);
         if(!g->challenge&&g->wave>5&&((g->level==22&&!(g->store_flags&64))||(g->level==36&&!(g->store_flags&128)))){int value=g->level==22?-200:-201,exists=0;for(int k=0;k<MAX_COINS;k++)exists|=g->money[k].used&&g->money[k].value==value;if(!exists)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,value);}
-        if(g->level>=11&&g->mode!=MODE_BOWLING){int factor=zombie_value[z->kind],hit=random_next(g)%30000;int present=(g->store_flags&STORE_GARDEN)&&g->extra.category!=EXTRA_IZOMBIE?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?3:12)*factor:0;int chocolate=(g->store_flags&STORE_CHOCOLATE)?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?9:36)*factor:0;if(g->wave+g->extra.stage*g->num_waves>70){present=chocolate=0;}if(g->level!=25||random_next(g)%4==0){if(z->kind==Z_YETI){for(int i=0;i<4;i++)game_add_coin(g,z->x-i*8,game_ground_y(g,z->row)-15,100);}else if(hit<present)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-1-(int)(random_next(g)%40));else if(hit<present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-100);else if(hit<14*factor+present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,g->seed_slots>6?100:5);else if(hit<250*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,5);else if(hit<2500*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,1);}}
+        if(z->kind==Z_YETI){for(int i=0;i<4;i++)game_add_coin(g,z->x-i*8,game_ground_y(g,z->row)-15,100);}
+        else if(g->level>=11&&g->mode!=MODE_BOWLING){int factor=zombie_value[z->kind],hit=random_next(g)%30000;int present=(g->store_flags&STORE_GARDEN)&&g->extra.category!=EXTRA_IZOMBIE?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?3:12)*factor:0;int chocolate=(g->store_flags&STORE_CHOCOLATE)?(g->extra.category==EXTRA_SURVIVAL&&g->extra.difficulty==SURVIVAL_ENDLESS?9:36)*factor:0;if(g->wave+g->extra.stage*g->num_waves>70){present=chocolate=0;}if(g->level!=25||random_next(g)%4==0){if(hit<present)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-1-(int)(random_next(g)%40));else if(hit<present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,-100);else if(hit<14*factor+present+chocolate)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,g->seed_slots>6?100:5);else if(hit<250*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,5);else if(hit<2500*factor)game_add_coin(g,z->x,game_ground_y(g,z->row)-15,1);}}
 }
 }
-int game_reward_seed(const Game *g){if(g->challenge)return -1;for(int k=0;k<ALL_SEEDS;k++)if(seed_unlock[k]==g->level+1)return k;return -1;}
+int game_reward_seed(const Game *g){if(g->challenge||g->completion.adventure_run)return -1;for(int k=0;k<ALL_SEEDS;k++)if(seed_unlock[k]==g->level+1)return k;return -1;}
 int game_reward_type(const Game *g){
     if(g->challenge)return REWARD_TROPHY;
     if(g->level%10==9)return REWARD_NOTE;
+    if(g->completion.adventure_run)return REWARD_MONEY_BAG;
     switch(g->level){case 4:return REWARD_SHOVEL;case 14:return REWARD_ALMANAC;case 24:return REWARD_KEYS;case 34:return REWARD_TACO;case 44:return REWARD_WATERING_CAN;case 50:return REWARD_SILVER_SUNFLOWER;default:return REWARD_SEED;}
 }
-int game_collect_reward(Game *g){if(g->status!=WON||game_dying_count(g)||(g->level_flags&LEVEL_REWARD_COLLECTED))return 0;g->level_flags|=LEVEL_REWARD_COLLECTED;game_collect_coins(g);return 1;}
+int game_collect_reward(Game *g){if(g->status!=WON||game_dying_count(g)||(g->level_flags&LEVEL_REWARD_COLLECTED))return 0;g->level_flags|=LEVEL_REWARD_COLLECTED;if(game_reward_type(g)==REWARD_MONEY_BAG){int value=g->level==50?300:25;g->money_collected+=value;}game_collect_coins(g);return 1;}
 
 static int can_chill(const Game *g,const Zombie *z){int i=(int)(z-g->zombies);return z->death<=0&&!g->hypnotized[i]&&z->kind!=Z_ZOMBONI&&!(z->kind==Z_BOBSLED&&g->extra.bobsled_team[i]&&g->extra.bobsled_phase[i]>=0)&&!(z->kind==Z_DIGGER&&(!z->vaulted||g->special[i]>0));}
 static int can_freeze(const Game *g,const Zombie *z){int i=(int)(z-g->zombies);return can_chill(g,z)&&z->vault<=0&&z->kind!=Z_BALLOON&&g->polish.action[i]!=ACTION_IMP_FLIGHT&&g->polish.action[i]!=ACTION_IMP_LAND&&g->polish.action[i]!=ACTION_JACK&&!(z->kind==Z_BOBSLED&&g->extra.bobsled_team[i]&&g->extra.bobsled_phase[i]<0)&&!(z->kind==Z_BUNGEE&&g->special[i]<3.2f);}
@@ -533,7 +576,7 @@ static void finish_wave_entries(Game *g){
         if(g->mode==MODE_WHACK){int graves[45],n=0;for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++)if(g->graves[r][c])graves[n++]=r*COLS+c;
             if(n){int spot=graves[random_next(g)%n];row=spot/COLS;x=plant_x(spot%COLS);}kind=g->wave>6&&random_next(g)%4==0?Z_BUCKET:g->wave>3&&random_next(g)%3==0?Z_CONE:Z_NORMAL;
         }
-        int id=game_spawn_zombie(g,row,kind,x);
+        int id=g->completion.wave_giga[g->wave-1][g->polish.wave_entry]?game_spawn_giga(g,row,x):game_spawn_zombie(g,row,kind,x);
         if(id>=0){if(kind==Z_BOBSLED){g->extra.bobsled_team[id]=id+1;g->extra.bobsled_position[id]=0;for(int n=1;n<4;n++){int member=game_spawn_zombie(g,row,Z_BOBSLED,x+n*14);if(member>=0){g->extra.bobsled_team[member]=id+1;g->extra.bobsled_position[member]=n;g->polish.wave_health+=g->zombies[member].hp+g->zombies[member].armor;}}}if(g->mode==MODE_BUNGEE&&kind!=Z_BUNGEE)g->special[id]=-2;g->spawned++;g->polish.wave_health+=g->zombies[id].hp+g->zombies[id].armor;g->polish.wave_entry++;}
 
     }
@@ -668,6 +711,7 @@ void game_step(Game *g,float dt) {
         if(g->mode==MODE_WHACK)g->special[i]=fmaxf(0,g->special[i]-dt);
         if(g->frozen[i]>0){g->frozen[i]=fmaxf(0,g->frozen[i]-dt);continue;}
         z->slow=fmaxf(0,z->slow-dt);g->polish.pose[i]+=dt*(z->slow>0?.5f:1);
+        if(completion_yeti_step(g,i,dt))continue;
         if(polish_actor_step(g,i,dt))continue;
         if(extra_iz_zombie(g,i,dt))continue;
         if(bobsled_step(g,i,dt))continue;
@@ -766,15 +810,8 @@ static uint32_t checksum(const void *memory,size_t count) {
     for(size_t i=0;i<count;i++){value^=p[i];value*=16777619u;}return value;
 }
 int game_save(const Game *g,const char *filename) {
-    char temp[512];snprintf(temp,sizeof(temp),"%s.tmp",filename);
-    FILE *f=fopen(temp,"wb");if(!f)return 0;
-    uint32_t header[4]={0x31535650,11,sizeof(*g),checksum(g,sizeof(*g))};
-    int ok=fwrite(header,sizeof(header),1,f)==1&&fwrite(g,sizeof(*g),1,f)==1;
-    if(fclose(f)!=0)ok=0;
-    if(ok){char backup[512];snprintf(backup,sizeof(backup),"%s.bak",filename);FILE *old=fopen(filename,"rb");int existed=old!=0;if(old)fclose(old);
-        if(existed){remove(backup);if(rename(filename,backup))return 0;}
-        if(rename(temp,filename)){if(existed)rename(backup,filename);return 0;}
-    }return ok;
+    uint32_t header[4]={0x31535650,12,sizeof(*g),checksum(g,sizeof(*g))};
+    return save_file_replace(filename,header,g);
 }
 static void legacy_import(Game *g,const LegacyGame *old){
  game_start_level(g,old->level,old->rng);
@@ -1094,7 +1131,8 @@ static void legacy08_import(Game *g,const Legacy08 *old){
 }
 static int game_load_one(Game *g,const char *filename){
  FILE *f=fopen(filename,"rb");if(!f)return 0;uint32_t h[4];Game loaded;int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x31535650;
- if(ok&&h[1]==11&&h[2]==sizeof(Game))ok=fread(&loaded,sizeof(loaded),1,f)==1&&checksum(&loaded,sizeof(loaded))==h[3];
+ if(ok&&h[1]==12&&h[2]==sizeof(Game))ok=fread(&loaded,sizeof(loaded),1,f)==1&&checksum(&loaded,sizeof(loaded))==h[3];
+ else if(ok&&h[1]==11&&h[2]==offsetof(Game,completion)){memset(&loaded,0,sizeof(loaded));ok=fread(&loaded,h[2],1,f)==1&&checksum(&loaded,h[2])==h[3];}
  else if(ok&&h[1]==10&&h[2]==offsetof(Game,polish)){memset(&loaded,0,sizeof(loaded));ok=fread(&loaded,h[2],1,f)==1&&checksum(&loaded,h[2])==h[3];}
  else if(ok&&h[1]==9&&h[2]==sizeof(Legacy09)){Legacy09 old;ok=fread(&old,sizeof(old),1,f)==1&&checksum(&old,sizeof(old))==h[3];if(ok){memset(&loaded,0,sizeof(loaded));memcpy(&loaded,&old,sizeof(old));}}
  else if(ok&&h[1]==8&&h[2]==sizeof(Legacy08)){Legacy08 old;ok=fread(&old,sizeof(old),1,f)==1&&checksum(&old,sizeof(old))==h[3];if(ok)legacy08_import(&loaded,&old);}
@@ -1112,12 +1150,14 @@ static int game_load_one(Game *g,const char *filename){
   for(int i=0;i<MAX_ZOMBIES&&ok;i++)if(loaded.zombies[i].used){Zombie *z=&loaded.zombies[i];ok=z->row>=0&&z->row<ROWS&&z->kind>=0&&z->kind<Z_TYPES&&isfinite(z->hp)&&isfinite(z->x)&&isfinite(z->age);}
   for(int i=0;i<loaded.packet_count&&ok;i++)ok=loaded.packets[i]>=0&&loaded.packets[i]<=LEFT_PACKET;
   for(int w=0;w<loaded.num_waves&&ok;w++){ok=loaded.wave_count[w]>=0&&loaded.wave_count[w]<=WAVE_CAPACITY;for(int n=0;n<loaded.wave_count[w]&&ok;n++)ok=loaded.wave_types[w][n]<Z_TYPES;}
-  if(h[1]==11){PolishState *p=&loaded.polish;ok=ok&&p->wave_pending>=0&&p->wave_pending<=1&&p->wave_entry>=0&&p->wave_entry<=WAVE_CAPACITY&&(!p->wave_pending||p->wave_entry<=loaded.wave_count[loaded.wave-1])&&p->grave_entry>=0&&p->grave_entry<=ROWS*COLS&&isfinite(p->wave_health)&&p->wave_health>=0&&p->wave_health<1e9f&&isfinite(p->wave_fraction)&&p->wave_fraction>=0&&p->wave_fraction<=1;
+  if(h[1]>=11){PolishState *p=&loaded.polish;ok=ok&&p->wave_pending>=0&&p->wave_pending<=1&&p->wave_entry>=0&&p->wave_entry<=WAVE_CAPACITY&&(!p->wave_pending||p->wave_entry<=loaded.wave_count[loaded.wave-1])&&p->grave_entry>=0&&p->grave_entry<=ROWS*COLS&&isfinite(p->wave_health)&&p->wave_health>=0&&p->wave_health<1e9f&&isfinite(p->wave_fraction)&&p->wave_fraction>=0&&p->wave_fraction<=1;
    for(int i=0;i<MAX_ZOMBIES&&ok;i++)ok=isfinite(p->pose[i])&&p->pose[i]>=0&&isfinite(p->action_time[i])&&p->action_time[i]>=0&&p->action[i]>=ACTION_NONE&&p->action[i]<=ACTION_IMP_LAND&&p->death_style[i]>=DEATH_NORMAL&&p->death_style[i]<=DEATH_WATER&&p->target[i]>=0&&p->target[i]<=1000&&(p->action[i]!=ACTION_GARLIC||p->target[i]<ROWS*ROWS);
   }
  }
+ if(ok&&h[1]>=12)ok=completion_valid(&loaded);
  if(ok){
   if(h[1]<11)for(int i=0;i<MAX_ZOMBIES;i++)loaded.polish.pose[i]=loaded.zombies[i].kind>=Z_DUCK?loaded.time:loaded.zombies[i].age;
+  if(h[1]<12)for(int i=0;i<MAX_ZOMBIES;i++)if(loaded.zombies[i].used&&loaded.zombies[i].kind==Z_YETI)loaded.completion.yeti_timer[i]=15;
   if(h[1]==3)for(int i=0;i<MAX_ZOMBIES;i++)if(loaded.zombies[i].used){Zombie *z=&loaded.zombies[i];float speed=z->speed/47.5f;z->speed=z->kind==Z_FLAG?.45f:z->kind==Z_POLE&&!z->vaulted?.66f+fminf(1,fmaxf(0,(speed-.23f)/.14f))*.02f:speed;if(z->death<=0&&!z->eating&&z->vault<=0)z->age=0;}
   if(loaded.level==2&&!loaded.total_spawned&&!(loaded.level_flags&LEVEL_TUTORIAL_COMPLETE)&&game_sunflower_count(&loaded)>=3){loaded.spawn_timer=fminf(loaded.spawn_timer,10);loaded.level_flags|=LEVEL_TUTORIAL_COMPLETE;}
   if(h[1]<7)for(int i=0;i<MAX_ZOMBIES;i++)if(loaded.zombies[i].used&&loaded.zombies[i].death>0){Zombie *z=&loaded.zombies[i];z->vault_from=27;if(z->kind==Z_GARG||z->kind==Z_SNORKEL||z->kind==Z_YETI)z->vault_from=14;else if(z->kind==Z_DIGGER||z->kind==Z_BOSS)z->vault_from=18;z->death=fmaxf(.01f,game_death_duration(z)-z->age);}
@@ -1125,10 +1165,12 @@ static int game_load_one(Game *g,const char *filename){
   *g=loaded;
  }return ok;
 }
+static int game_recovered;
+int game_load_backup_used(void){return game_recovered;}
 int game_load(Game *g,const char *filename){
- if(game_load_one(g,filename))return 1;
- FILE *primary=fopen(filename,"rb");if(primary){fclose(primary);return 0;}
- char backup[512];snprintf(backup,sizeof(backup),"%s.bak",filename);return game_load_one(g,backup);
+ game_recovered=0;if(game_load_one(g,filename))return 1;
+ char backup[512];if(snprintf(backup,sizeof(backup),"%s.bak",filename)>=(int)sizeof(backup))return 0;
+ game_recovered=game_load_one(g,backup);return game_recovered;
 }
 static int legacy_fixture(const Game *g,const char *path,int version){LegacyGame old;legacy_export(&old,g);int bytes=version==5?sizeof(old):16528;uint32_t h[4]={0x31535650,version,bytes,checksum(&old,bytes)};FILE *f=fopen(path,"wb");if(!f)return 0;int ok=fwrite(h,sizeof(h),1,f)==1&&fwrite(&old,bytes,1,f)==1;fclose(f);return ok;}
 
@@ -1372,7 +1414,7 @@ int game_selftest(FILE *out) {
     advance(&g,2);CHECK("pole vaulter lands behind plant and uses pole once",g.zombies[pole].vaulted&&g.zombies[pole].x<plant_x(3)&&g.plants[2][3].hp==4000);
     game_start_level(&g,9,44);g.wave=12;g.spawned=2;g.huge_wave_timer=3.2f;
     saved=game_save(&g,"selftest-save.dat");CHECK("campaign and pending flag countdown survive save",saved&&game_load(&restored,"selftest-save.dat")&&restored.level==9&&restored.wave==12&&restored.num_waves==20&&restored.huge_wave_timer==g.huge_wave_timer&&memcmp(restored.wave_types,g.wave_types,sizeof(g.wave_types))==0);
-    FILE *corrupt=fopen("selftest-save.dat","r+b");if(corrupt){fseek(corrupt,32,SEEK_SET);fputc(255,corrupt);fclose(corrupt);}CHECK("damaged campaign save is rejected",!game_load(&restored,"selftest-save.dat"));remove("selftest-save.dat");
+    remove("selftest-save.dat.bak");FILE *corrupt=fopen("selftest-save.dat","r+b");if(corrupt){fseek(corrupt,32,SEEK_SET);fputc(255,corrupt);fclose(corrupt);}CHECK("damaged campaign save without a backup is rejected",!game_load(&restored,"selftest-save.dat"));remove("selftest-save.dat");
     game_start_level(&g,10,45);g.status=WON;game_collect_reward(&g);CHECK("day finale advances to original night chapter",game_next_level(&g)&&g.level==11&&(g.unlocked_mask&(1<<PUFF)));
     game_init(&g,46);int sequence=1;
     for(int level=1;level<=CAMPAIGN_LEVELS;level++){
@@ -1492,6 +1534,7 @@ int game_selftest(FILE *out) {
     #include "interaction_tests.inc"
     #include "upgrade_tests.inc"
     #include "polish_tests0190.inc"
+    #include "completion_tests.inc"
     fprintf(out,"RESULT %d/%d\n",passed,total);fflush(out);
     #undef CHECK
     return passed==total;

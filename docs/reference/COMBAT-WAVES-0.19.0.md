@@ -5,6 +5,13 @@ completed audit and a set of fixes, **not complete PS3 parity**. “Retained” 
 the existing native behavior was reviewed or exercised; it does not mean every
 frame, collision boundary or PS3 level table has been independently reproduced.
 
+Correction identified during 0.21 development: the garden preparation helper
+changed the global animation specification list. The original unit fixture passed,
+but the production alignment pass consequently missed the zombie families. The
+0.21 development fix restores the list and applies shared anchors to 81
+clips/components; 66 existing banks change only their anchor bytes. The older
+claim below that production pose anchors already passed was overstated.
+
 ## Changes delivered
 
 - Freeze is checked before special zombie handlers. Eligible frozen enemies no

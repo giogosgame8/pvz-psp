@@ -2,11 +2,11 @@
 const char *puzzle_names[20]={"VASEBREAKER","TO THE LEFT","THIRD VASE","CHAIN REACTION","M IS FOR METAL","SCARY POTTER","HOKEY POKEY","ANOTHER CHAIN REACTION","ACE OF VASE","VASEBREAKER ENDLESS","I, ZOMBIE","I, ZOMBIE TOO","CAN YOU DIG IT?","TOTALLY NUTS","DEAD ZEPPELIN","ME SMASH!","ZOMBOOGIE","THREE HIT WONDER","ALL YOUR BRAINZ","I, ZOMBIE ENDLESS"};
 static int extra_is(const Game *g,int kind){return g->extra.category==kind;}
 static void extra_replan(Game *g){memset(g->wave_count,0,sizeof(g->wave_count));memset(g->wave_types,0,sizeof(g->wave_types));plan_waves(g);}
-static int survival_allowed(const Game *g,int k){return k>=0&&k<Z_TYPES&&!!(g->extra.allowed_zombies&(1u<<k));}
+static int survival_allowed(const Game *g,int k){return k>=0&&k<Z_TYPES&&(!!(g->extra.allowed_zombies&(1u<<k))||(k==Z_GARG&&g->completion.giga_allowed));}
 static void survival_pick(Game *g){
-    g->extra.allowed_zombies=1u<<Z_NORMAL;g->extra.allowed_zombies|=1u<<(g->extra.stage&&random_next(g)%5==0?Z_PAPER:Z_CONE);
+    g->completion.giga_allowed=0;g->extra.allowed_zombies=1u<<Z_NORMAL;g->extra.allowed_zombies|=1u<<(g->extra.stage&&random_next(g)%5==0?Z_PAPER:Z_CONE);
     if(!g->extra.stage){if(g->extra.difficulty!=SURVIVAL_NORMAL)g->extra.allowed_zombies|=1u<<Z_BUCKET;return;}
-    int choices[Z_TYPES],n=0;
+    int choices[Z_TYPES+1],n=0;
     for(int k=0;k<Z_TYPES;k++){
         if(k==Z_NORMAL||k==Z_FLAG||k==Z_BACKUP||k==Z_DUCK||k==Z_YETI||k==Z_IMP||k==Z_BOSS)continue;
         if(g->extra.difficulty==SURVIVAL_NORMAL&&k>Z_SNORKEL)continue;
@@ -16,8 +16,9 @@ static void survival_pick(Game *g){
         if(game_world(g)!=4&&g->extra.difficulty!=SURVIVAL_ENDLESS&&k==Z_BUNGEE)continue;
         if(!(g->extra.allowed_zombies&(1u<<k)))choices[n++]=k;
     }
+    if(g->extra.flags>=10&&g->extra.difficulty==SURVIVAL_ENDLESS)choices[n++]=Z_TYPES;
     int capacity=g->extra.stage+1;if(capacity>9)capacity=9;
-    for(int j=0;j<capacity&&n;j++){int at=random_next(g)%n;g->extra.allowed_zombies|=1u<<choices[at];choices[at]=choices[--n];}
+    for(int j=0;j<capacity&&n;j++){int at=random_next(g)%n;if(choices[at]==Z_TYPES)g->completion.giga_allowed=1;else g->extra.allowed_zombies|=1u<<choices[at];choices[at]=choices[--n];}
 }
 void game_start_survival(Game *g,int terrain,int difficulty,uint32_t seed){
     static const int levels[5]={9,19,29,39,49};if(terrain<0||terrain>4)terrain=0;if(difficulty<0||difficulty>2)difficulty=0;

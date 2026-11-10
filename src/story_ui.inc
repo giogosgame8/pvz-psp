@@ -23,6 +23,7 @@ static int story_level_id(void){
  if(game.extra.category==EXTRA_IZOMBIE)return game.extra.selection==0?2200:0;
  if(game.extra.category==EXTRA_VASE)return game.extra.selection==0?3000:0;
  if(game.challenge)return 0;
+ if(game.completion.adventure_run){switch(game.level){case 1:return 1601;case 5:return 2411;case 15:return 401;case 25:return 701;case 35:return 2500;case 40:return 1101;case 45:return 1304;case 50:return 2300;default:return 0;}}
  switch(game.level){case 5:return game.shovel_tutorial?2400:2408;case 11:return 201;case 12:return 1401;case 15:return 401;case 21:return 501;case 25:return 701;case 31:return 801;case 35:return 2500;case 40:return 1101;case 41:return 1201;case 45:return 1301;case 50:return 2300;default:break;}
  if(game.level>=13&&game.level<=24&&player.purchases[SHOP_SLOTS]<2&&player.money>=(uint32_t)profile_item_cost(&player,SHOP_SLOTS))return player.purchases[SHOP_SLOTS]?1551:1501;return 0;
 }
@@ -33,7 +34,7 @@ static void draw_story(void){
  if(story_phase!=2){render_rect(158,43,312,181,RGBA(245,232,194,255));render_outline(158,43,312,181,RGBA(66,48,32,255));float scale=strlen(story_text)>390?.64f:strlen(story_text)>260?.72f:.85f;disc_text(169,54,290,story_text,RGBA(42,33,22,255),scale);}
  ui_hint(story_library?"L/R: Passage   X: Next   O: Back":story_id==1503||story_id==1553?"X: Buy seed slot   Square: Decline":"X: Continue   O: Skip scene");
 }
-static void ending_finish(void){movie_close();player.garden.credits_seen=1;profile_save(&player,profile_path);screen=ending_return;ending_paused=0;}
+static void ending_finish(void){movie_close();player.garden.credits_seen=1;persist_profile();screen=ending_return;ending_paused=0;}
 static int ending_begin(int destination){animation_cache_suspend();if(!movie_open("data/ending.pvj")){notify("ENDING DATA COULD NOT BE OPENED");return 0;}ending_return=destination;ending_paused=0;ending_clock=0;screen=19;audio_restart_music(MUSIC_CREDITS);return 1;}
 static void ending_step(float dt){if(ending_paused)return;float t=audio_music_seconds(MUSIC_CREDITS);if(t>=0)ending_clock=t;else ending_clock+=dt;movie_update(ending_clock);if(movie_error()){ending_finish();notify("ENDING FRAME COULD NOT BE READ");}else if(ending_clock>movie_duration()+.5f)ending_finish();}
 static int story_input(uint32_t pressed){
@@ -41,6 +42,6 @@ static int story_input(uint32_t pressed){
  if(screen!=18)return 0;
  if(pressed&PSP_CTRL_CIRCLE){story_leave();return 1;}if(story_phase!=1||story_line_time<.25f)return 1;
  if(story_library&&(pressed&(PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER|PSP_CTRL_CROSS))){story_index=(story_index+STORY_LINES+((pressed&PSP_CTRL_LTRIGGER)?-1:1))%STORY_LINES;story_load();return 1;}
- if(story_id==1503||story_id==1553){if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_SQUARE)){int yes=(pressed&PSP_CTRL_CROSS)&&profile_purchase(&player,SHOP_SLOTS);story_id=(story_id==1503?1500:1550)+(yes?10:20);profile_apply(&player,&game);profile_save(&player,profile_path);story_load();}return 1;}
+ if(story_id==1503||story_id==1553){if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_SQUARE)){int yes=(pressed&PSP_CTRL_CROSS)&&profile_purchase(&player,SHOP_SLOTS);story_id=(story_id==1503?1500:1550)+(yes?10:20);profile_apply(&player,&game);persist_profile();story_load();}return 1;}
  if(pressed&PSP_CTRL_CROSS){if(story_limit&&story_id>=story_limit){story_leave();return 1;}story_id++;char key[64],text[8];snprintf(key,sizeof(key),"CRAZY_DAVE_%d",story_id);if(!textdb_get(key,text,sizeof(text)))story_leave();else story_load();}return 1;
 }

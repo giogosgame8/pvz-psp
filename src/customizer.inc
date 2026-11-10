@@ -4,11 +4,11 @@ static Avatar avatar={0,1,0,0,0},avatar_draft;
 static int avatar_row,avatar_loaded,player_hub_row;
 static const char *avatar_path="custom-zombie.dat";
 static char avatar_error[80];
-enum { AV_BODY,AV_WOUNDED=2,AV_FACE=4,AV_HAIR=6,AV_CONE=8,AV_BUCKET=10,AV_HELMET=12,AV_MUSTACHE=14,AV_COUNT=16 };
+enum { AV_BODY,AV_WOUNDED=2,AV_FACE=4,AV_HAIR=6,AV_CONE=8,AV_BUCKET=10,AV_HELMET=12,AV_MUSTACHE=14,AV_FACE_DANCE=16,AV_MUSTACHE_DANCE=17,AV_COUNT=18 };
 static Animation avatar_art[AV_COUNT];
 static const char *avatar_names[AV_COUNT]={"avatar_body_walk","avatar_body_eat","avatar_wounded_walk","avatar_wounded_eat",
  "avatar_face_walk","avatar_face_eat","avatar_hair_walk","avatar_hair_eat","avatar_cone_walk","avatar_cone_eat",
- "avatar_bucket_walk","avatar_bucket_eat","avatar_helmet_walk","avatar_helmet_eat","avatar_mustache_walk","avatar_mustache_eat"};
+ "avatar_bucket_walk","avatar_bucket_eat","avatar_helmet_walk","avatar_helmet_eat","avatar_mustache_walk","avatar_mustache_eat","avatar_face_dance","avatar_mustache_dance"};
 static uint32_t avatar_checksum(const uint32_t *words){uint32_t value=2166136261u;const unsigned char *bytes=(const unsigned char*)words;for(int i=0;i<28;i++)value=(value^bytes[i])*16777619u;return value;}
 static int avatar_valid(const Avatar *a){return a->face<5&&a->hat<5&&a->wear<3&&a->mustache<4&&a->enabled<2;}
 static int avatar_load(void){
@@ -30,6 +30,7 @@ static int avatar_assets(void){
  if(avatar_loaded)return avatar_loaded>0;int ok=1;
  for(int i=0;i<AV_COUNT;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",avatar_names[i]);if(!animation_load(&avatar_art[i],path))ok=0;}
  for(int action=0;ok&&action<2;action++){unsigned n=avatar_art[AV_BODY+action].frames;ok=n>0&&avatar_art[AV_WOUNDED+action].frames==n&&avatar_art[AV_FACE+action].frames==n*5&&avatar_art[AV_HAIR+action].frames==n&&avatar_art[AV_CONE+action].frames==n*3&&avatar_art[AV_BUCKET+action].frames==n*3&&avatar_art[AV_HELMET+action].frames==n*3&&avatar_art[AV_MUSTACHE+action].frames==n*3;}
+ ok=ok&&avatar_art[AV_FACE_DANCE].frames==assets[A_ZOMBIE_DANCE].frames*5&&avatar_art[AV_MUSTACHE_DANCE].frames==assets[A_ZOMBIE_DANCE].frames*3;
  if(!ok)for(int i=0;i<AV_COUNT;i++)animation_free(&avatar_art[i]);avatar_loaded=ok?1:-1;return ok;
 }
 static int avatar_draw(const Avatar *value,float x,float foot,float seconds,float scale,uint32_t tint,int eating,int mirrored,int wounded){
@@ -42,9 +43,9 @@ static int avatar_draw(const Avatar *value,float x,float foot,float seconds,floa
 }
 static void avatar_begin(void){avatar_draft=avatar;if(!avatar.enabled)avatar_draft.enabled=1;avatar_row=0;avatar_error[0]=0;screen=26;}
 static void draw_player_hub(void){
- render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+4,WHITE);ui_dialog(110,62,260,151,"Player");
- const char *labels[]={"Player name","Zombie customizer","Back"};
- for(int i=0;i<3;i++){render_image(&assets[A_UI_BUTTON],138,105+i*30,204,24,i==player_hub_row,i==player_hub_row?UI_ACTIVE_TINT:WHITE);ui_center(144,109+i*30,192,labels[i],i==player_hub_row?UI_FOCUS_TEXT:WHITE,.75f);}
+ render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+4,WHITE);ui_dialog(110,25,260,225,"Player");
+ const char *labels[]={"Player name","Zombie customizer","Trophies","House","Secret codes","Back"};
+ for(int i=0;i<6;i++){render_image(&assets[A_UI_BUTTON],138,69+i*27,204,24,i==player_hub_row,i==player_hub_row?UI_ACTIVE_TINT:WHITE);ui_center(144,73+i*27,192,labels[i],i==player_hub_row?UI_FOCUS_TEXT:WHITE,.70f);}
 }
 static void draw_customizer(float clock){
  render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+4,WHITE);ui_dialog(22,18,436,236,"Zombie customizer");
@@ -58,8 +59,8 @@ static void draw_customizer(float clock){
  if(avatar_error[0])ui_center(42,237,396,avatar_error,UI_GOLD,.55f);
 }
 static int avatar_input(uint32_t pressed){
- if(screen==25){if(pressed&PSP_CTRL_UP)player_hub_row=(player_hub_row+2)%3;if(pressed&PSP_CTRL_DOWN)player_hub_row=(player_hub_row+1)%3;
-  if(pressed&PSP_CTRL_CROSS){if(!player_hub_row)name_begin(25);else if(player_hub_row==1)avatar_begin();else screen=0;}if(pressed&PSP_CTRL_CIRCLE)screen=0;return 1;}
+ if(screen==25){if(pressed&PSP_CTRL_UP)player_hub_row=(player_hub_row+5)%6;if(pressed&PSP_CTRL_DOWN)player_hub_row=(player_hub_row+1)%6;
+  if(pressed&PSP_CTRL_CROSS){if(!player_hub_row)name_begin(25);else if(player_hub_row==1)avatar_begin();else if(player_hub_row==2)screen=28;else if(player_hub_row==3){house_cursor=player.completion.house_selected;screen=29;}else if(player_hub_row==4)secret_begin();else screen=0;}if(pressed&PSP_CTRL_CIRCLE)screen=0;return 1;}
  if(screen!=26)return 0;
  if(pressed&PSP_CTRL_UP)avatar_row=(avatar_row+6)%7;if(pressed&PSP_CTRL_DOWN)avatar_row=(avatar_row+1)%7;
  int direction=(pressed&PSP_CTRL_RIGHT)?1:(pressed&PSP_CTRL_LEFT)?-1:0;

@@ -28,12 +28,14 @@ def prepare_customizer(imported,destination,previews,write_pva,geometry):
              ('bucket','anim_bucket',['Zombie_bucket'+str(i) for i in range(1,4)]),
              ('helmet','anim_head1',['Zombie_football_helmet'+('' if i==1 else str(i)) for i in range(1,4)]),
              ('mustache','Zombie_mustache',['Zombie_mustache'+str(i) for i in range(1,4)])]
-    for action,marker in [('walk','anim_walk'),('eat','anim_eat')]:
+    for action,marker in [('walk','anim_walk'),('eat','anim_eat'),('dance','anim_dance')]:
         start,stop=clip_range(list(tracks.items()),marker);count=stop-start
-        box,size=geometry['avatar_body_'+action]
-        header=(destination/('avatar_body_'+action+'.pva')).read_bytes()[:40]
+        base='zombie_dance' if action=='dance' else 'avatar_body_'+action
+        box,size=geometry[base]
+        header=(destination/(base+'.pva')).read_bytes()[:40]
         anchor=struct.unpack_from('<2f',header,32)
         for part,track,names in choices:
+            if action=='dance' and part not in ('face','mustache'):continue
             textures=[image(name) for name in names];keys=tracks[track]
             def frame(index):
                 variant,offset=divmod(index,count);f=keys[start+offset]

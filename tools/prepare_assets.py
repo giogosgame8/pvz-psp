@@ -101,6 +101,26 @@ for _pose in ('walk','eat','death'):
 for _pose in ('idle','idle2','idle3','talk','fly','land'):
  SPECS.append(('menu_crow_'+_pose,'Crow','anim_'+_pose,.09,''))
 
+for _name,_gear in [('zombie_dance',''),('cone_dance','cone'),('bucket_dance','bucket')]:
+ SPECS.append((_name,'Zombie','anim_dance',.48,_gear))
+ for _stage in (1,2):SPECS.append((_name+'_damage'+str(_stage),'Zombie','anim_dance',.48,dict(base=_name,gear=_gear,body=_stage)))
+
+# Defensive plants replace only their authored damaged body/front image.
+for _stage in (1,2):
+ SPECS.append(('tallnut_damage'+str(_stage),'Tallnut','anim_idle',.66,dict(base='tallnut',overrides={'IMAGE_REANIM_TALLNUT_BODY':'IMAGE_REANIM_TALLNUT_CRACKED'+str(_stage)})))
+ SPECS.append(('pumpkin_front_damage'+str(_stage),'Pumpkin','anim_idle',.66,dict(base='pumpkin',only_track=['Pumpkin_front'],overrides={'IMAGE_REANIM_PUMPKIN_FRONT':'IMAGE_REANIM_PUMPKIN_DAMAGE'+str(1 if _stage==1 else 3)})))
+
+SPECS.append(('pumpkin_front','Pumpkin','anim_idle',.66,dict(base='pumpkin',only_track=['Pumpkin_front'])))
+SPECS.append(('pumpkin_back','Pumpkin','anim_idle',.66,dict(base='pumpkin',only_track=['Pumpkin_back'])))
+
+# Giga uses the same authored body clips, with the disc's red-eyed head variants.
+_giga_heads={'IMAGE_REANIM_ZOMBIE_GARGANTUAR_HEAD':'IMAGE_REANIM_ZOMBIE_GARGANTUAR_HEAD_REDEYE','IMAGE_REANIM_ZOMBIE_GARGANTUAR_HEAD2':'IMAGE_REANIM_ZOMBIE_GARGANTUAR_HEAD2_REDEYE'}
+for _base,_clip in [('walk','anim_walk'),('eat','anim_smash'),('death','anim_death'),('throw','anim_throw')]:
+ for _empty in (False,True):
+  _name='giga_'+_base+('_noimp' if _empty else '')
+  SPECS.append((_name,'Zombie_gargantuar',_clip,.38,dict(base='garg_'+_base+('_noimp' if _empty else ''),overrides=_giga_heads,omit_track=('Zombie_imp','Zombie_gargantuar_whiterope') if _empty else ())))
+SPECS.append(('mower_tricked','LawnMower','anim_tricked',.44,''))
+
 # The PSP customizer reuses owned PS3 parts; its body banks omit the head.
 _avatar_omit=('anim_head1','anim_head2','anim_hair','Zombie_mustache','zombie_eye')
 for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
@@ -288,7 +308,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                     frame = frames[79 + (index - start) % 25]
                 if frame["f"] < 0 or frame["a"] <= 0 or not frame["i"]:
                     continue
-                identifier=frame["i"]
+                identifier=damage.get("overrides",{}).get(frame["i"],frame["i"])
                 # The tank's MOW layer is a runtime attachment placeholder.
                 if identifier=='IMAGE_REANIM_MOW':continue
                 if damage.get("armor",0) and name in ("anim_cone","anim_bucket"):
@@ -340,6 +360,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
             parent=root+'_walk' if root+'_walk' in geometry else parent
         if output_name.startswith('boss_') and output_name not in ('boss_walk','boss_death') and 'boss_walk' in geometry:parent='boss_walk'
         if output_name.startswith('classic_dancer_eat'):parent='classic_dancer_walk'
+        if output_name=='mower_tricked':parent='mower'
         if output_name.startswith('menu_crow_') and output_name!='menu_crow_idle':parent='menu_crow_idle'
         if parent:
             base_box,_=geometry[parent]
@@ -443,6 +464,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     if ffmpeg:
         songs=json.loads((destination/'music-index.json').read_text())
         manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in songs),'old_pcm_bytes':sum(s['pcm_bytes'] for s in songs)}
+    from prepare_completion021 import prepare_completion021
+    assets.extend(prepare_completion021(imported,destination,previews,write_pva))
     from prepare_customizer import prepare_customizer
     assets.extend(prepare_customizer(imported,destination,previews,write_pva,geometry))
     from prepare_garden018 import prepare_garden018

@@ -1,5 +1,6 @@
 /* Live actor/audio state deliberately stays outside deterministic saved gameplay. */
-static void native_sound(int event){if(event<FOLEY_COUNT)foley_play(event);else foley_sample(event-FOLEY_COUNT);}
+static int scene_voice_event(int event){return event==FOLEY_GROAN&&(player.completion.cosmetics&COS_SUKHBIR)?FOLEY_SUKHBIR:event;}
+static void native_sound(int event){event=scene_voice_event(event);if(event<FOLEY_COUNT)foley_play(event);else foley_sample(event-FOLEY_COUNT);}
 static uint32_t scene_rng=0x18a0d10;static float groan_wait=7,thunder_wait=8;
 static int audio_last_screen=-1;
 static unsigned scene_random(void){scene_rng^=scene_rng<<13;scene_rng^=scene_rng>>17;scene_rng^=scene_rng<<5;return scene_rng;}
@@ -58,7 +59,7 @@ static void audio_scene_step(float dt){
   }else if(advance||game.status==WON){float normalized=1-z->death/game_death_duration_for(&game,z),threshold=z->kind==Z_POLE?.68f:z->kind==Z_FOOTBALL?.52f:z->kind==Z_PAPER?.63f:z->kind==Z_DANCER||z->kind==Z_BACKUP?.83f:z->kind==Z_GARG?.86f:z->kind==Z_DIGGER?.85f:.77f;if(!game.polish.death_style[n]&&sound_actors[n].death<threshold&&normalized>=threshold)foley_play(FOLEY_ZOMBIE_FALLING);sound_actors[n].death=normalized;}
  }
  foley_loop(FOLEY_JACKINTHEBOX,active&&jack);foley_loop(FOLEY_DIGGER,active&&digger);foley_loop(FOLEY_RAIN,active&&(game.level==40||(live_benchmark&&live_phase==1)));
- if(advance){groan_wait-=dt;if(groan_wait<=0){int live[MAX_ZOMBIES],count=0;for(int n=0;n<MAX_ZOMBIES;n++)if(game.zombies[n].used&&game.zombies[n].death<=0)live[count++]=n;if(count){Zombie *z=&game.zombies[live[scene_random()%count]];foley_play(z->kind==Z_GARG?FOLEY_LOW_GROAN:scene_random()%10==0?FOLEY_BRAINS:FOLEY_GROAN);}groan_wait=5+(scene_random()%1000)*.01f;}
+ if(advance){groan_wait-=dt;if(groan_wait<=0){int live[MAX_ZOMBIES],count=0;for(int n=0;n<MAX_ZOMBIES;n++)if(game.zombies[n].used&&game.zombies[n].death<=0)live[count++]=n;if(count){Zombie *z=&game.zombies[live[scene_random()%count]];native_sound(z->kind==Z_GARG?FOLEY_LOW_GROAN:scene_random()%10==0?FOLEY_BRAINS:FOLEY_GROAN);}groan_wait=5+(scene_random()%1000)*.01f;}
   if(game.level==40){thunder_wait-=dt;if(thunder_wait<=0){foley_play(FOLEY_THUNDER);thunder_wait=8+scene_random()%12;}}
  }else if(!active){groan_wait=7;thunder_wait=8;}
 }

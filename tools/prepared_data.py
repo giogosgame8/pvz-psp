@@ -5,8 +5,8 @@ from pathlib import Path
 import struct
 import zlib
 
-DATA_VERSION = '0.20.0'
-RECIPE = 'ps3-0200-1'
+DATA_VERSION = '0.21.0'
+RECIPE = 'ps3-0210-2'
 
 
 def file_hash(path):

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-enum { PAGE_BYTES=32768,PAGES=768 };
+enum { PAGE_BYTES=4096,PAGES=6144 };
 static int low_memory_cache;
 static int page_limit=PAGES,bank_limit=8*1024*1024,static_limit=6*1024*1024;
 typedef struct { const Animation *owner;int frame,start,pages;uint32_t used,pinned; } CachedFrame;
@@ -27,7 +27,7 @@ static void cache_error(const Animation *a,int frame,int reason){
     if(cache_errors<=12){FILE *f=fopen("asset-cache-errors.txt","a");if(f){fprintf(f,"reason %d, asset %s, frame %d, banks %u, pages %d\n",reason,a?a->path:"none",frame,(unsigned)bank_bytes,page_limit);fclose(f);}}
 }
 void animation_cache_configure(int low){
-    animation_cache_suspend();free(frame_memory);frame_memory=0;low_memory_cache=!!low;page_limit=low?384:PAGES;bank_limit=(low?2:8)*1024*1024;static_limit=low?0:6*1024*1024;
+    animation_cache_suspend();free(frame_memory);frame_memory=0;low_memory_cache=!!low;page_limit=low?3072:PAGES;bank_limit=(low?2:8)*1024*1024;static_limit=low?0:6*1024*1024;
 }
 int animation_cache_ok(void){return cache_errors==0;}
 extern int animation_load_legacy(Animation*,const char*);
@@ -181,7 +181,7 @@ void animation_cache_suspend(void){
     for(Animation *a=animations;a;a=a->next)if(a->compressed){free(a->packed);a->packed=0;free(a->pixels);a->pixels=0;}
     /* A music-file allocation during the ending can split the freed small-cache
        block. Keep the small profile's arena reserved so returning to a menu
-       never depends on finding another contiguous 8 MiB heap block. Movie
+       never depends on finding another contiguous 12 MiB heap block. Movie
        buffers fit alongside it after banks, static art and scratch are freed. */
     bank_bytes=static_bytes=0;if(!low_memory_cache){free(frame_memory);frame_memory=0;}free(scratch);scratch=0;
 }
@@ -196,5 +196,29 @@ int animation_cache_layout_selftest(FILE *out){
    for(int y=0;y<16&&ok;y++)for(int x=0;x<32;x++){uint16_t expected=linear[y*32+x];if(mode==2){int gray=((expected&15)*30+((expected>>4)&15)*59+((expected>>8)&15)*11)/100;expected=(expected&0xf000)|gray|(gray<<4)|(gray<<8);}int at=((y/8)*4+x/8)*64+(y%8)*8+x%8;if(pixels[at]!=expected){ok=0;break;}}
   }animation_free(&a);pass+=ok;fprintf(out,"texture layout %s preserves every pixel: %s\n",mode==0?"legacy PVA3":mode==1?"GPU-ready PVA4":"PVA4 Imitater grayscale",ok?"PASS":"FAIL");
  }
- remove(file);fprintf(out,"TEXTURE LAYOUT RESULT %d/3\n",pass);return pass==3;
+ remove(file);
+ /* 512 tiny frames pinned in one draw used to waste 16 MiB in 32 KiB
+    blocks. They must coexist in the same 12 MiB PSP-1000 cache. */
+ Animation banks[2]={{0}};int dense=1;unsigned before=cache_errors;
+ for(int bank=0;bank<2;bank++){
+  char path[64];snprintf(path,sizeof(path),"selftest-dense-cache-%d.pva",bank);
+  uint32_t words[6]={32,16,32,16,256,1024},index[512]={0};float tail[3]={12,16,16};
+  FILE *f=fopen(path,"wb");int ok=f&&fwrite("PVA4",4,1,f)==1&&fwrite(words,sizeof(words),1,f)==1&&fwrite(tail,sizeof(tail),1,f)==1&&fwrite(index,sizeof(index),1,f)==1;uint32_t offset=0;
+  for(int n=0;n<256&&ok;n++){
+   for(int p=0;p<512;p++)linear[p]=(uint16_t)(0x8000+bank*256+n);
+   uLongf size=sizeof(packed);ok=compress2(packed,&size,(Bytef*)linear,sizeof(linear),1)==Z_OK;
+   index[n*2]=offset;index[n*2+1]=size;offset+=size;ok=ok&&fwrite(packed,size,1,f)==1;
+  }
+  if(ok)ok=!fseek(f,40,SEEK_SET)&&fwrite(index,sizeof(index),1,f)==1;if(f)fclose(f);
+  ok=ok&&animation_load(&banks[bank],path);dense&=ok;
+ }
+ for(int bank=0;bank<2&&dense;bank++)for(int n=0;n<256&&dense;n++)dense=animation_frame(&banks[bank],n)!=0;
+ for(int bank=0;bank<2&&dense;bank++)for(int n=0;n<256&&dense;n++){
+  dense=banks[bank].cached_slots[n]>=0;uint16_t *pixels=dense?animation_frame(&banks[bank],n):0;
+  for(int p=0;p<512&&dense;p++)dense=pixels&&pixels[p]==(uint16_t)(0x8000+bank*256+n);
+ }
+ dense&=cache_errors==before;pass+=dense;
+ fprintf(out,"texture cache holds 512 simultaneous small frames with intact pixels: %s\n",dense?"PASS":"FAIL");
+ for(int bank=0;bank<2;bank++){animation_free(&banks[bank]);char path[64];snprintf(path,sizeof(path),"selftest-dense-cache-%d.pva",bank);remove(path);}
+ fprintf(out,"TEXTURE LAYOUT RESULT %d/4\n",pass);return pass==4;
 }

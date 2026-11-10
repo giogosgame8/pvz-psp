@@ -23,7 +23,7 @@ static void garden_flush(void){for(int n=0;n<8;n++)if(garden_actions[n].used)gar
 static void garden_present_step(float dt){
  int had=garden_pending();for(int n=0;n<8;n++)if(garden_actions[n].used){garden_actions[n].elapsed+=dt;if(garden_actions[n].elapsed>=garden_actions[n].duration)garden_action_finish(&garden_actions[n]);}
  for(int n=0;n<GARDEN_PLANTS;n++)garden_grow[n]=fmaxf(0,garden_grow[n]-dt);
- if(had&&!garden_pending())profile_save(&player,profile_path);
+ if(had&&!garden_pending())persist_profile();
  int64_t now=(int64_t)time(NULL);int awake=(player.garden.snail_awake>0&&now-player.garden.snail_awake<180)||(player.garden.snail_chocolate>0&&now-player.garden.snail_chocolate<3600);
  if(!awake&&!snail_was_awake&&snail_pose==0)snail_pose=4;
  snail_pose_time+=dt;

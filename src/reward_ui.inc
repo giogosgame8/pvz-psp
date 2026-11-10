@@ -1,6 +1,6 @@
 static const char *reward_name(void){
     int type=game_reward_type(&game),seed=game_reward_seed(&game);
-    switch(type){case REWARD_SHOVEL:return "SHOVEL";case REWARD_ALMANAC:return "ALMANAC";case REWARD_KEYS:return "CAR KEYS";case REWARD_TACO:return "TACO";case REWARD_WATERING_CAN:return "WATERING CAN";case REWARD_NOTE:return "ZOMBIE NOTE";case REWARD_TROPHY:return "TROPHY";case REWARD_SILVER_SUNFLOWER:return "SILVER SUNFLOWER";default:return seed>=0?full_seed_names[seed]:"SEED PACKET";}
+    switch(type){case REWARD_SHOVEL:return "SHOVEL";case REWARD_ALMANAC:return "ALMANAC";case REWARD_KEYS:return "CAR KEYS";case REWARD_TACO:return "TACO";case REWARD_WATERING_CAN:return "WATERING CAN";case REWARD_NOTE:return "ZOMBIE NOTE";case REWARD_TROPHY:return "TROPHY";case REWARD_SILVER_SUNFLOWER:return "SILVER SUNFLOWER";case REWARD_MONEY_BAG:return "MONEY BAG";default:return seed>=0?full_seed_names[seed]:"SEED PACKET";}
 }
 static void update_reward(float dt){
     if(game.extra.pending==2){if(reward_delay<0){reward_delay=.2f;reward_row=2;reward_col=4;reward_x=center(4);reward_ground=plant_base(2,4);}reward_elapsed+=dt;if(reward_collect_time>=0)reward_collect_time+=dt;return;}
@@ -42,7 +42,7 @@ static void draw_reward(void){
     if(type==REWARD_SEED&&seed>=0){
         draw_reward_glow(x,foot,reward_elapsed,1);render_image(&assets[A_SEED_CARDS],x-12,foot-33,24,33,seed,WHITE);
     }else{
-        int asset=type==REWARD_SHOVEL?A_REWARD_SHOVEL:type==REWARD_ALMANAC?A_REWARD_ALMANAC:type==REWARD_KEYS?A_REWARD_KEYS:type==REWARD_TACO?A_REWARD_TACO:type==REWARD_WATERING_CAN?A_REWARD_WATERING_CAN:type==REWARD_NOTE?A_REWARD_NOTE:type==REWARD_SILVER_SUNFLOWER?A_REWARD_SILVER_SUNFLOWER:A_REWARD_TROPHY;
+        int asset=type==REWARD_SHOVEL?A_REWARD_SHOVEL:type==REWARD_ALMANAC?A_REWARD_ALMANAC:type==REWARD_KEYS?A_REWARD_KEYS:type==REWARD_TACO?A_REWARD_TACO:type==REWARD_WATERING_CAN?A_REWARD_WATERING_CAN:type==REWARD_NOTE?A_REWARD_NOTE:type==REWARD_SILVER_SUNFLOWER?A_REWARD_SILVER_SUNFLOWER:type==REWARD_MONEY_BAG?A_REWARD_MONEYBAG:A_REWARD_TROPHY;
         draw_reward_glow(x,foot,reward_elapsed,1);render_anim(&assets[asset],x,foot,0,type==REWARD_TROPHY?.6f:.8f,WHITE,0);
     }
     if(selected&&t>=.7f)render_image(&assets[A_AWARD_ARROW],x-8,foot-51-3*sinf(reward_elapsed*5),16,13,0,WHITE);
