@@ -71,6 +71,20 @@ compared to the validated folder. It contains no player saves, test flags,
 original ISO or PS3 executable. Archive hashes and exact byte counts are in its
 adjacent `package.json`. Imported resources stay out of the source repository.
 
+### Public player ZIP
+
+`PvZ-PSP-0.23.0.zip` contains sixteen files: the tested bare executable,
+standalone Setup.exe, installation README and required third-party notices.
+It contains no imported game resources. Archive SHA-256:
+`7d41cb48f88a2a38fabba727e951383937d1c07fa94517d544b6d11fa3647046`.
+
+Setup was run from a fresh extraction of that exact ZIP with system Python
+absent from PATH. It completed in **197.871 s** and all **674** integrity-listed
+files matched the validated development data. Launcher preparation preserved
+the tested native program payload. The timing difference from the earlier
+112.497 s run is another reason not to present one run as a general setup-time
+guarantee or controlled speed comparison.
+
 ## Limits
 
 No physical Street/1000/2000/3000 acceptance, two-console ad-hoc session,
