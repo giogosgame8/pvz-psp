@@ -1,4 +1,15 @@
-# ISO content audit, 10 November 2026 (0.20.1)
+# ISO content audit — public 0.20.1 and development updates
+
+Development status, 11 November 2026: the 0.21 checkpoint adds repeated
+Adventure, Yeti retreat, Giga-gargantuar, the combined Gold Sunflower reward,
+partial secret effects, a house-selection prototype, rendering improvements
+and save recovery. 0.22 adds adaptive level music. These are development changes,
+not a claim that public 0.20.1 contains them. Consult
+[the current item-by-item status](reference/COMPLETION-WORK.md) and
+[adaptive music limits](reference/DYNAMIC-MUSIC-0.22.md).
+
+The audit below describes the public 0.20.1 baseline; entries superseded by
+those development reports should not be read as missing from the new checkpoint.
 
 This audits the current native PSP implementation against locally extracted
 resources and the project's PS3 comparison records. It is not an exhaustive

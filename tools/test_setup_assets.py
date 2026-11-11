@@ -17,7 +17,7 @@ def fixture(folder):
     (folder / 'manifest.json').write_text(json.dumps({
         'version': DATA_VERSION, 'disc_title_id': 'BLUS30852', 'source_iso_sha256': 'test-iso',
         'assets': [{'file': 'plant.pva'}]}), encoding='utf-8')
-    for name in ('menu-motion.bin','menu-motion.json','plant.pva', 'foley.pvf', 'ending.pvj', 'ending.json', 'music0.wav', 'assets.idx', 'XMB_ICON0.PNG', 'XMB_PIC1.PNG', 'zombie_motion.bin', 'seeds.bin', 'disc_font.bin', 'strings.bin', 'almanac.bin', 'story-index.json', 'music-checks.bin'):
+    for name in ('music-dynamics.bin','music-layer-checks.bin','menu-motion.bin','menu-motion.json','plant.pva', 'foley.pvf', 'ending.pvj', 'ending.json', 'music0.wav', 'assets.idx', 'XMB_ICON0.PNG', 'XMB_PIC1.PNG', 'zombie_motion.bin', 'seeds.bin', 'disc_font.bin', 'strings.bin', 'almanac.bin', 'story-index.json', 'music-checks.bin'):
         (folder / name).write_bytes(b'test fixture')
     (folder / 'shoot-alignment.bin').write_bytes(b'PPA1'+bytes.fromhex('03000000500000003c000000')+bytes(1920))
     (folder / 'music-index.json').write_text('[{"file":"music0.wav"}]', encoding='utf-8')
@@ -25,6 +25,19 @@ def fixture(folder):
 
 
 class SetupTests(unittest.TestCase):
+    def test_integrity_requires_every_adaptive_layer_even_when_the_index_is_rewritten(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'data';fixture(folder)
+            (folder/'music-index.json').write_text('[{"file":"music0.wav","layers":[{"file":"music0_drums.wav"}]}]')
+            write_integrity(folder)
+            with self.assertRaisesRegex(ValueError,'omits required'):
+                validate_prepared(folder)
+            (folder/'music0_drums.wav').write_bytes(b'layer fixture');write_integrity(folder)
+            validate_prepared(folder)
+            (folder/'music0_drums.wav').write_bytes(b'broken layer')
+            with self.assertRaisesRegex(ValueError,'failed verification: music0_drums.wav'):
+                validate_prepared(folder)
+
     def test_reuse_requires_matching_iso_and_every_file_hash(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder=Path(temporary)/'data';fixture(folder)

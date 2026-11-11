@@ -41,12 +41,19 @@ int music_reader_open(MusicReader *r,const char *path){
     if(fseek(r->file,r->data_start,SEEK_SET))goto bad;return 1;
 bad:music_reader_close(r);r->error=reason;return 0;
 }
+int music_reader_seek(MusicReader *r,uint32_t sample){
+    if(!r->file||r->error||sample>=r->total_samples)return 0;
+    uint32_t block=sample/505,within=sample%505;
+    if(fseek(r->file,r->data_start+block*256,SEEK_SET)){r->error=1;return 0;}
+    r->position=sample;r->block_bytes=block*256;r->decoded_at=r->decoded_count=0;
+    if(within){unsigned char packed[256];if(fread(packed,256,1,r->file)!=1||(r->decoded_count=music_decode_block(packed,256,r->decoded))!=505){r->error=1;return 0;}r->decoded_at=within;r->block_bytes+=256;}
+    return 1;
+}
 int music_reader_read(MusicReader *r,int16_t *output,int samples){
     int written=0;if(!r->file||r->error||samples<=0)return 0;
     while(written<samples){
         if(r->position==r->total_samples){
-            if(fseek(r->file,r->data_start,SEEK_SET)){r->error=1;break;}
-            r->position=0;r->block_bytes=0;r->decoded_at=r->decoded_count=0;r->loops++;
+            if(!music_reader_seek(r,r->loop_start))break;r->loops++;
         }
         if(r->decoded_at==r->decoded_count){
             unsigned char block[256];
@@ -82,6 +89,9 @@ int music_selftest(FILE *out){
     CHECK("WAV reader accepts odd-sized ancillary chunk",opened&&r.total_samples==501);
     int read=opened?music_reader_read(&r,looped,1008):0;
     CHECK("stream loops at fact length without padded samples",read==1008&&r.loops==2&&looped[500]==1500&&looped[501]==1000&&looped[1002]==1000);
+    CHECK("sample seeking resumes inside an ADPCM block",music_reader_seek(&r,250)&&music_reader_read(&r,looped,3)==3&&looped[0]==1250&&looped[2]==1252);
+    r.loop_start=20;CHECK("looping preserves an authored intro without replaying it",music_reader_seek(&r,500)&&music_reader_read(&r,looped,3)==3&&looped[0]==1500&&looped[1]==1020&&looped[2]==1021);
+    uint32_t position=r.position;CHECK("out-of-range seeks preserve the playback cursor",!music_reader_seek(&r,501)&&r.position==position);
     music_reader_close(&r);made=fixture("selftest-music.wav",501,1);opened=made&&music_reader_open(&r,"selftest-music.wav");
     CHECK("bad compressed block stops bounded streaming safely",opened&&music_reader_read(&r,looped,10)==0&&r.error);music_reader_close(&r);
     FILE *f=fopen("selftest-music.wav","wb");if(f){fwrite("RIFF",4,1,f);fclose(f);}

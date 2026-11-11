@@ -1,6 +1,7 @@
 #include "audio.h"
 #include "game.h"
 #include "music.h"
+#include "adaptive_music.h"
 #include <pspkernel.h>
 #include <pspaudiolib.h>
 #include <stdint.h>
@@ -8,8 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { MUSIC_RING=65536,MUSIC_CHUNK=8192 };
-static int16_t music_ring[MUSIC_RING];static unsigned int ring_read,ring_write,ring_count;
+enum { MUSIC_RING=16384,MUSIC_CHUNK=2048 };
+static int16_t music_ring[3][MUSIC_RING];static unsigned int ring_read[3],ring_write[3],ring_count[3];
 static volatile uint32_t music_position,underruns,read_errors;static int music_half,music_fade;
 static int initialized;static volatile int play_music,worker_running;static SceUID lock=-1,worker=-1;
 static volatile int music_volume=85,effects_volume=50;
@@ -60,59 +61,7 @@ static void save_queued_settings(void){
     if(generation!=settings_written){settings_result=write_settings("audio-settings.dat",data);settings_written=generation;}
 }
 
-static void mix(void *buffer,unsigned int frames,void *userdata){
-    (void)userdata;int16_t *output=buffer;
-    sceKernelWaitSema(lock,1,0);
-    // One volume snapshot per buffer avoids locking in the per-sample loop.
-    int music_gain=music_volume*4096/100;
-    for(unsigned int i=0;i<frames;i++){
-        int value=0;
-        // The callback only consumes prepared samples. A separate thread owns
-        // file I/O and ADPCM decoding, including when changing tracks.
-        if(ring_count>=2&&play_music){
-            int sample=music_ring[ring_read];unsigned int next=(ring_read+1)&(MUSIC_RING-1);
-            if(music_half)sample=(sample+music_ring[next])/2;
-            if(music_fade<2048)music_fade++;sample=sample*music_fade/2048;
-            value=sample*music_gain/1024;music_half^=1;if(!music_half){ring_read=next;ring_count--;music_position++;}
-        }else if(i==0&&play_music&&music_track>=0){
-            underruns++;
-        }
-        output[i*2]=output[i*2+1]=limit_sample(value);
-    }
-    sceKernelSignalSema(lock,1);
-    foley_mix(output,frames,effects_volume,music_volume);
-}
-static int stream_worker(SceSize args,void *argp){
-    (void)args;(void)argp;MusicReader reader={0};int current=-1,priming=0;uint32_t current_generation=0;int16_t chunk[MUSIC_CHUNK];
-    while(worker_running){
-        if(settings_requested!=settings_written)save_queued_settings();
-        int wanted=requested_track;uint32_t generation=requested_generation;
-        if(wanted!=current||generation!=current_generation){current_generation=generation;
-            music_reader_close(&reader);current=wanted;priming=1;
-            if(wanted>=0&&wanted<MUSIC_COUNT){char path[64];snprintf(path,sizeof(path),"data/music%d.wav",wanted);
-                if(!music_reader_open(&reader,path)){failed_track=wanted;read_errors++;}
-                else if(test_read_delay)sceKernelDelayThread(test_read_delay);
-            }
-        }
-        if(!worker_running)break;
-        if(wanted!=requested_track||generation!=requested_generation)continue;
-        if(!reader.file){sceKernelDelayThread(10000);continue;}
-        sceKernelWaitSema(lock,1,0);unsigned int free_samples=MUSIC_RING-ring_count;sceKernelSignalSema(lock,1);
-        if(!priming&&free_samples<MUSIC_CHUNK){sceKernelDelayThread(10000);continue;}
-        int count=music_reader_read(&reader,chunk,MUSIC_CHUNK);
-        if(count!=MUSIC_CHUNK){failed_track=wanted;read_errors++;music_reader_close(&reader);continue;}
-        sceKernelWaitSema(lock,1,0);
-        if(wanted==requested_track&&generation==requested_generation){
-            if(priming){ring_read=ring_write=ring_count=0;music_position=0;music_half=music_fade=0;music_track=wanted;music_generation=generation;failed_track=-1;priming=0;}
-            unsigned int first=MUSIC_RING-ring_write;if(first>(unsigned int)count)first=count;
-            memcpy(music_ring+ring_write,chunk,first*sizeof(*chunk));memcpy(music_ring,chunk+first,(count-first)*sizeof(*chunk));
-            ring_write=(ring_write+count)&(MUSIC_RING-1);ring_count+=count;
-        }
-        sceKernelSignalSema(lock,1);
-    }
-    save_queued_settings();
-    music_reader_close(&reader);return 0;
-}
+#include "audio_dynamic.inc"
 int audio_select_music(int track){
     uint64_t start=stream_test_active?sceKernelGetSystemTimeWide():0;
     if(track<0||track>=MUSIC_COUNT)return 0;
@@ -124,13 +73,13 @@ void audio_restart_music(int track){if(track<0||track>=MUSIC_COUNT)return;reques
 float audio_music_seconds(int track){return music_track==track&&requested_track==track&&music_generation==requested_generation?music_position/22050.0f:-1;}
 int audio_init(void){
     audio_load_settings("audio-settings.dat");
-    int effects_ready=foley_init();
+    dynamic_load();int effects_ready=foley_init();
     for(int i=0;i<MUSIC_COUNT;i++){char path[64];snprintf(path,sizeof(path),"data/music%d.wav",i);FILE *f=fopen(path,"rb");if(f){track_available[i]=1;available_tracks++;fclose(f);}}
     lock=sceKernelCreateSema("pvzaudio",0,1,1,0);
     if(lock<0)return 0;
     initialized=pspAudioInit()>=0;
     if(initialized){pspAudioSetVolume(0,0x6000,0x6000);pspAudioSetChannelCallback(0,mix,0);}
-    worker_running=1;worker=sceKernelCreateThread("pvzmusic",stream_worker,0x18,64*1024,THREAD_ATTR_USER,0);
+    worker_running=1;worker=sceKernelCreateThread("pvzmusic",stream_worker,0x18,80*1024,THREAD_ATTR_USER,0);
     if(worker<0||sceKernelStartThread(worker,0,0)<0){worker_running=0;if(worker>=0)sceKernelDeleteThread(worker);worker=-1;read_errors++;}
     audio_select_music(MUSIC_MENU);
     return initialized&&effects_ready;
@@ -140,9 +89,10 @@ void audio_play(int effect){
  static const int groups[AUDIO_EFFECTS]={FOLEY_PLANT,FOLEY_THROW,FOLEY_SUN,FOLEY_CHOMP,FOLEY_CHERRYBOMB,FOLEY_GROAN,FOLEY_LAWNMOWER,FOLEY_WINMUSIC,-FX_HUGE_WAVE-1,-FX_FINALWAVE-1,-FX_SEEDLIFT-1,FOLEY_RAIN,FOLEY_THUNDER,FOLEY_SWING,FOLEY_BONK,FOLEY_PLASTIC_HIT,FOLEY_SHIELD_HIT,FOLEY_CRAZY_DAVE_SHORT,FOLEY_CRAZY_DAVE_LONG,FOLEY_CRAZY_DAVE_SCREAM,FOLEY_CRAZY_DAVE_SCREAM_2,FOLEY_SQUASH_HMM,FOLEY_THUMP};
  int id=groups[effect];if(id<0)foley_sample(-1-id);else foley_play(id);
 }
-void audio_music(int enabled){play_music=enabled;}
+void audio_music(int enabled){play_music=enabled&&!dynamic_test_paused;}
 void audio_write_status(FILE *out){
     if(!out)return;
+    fprintf(out,"Adaptive music: %d/5 themes, %u bursts, %u layer transitions, %u night entries; PCM buffers %u bytes\n",music_plan_count,(unsigned)burst_count,(unsigned)layer_boundaries,(unsigned)night_restarts,(unsigned)(sizeof(music_ring)+sizeof(night_prime)));
     fprintf(out,"Audio: IMA ADPCM streaming, buffer %u bytes, songs %d/%d, effects %d/%d, sliders %d/%d\n",(unsigned int)sizeof(music_ring),available_tracks,MUSIC_COUNT,foley_ok()?FX_SAMPLE_COUNT:0,FX_SAMPLE_COUNT,music_volume,effects_volume);foley_report(out);fflush(out);
 }
 void audio_shutdown(void){
@@ -160,13 +110,23 @@ int audio_stream_data_selftest(FILE *out){
         int match=checks[i][0]==4096&&music_reader_open(&reader,path)&&music_reader_read(&reader,decoded,4096)==4096&&music_fingerprint(decoded,4096)==checks[i][1];
         fprintf(out,"compressed song %d matches FFmpeg decoder: %s\n",i,match?"PASS":"FAIL");passed+=match;music_reader_close(&reader);
     }
-    fprintf(out,"DECODE RESULT %d/%d\n",passed,MUSIC_COUNT);return passed==MUSIC_COUNT;
+    fprintf(out,"DECODE RESULT %d/%d\n",passed,MUSIC_COUNT);int base_ok=passed==MUSIC_COUNT;
+    f=fopen("data/music-layer-checks.bin","rb");uint32_t layers[9][4];
+    ok=f&&fread(magic,4,1,f)==1&&!memcmp(magic,"PVLC",4)&&fread(&count,4,1,f)==1&&count==9&&fread(layers,sizeof(layers),1,f)==1&&fgetc(f)==EOF;
+    if(f)fclose(f);passed=0;
+    if(ok)for(int n=0;n<9;n++){
+        char path[64];snprintf(path,sizeof(path),"data/music%u%s.wav",(unsigned)layers[n][0],layers[n][1]==1?"_drums":"_hats");
+        int match=layers[n][0]<MUSIC_COUNT&&layers[n][1]>=1&&layers[n][1]<=2&&layers[n][2]==4096&&music_reader_open(&reader,path)&&music_reader_read(&reader,decoded,4096)==4096&&music_fingerprint(decoded,4096)==layers[n][3];
+        fprintf(out,"adaptive layer %u/%u matches FFmpeg decoder: %s\n",(unsigned)layers[n][0],(unsigned)layers[n][1],match?"PASS":"FAIL");passed+=match;music_reader_close(&reader);
+    }
+    fprintf(out,"LAYER DECODE RESULT %d/9\n",passed);return base_ok&&passed==9&&music_plan_count==5;
 }
 static struct {
     int phase,target,frames,rapid_changes,old_preferred,loaded,failures,target_fps;
     float stage,seconds,max_frame,max_ready;
     unsigned int initial_errors,initial_underruns;
 } stream_test;
+#include "audio_dynamic_live.inc"
 void audio_stream_test_begin(int target_fps){
     memset(&stream_test,0,sizeof(stream_test));stream_test.old_preferred=preferred_track;
     stream_test.initial_errors=read_errors;stream_test.initial_underruns=underruns;
@@ -200,10 +160,13 @@ int audio_stream_test_step(FILE *out,float elapsed){
         if(out){fprintf(out,"STREAM UI: %.2f FPS, max frame %.3f ms, max request %.3f ms, %d rapid changes, injected read delay 250 ms\n",fps,stream_test.max_frame*1000,max_request_us/1000.0f,stream_test.rapid_changes);
             fprintf(out,"STREAM RESULT %d/%d\n",passed,total);fflush(out);}
         #undef CHECK
-        test_read_delay=0;stream_test_active=0;audio_set_preferred_track(stream_test.old_preferred);return 1;
+        test_read_delay=0;stream_test.phase=4;return 0;
+    }else if(stream_test.phase==4&&dynamic_live_step(out,elapsed)){
+        stream_test_active=0;audio_set_preferred_track(stream_test.old_preferred);return 1;
     }return 0;
 }
 int audio_selftest(FILE *out){
+    int adaptive_ok=adaptive_music_selftest(out);
     int passed=0,total=0,old_music=music_volume,old_effects=effects_volume,old_track=preferred_track;
     #define VERIFY(label,condition) do{int ok=(condition);passed+=ok;total++;fprintf(out,"audio %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
     audio_set_volumes(-10,150);VERIFY("sliders clamp to 0-100",music_volume==0&&effects_volume==100);
@@ -221,5 +184,5 @@ int audio_selftest(FILE *out){
     remove("selftest-audio.dat");audio_set_volumes(old_music,old_effects);audio_set_preferred_track(old_track);
     fprintf(out,"AUDIO RESULT %d/%d\n",passed,total);
     #undef VERIFY
-    return passed==total;
+    return passed==total&&adaptive_ok;
 }

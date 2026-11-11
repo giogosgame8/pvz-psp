@@ -31,7 +31,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.21.0 development - completion work"
+#define BUILD018_LABEL "PvZ PSP 0.22.0 development - adaptive music"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -831,6 +831,8 @@ int main(int argc,char *argv[]){
         int context=soundtrack_context();
         int preferred=audio_preferred_track();if(ready)audio_select_music(music_test&&preferred>=0?preferred:context);
         audio_music(ready&&!help&&!(screen==19&&ending_paused)&&(screen!=1||(!paused&&(game.status==PLAYING||(game.status==WON&&game.level==50))))&&!(screen==1&&game.level==40));
+        int music_enemies=0;for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&game.zombies[i];if(z->used&&z->death<=0&&!game.hypnotized[i]&&(z->kind>=Z_DUCK||game.level==25||game_mini_active(&game,MINI_LITTLE)||game_zombie_body_stage(z)<2))music_enemies++;}
+        audio_battle_state(music_enemies,screen==1&&game.status==PLAYING&&!paused&&!help,game.huge_wave_timer);
         audio_scene_step(dt);memset(game.events,0,sizeof(game.events));
         render_begin();
         if(!ready){panel("GAME DATA REQUIRED");render_text(56,106,"RUN SETUP.EXE ON YOUR COMPUTER\nWITH YOUR OWN SUPPORTED PS3 ISO.\n\nCOPY THE RESULTING PVZPSP FOLDER\nINTO PSP/GAME ON YOUR MEMORY CARD.\n\nSEE THE INCLUDED README.",WHITE,1);}

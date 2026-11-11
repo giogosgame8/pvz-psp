@@ -12,7 +12,7 @@ TRACKS=[('menu',0x98),('day',0),('seeds',0x7a),('bowling',0xa6),('conveyor',0xd4
 def encode_music(ffmpeg,pcm,target):
     """4-bit mono IMA WAV; keep the exact source duration in its fact chunk."""
     raw=pcm.read_bytes();count=len(raw)//2
-    subprocess.run([ffmpeg,'-v','error','-f','s16le','-ar','22050','-ac','1','-i',str(pcm),'-c:a','adpcm_ima_wav','-block_size','256','-bitexact',str(target)],check=True,**hidden_process_options())
+    subprocess.run([ffmpeg,'-nostdin','-y','-v','error','-f','s16le','-ar','22050','-ac','1','-i',str(pcm),'-c:a','adpcm_ima_wav','-block_size','256','-bitexact',str(target)],check=True,**hidden_process_options())
     data=bytearray(target.read_bytes());at=12
     while at+8<=len(data):
         tag=data[at:at+4];size=struct.unpack_from('<I',data,at+4)[0]
@@ -73,6 +73,9 @@ def prepare_music(imported,destination):
         temp=Path(temporary)
         def prepare_track(item):
             index,(name,start)=item;target=temp/f'music{index}.pcm'
+            if index in (1,5,6,7,8):
+                from prepare_dynamic_music import prepare_dynamic_track
+                return prepare_dynamic_track(imported,destination,temp,index,name,start)
             if start is None:input_path=imported/'music/ZOMBIESONYOURLAWN.OGG';end=None
             else:
                 section,end=module_section(source,start);input_path=temp/(name+'.xm');input_path.write_bytes(section)
@@ -85,4 +88,7 @@ def prepare_music(imported,destination):
                 files.append(fact['file']);facts.append(fact)
                 print(f"Prepared original music: {fact['name']}, {fact['seconds']:.1f}s",flush=True)
     write_music_index(destination,facts)
-    files.extend(['music-index.json','music-checks.bin']);return files
+    from prepare_dynamic_music import write_dynamic_index
+    write_dynamic_index(destination,facts)
+    files.extend(layer['file'] for fact in facts for layer in fact.get('layers',[]))
+    files.extend(['music-index.json','music-checks.bin','music-dynamics.bin','music-layer-checks.bin']);return files

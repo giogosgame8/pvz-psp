@@ -35,7 +35,7 @@ def main():
     include = ["-I" + str(dev / "psp" / "include"), "-I" + str(sdk / "include"), "-I" + str(ROOT / "src")]
     objects = []
     defines = ["-DLOW_MEMORY=1"] if args.low_memory else ["-DTEST_PSP1000_60FPS=1"] if args.psp1000_60fps_test else []
-    for name in ("game", "garden", "disc_font", "textdb", "movie", "profile", "platform", "campaign_test", "progress", "render", "asset_cache", "music", "foley", "audio", "main"):
+    for name in ("game", "garden", "disc_font", "textdb", "movie", "profile", "platform", "campaign_test", "progress", "render", "asset_cache", "music", "adaptive_music", "foley", "audio", "main"):
         target = build / (name + ".o")
         run("psp-gcc", "-std=gnu11", "-O2", "-G0", "-Wall", "-Wextra", "-Wno-misleading-indentation", "-D_PSP_FW_VERSION=600", *defines, *include,
             "-c", ROOT / "src" / (name + ".c"), "-o", target)

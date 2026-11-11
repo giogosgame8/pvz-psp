@@ -41,7 +41,7 @@ PS3 timing parity or physical PSP acceptance.
 | V2 | Pending polish | Baseline presentation retained and regression-tested; complete PS3 comparison remains open. |
 | V3 | Partially improved | Gold trophy and money-bag artwork/panels; house/player/code screens captured and checked at 480×272. Full reward/effect choreography remains open. |
 | V4 | Pending polish | Baseline presentation retained and regression-tested; complete PS3 comparison remains open. |
-| V5 | Partially improved | Secret voice mode now reaches ambient groans and uses the disc Foley group. The complete original event-selection/mixing audit remains open. |
+| V5 | Partially improved | Secret voice mode reaches ambient groans and uses the disc Foley group. 0.22 adds pressure-driven main/percussion/hi-hat arrangements for five level themes, plus the dedicated night alternate. Exact PS3 fractional beat-phase matching and the complete event-selection/mixing audit remain open; see [dynamic music](DYNAMIC-MUSIC-0.22.md). |
 | V6 | Regression tested | Complete original ending playback was rerun on Street and on the smaller PSP-1000 emulator profile; exact visual comparison and hardware synchronization still need acceptance. |
 | Q1 | Improved; hardware unverified | Frame-cache allocation changed from 32 KiB to 4 KiB blocks at the same 12/24 MiB budgets. 512 simultaneous small frames retain exact pixels. PSP-1000 emulator live Day 59.83 FPS / Pool 59.55 FPS; 30 FPS remains the safe default and 60 remains selectable. |
 | Q2 | Pending hardware measurement | No physical Memory Stick cold-boot timing is claimed. Diagnostic startup logs include the full test suite and are not normal startup benchmarks. |
@@ -55,7 +55,8 @@ PS3 timing parity or physical PSP acceptance.
 Game saves now write version 12 (version 11 and earlier migrations retained).
 Profiles write version 4 (versions 1–3 retained). Back up existing saves before
 trying a development build; the older public 0.20.1 executable cannot read these
-newer save formats. New prepared assets are also required: recipe `ps3-0210-2`.
+newer save formats. The 0.22 music work requires new prepared assets: recipe
+`ps3-0220-1` (the earlier 0.21 checkpoint used `ps3-0210-2`).
 
 Original GOTY creator resources are absent from the supported PS3 disc. The
 existing PS3-art customizer is retained. PSN services and system trophies remain
@@ -67,3 +68,5 @@ The source executable and its disassembly stay private. Supporting reconstructio
 is explicitly identified where it interprets behavior not yet traced in PS3 code.
 
 Validation and compatibility details: [VALIDATION-0.21-DEVELOPMENT.md](VALIDATION-0.21-DEVELOPMENT.md).
+The adaptive-music follow-up is validated in
+[VALIDATION-0.22-DEVELOPMENT.md](VALIDATION-0.22-DEVELOPMENT.md).

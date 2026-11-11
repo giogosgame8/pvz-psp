@@ -463,7 +463,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
     if ffmpeg:
         songs=json.loads((destination/'music-index.json').read_text())
-        manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in songs),'old_pcm_bytes':sum(s['pcm_bytes'] for s in songs)}
+        layers=[s for song in songs for s in [song,*song.get('layers',[])]]
+        manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in layers),'old_pcm_bytes':sum(s['pcm_bytes'] for s in layers)}
     from prepare_completion021 import prepare_completion021
     assets.extend(prepare_completion021(imported,destination,previews,write_pva))
     from prepare_customizer import prepare_customizer
