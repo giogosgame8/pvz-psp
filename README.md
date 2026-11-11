@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.20.1/PvZ-PSP-0.20.1.zip)**
+**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.23.0/PvZ-PSP-0.23.0.zip)**
 
 ## What you need
 
@@ -12,7 +12,7 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 
 ## Install
 
-1. Download the game ZIP above and **extract all files**.
+1. Download the game ZIP above and **extract all files into a new folder**.
 2. Double-click **Setup.exe** on your computer.
 3. Select your **original PS3 ISO**. Setup helps install FFmpeg if needed.
 4. Wait until the window says **READY**. Preparing the game can take several minutes.
@@ -22,11 +22,9 @@ An unfinished, unofficial PSP reimplementation. Original game files are not incl
 Back up existing saves before updating. Download the game ZIP above; GitHub's
 **Source code** ZIP does not include Setup.exe or EBOOT.PBP.
 
-Updating from **0.20.0**? Only replace **EBOOT.PBP**; the data files are unchanged.
-Updating from an older version? Extract this ZIP over your PC setup folder, run
-Setup.exe, then copy **EBOOT.PBP and data together**, keeping your save files.
-Back up saves first. The gameplay save format is unchanged from 0.19.0.
-Repeat setup runs verify and reuse compatible files instead of rebuilding them.
+**Updating to 0.23.0:** back up your PSP game folder, run the new Setup.exe,
+then replace **EBOOT.PBP and data together**, keeping your save files.
+Older saves are imported, but older builds cannot read saves updated by 0.23.0.
 
 ## Good to know
 
@@ -35,6 +33,7 @@ Repeat setup runs verify and reuse compatible files instead of rebuilding them.
 - Choose **Disco / Michael Jackson** under **Options > Dancing zombie**.
 - Open **Player → Zombie customizer** to create a saved flag-zombie appearance using PS3 artwork.
 - PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
+- [What's new in 0.23.0](docs/changelog/CHANGES-0.23.0.md).
 
 **[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**
 
