@@ -29,6 +29,7 @@ static void vase_put(Game *g,int content,int count,int blocked){
     while(count-->0&&n){int at=random_next(g)%n,cell=cells[at];cells[at]=cells[--n];int r=cell/9,c=cell%9;g->vases[r][c]=1;g->extra.vase_content[r][c]=content;}
 }
 static void puzzle_clear(Game *g){
+    memset(&g->fidelity,0,sizeof(g->fidelity));memset(g->burst,0,sizeof(g->burst));memset(g->burst_left,0,sizeof(g->burst_left));memset(g->burst_target,0,sizeof(g->burst_target));memset(g->pea_shoot_time,0,sizeof(g->pea_shoot_time));memset(g->ladders,0,sizeof(g->ladders));memset(g->support_hp,0,sizeof(g->support_hp));memset(g->ice_tiles,0,sizeof(g->ice_tiles));memset(g->imitated,0,sizeof(g->imitated));g->cob_aiming=0;g->cob_row=g->cob_col=-1;
     memset(&g->polish,0,sizeof(g->polish));memset(g->zombies,0,sizeof(g->zombies));memset(g->shots,0,sizeof(g->shots));memset(g->suns,0,sizeof(g->suns));memset(g->vases,0,sizeof(g->vases));memset(g->graves,0,sizeof(g->graves));memset(g->craters,0,sizeof(g->craters));memset(g->asleep,0,sizeof(g->asleep));memset(g->hypnotized,0,sizeof(g->hypnotized));memset(g->frozen,0,sizeof(g->frozen));memset(g->extra.vase_green,0,sizeof(g->extra.vase_green));memset(g->extra.left_facing,0,sizeof(g->extra.left_facing));memset(g->extra.packet_age,0,sizeof(g->extra.packet_age));
     for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){g->plants[r][c]=(Plant){.kind=-1};g->support[r][c]=0;g->pumpkin_hp[r][c]=0;g->morph_timer[r][c]=0;}
     g->packet_count=0;g->selected=0;g->wave=1;g->spawned=0;g->spawn_timer=100000;g->huge_wave_timer=0;g->huge_wave_announced=0;g->extra.pending=0;g->extra.transition=0;g->level_flags=LEVEL_TUTORIAL_COMPLETE;
@@ -76,7 +77,7 @@ static void extra_plant_damage(Game *g,int r,int c,float before,float after){
 static int extra_iz_zombie(Game *g,int i,float dt){
     if(!extra_is(g,EXTRA_IZOMBIE))return 0;Zombie *z=&g->zombies[i];if(z->death>0||z->kind==Z_BUNGEE||g->frozen[i]>0||z->vault>0)return 0;
     if(z->kind==Z_DIGGER)return 0;
-    if(z->x<GRID_X-4){int r=z->row;if(g->extra.brains[r]>0){g->extra.brain_eating[i]+=100*dt;int damage=(int)g->extra.brain_eating[i];g->extra.brain_eating[i]-=damage;g->extra.brains[r]-=damage;z->eating=1;z->age+=dt;if(g->extra.brains[r]<=0){g->extra.brains[r]=0;sound_as(g,SFX_CHOMP,FOLEY_SQUISH);}}else{z->used=0;}return 1;}return 0;
+    if(!game_zombie_has_head(g,z)){z->eating=0;return 0;}if(z->x<GRID_X-4){int r=z->row;if(g->extra.brains[r]>0){g->extra.brain_eating[i]+=100*dt;int damage=(int)g->extra.brain_eating[i];g->extra.brain_eating[i]-=damage;g->extra.brains[r]-=damage;z->eating=1;z->age+=dt;if(g->extra.brains[r]<=0){g->extra.brains[r]=0;sound_as(g,SFX_CHOMP,FOLEY_SQUISH);}}else{z->used=0;}return 1;}return 0;
 }
 static int extra_pre_step(Game *g,float dt){
     if(g->extra.pending){g->extra.transition+=dt;return 1;}

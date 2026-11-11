@@ -92,6 +92,11 @@ SPECS.extend([('garg_throw','Zombie_gargantuar','anim_throw',.38,''),
 for _base,_clip in [('garg_walk','anim_walk'),('garg_eat','anim_smash'),('garg_death','anim_death'),('garg_throw','anim_throw')]:
  SPECS.append((_base+'_noimp','Zombie_gargantuar',_clip,.38,dict(base=_base,omit_track=('Zombie_imp','Zombie_gargantuar_whiterope'))))
 
+from prepare_fidelity023 import FIDELITY_SPECS
+from prepare_story023 import STORY_SPECS,DaveProp
+SPECS.extend(FIDELITY_SPECS)
+SPECS.extend(STORY_SPECS)
+
 # Both original dancer art sets remain on the supported PS3 disc.
 for _pose in ('walk','eat','death'):
  _name='classic_dancer_'+_pose
@@ -272,6 +277,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         source = files["reanim/" + animation.lower() + ".reanim"]
         fps, tracks = frames_from_xml(source)
         start, stop = clip_range(tracks, marker)
+        attachment=DaveProp(damage['prop'],files,tracks,frames_from_xml,clip_range,texture,multiply,invert) if damage.get('prop') else None
         # A generous source canvas handles rotation and negative source coordinates.
         def render_frame(index):
             canvas_size=1024 if animation=="Crow" else 1536 if animation in ("Zombie_boss","treeofWisdom") else 768 if animation in ("Zombie_gargantuar","CrazyDave") else 384
@@ -288,7 +294,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 if body>=2 and (name.startswith(("anim_head","anim_hair","anim_tongue","zombie_eye")) or
                                 (animation=="Zombie_polevaulter" and (name.lower().startswith("zombie_polevaulter_pole") or any(part in name.lower() for part in ("_innerarm","_innerhand"))))):
                     continue
-                if animation=='Zombie_dancer' and body>=2 and any(part in name.lower() for part in ('_head','_jaw','_hair','_eye')):continue
+                if animation.startswith('Zombie') and body>=2 and any(part in name.lower() for part in ('_head','_jaw','_hair','_eye','_helmet')):continue
                 frame = frames[index]
                 if animation=="GatlingPea":
                     if output_name=='gatling' and (frame['f']<0 or not frame['i']):
@@ -335,6 +341,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                         identifier=child['i']
                         if body and child_name=='Zombie_flag':identifier='IMAGE_REANIM_ZOMBIE_FLAG3'
                         draw_matrix(canvas,texture(identifier),multiply(overlay,matrix(child)),child['a'])
+            if attachment:attachment.draw(canvas,index,(index-start)/fps,draw_matrix)
             return canvas
         rendered = render_frames(render_frame,range(start,stop))
         union = Image.new("L", rendered[0].size)
@@ -354,7 +361,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         geometry[output_name]=(box,size)
         baked = [frame.crop(box).resize(size, Image.Resampling.LANCZOS) for frame in rendered]
         anchor=None
-        parent={'puff_shoot':'puff','fume_shoot':'fume','scaredy_shoot':'scaredy','scaredy_hide':'scaredy','sunshroom_big':'sunshroom'}.get(output_name)
+        parent=damage.get('anchor_parent') or {'puff_shoot':'puff','fume_shoot':'fume','scaredy_shoot':'scaredy','scaredy_hide':'scaredy','sunshroom_big':'sunshroom'}.get(output_name)
         if '_death' in output_name:
             root=output_name.split('_death')[0]
             parent=root+'_walk' if root+'_walk' in geometry else parent

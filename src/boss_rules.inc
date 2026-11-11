@@ -1,4 +1,4 @@
-static int boss_exposed(const Game *g){return g->extra.boss_action>=B_HEAD_ENTER&&g->extra.boss_action<=B_HEAD_LEAVE;}
+static int boss_exposed(const Game *g){return g->extra.boss_action>=B_HEAD_WAIT&&g->extra.boss_action<=B_HEAD_AFTER;}
 static void boss_set(Game *g,int action){g->extra.boss_action=action;g->extra.boss_action_time=0;if(action==B_HEAD_ENTER||action==B_HEAD_LEAVE)cue(FOLEY_HYDRAULIC);else if(action==B_SPAWN)cue(FOLEY_HYDRAULIC_SHORT);else if(action==B_RV)cue(GAME_SAMPLE(FX_RVTHROW));else if(action==B_HEAD_SPIT)cue(FOLEY_BOSS_BOULDER_ATTACK);if(action==B_RV||action==B_STOMP)cue(FOLEY_BOSS_EXPLOSION_SMALL);}
 static void boss_squish(Game *g,int row,int col,int width){for(int r=row;r<=row+1&&r<5;r++)for(int c=col;c<col+width&&c<9;c++){destroy_square(g,r,c,1);}g->flash=.13f;sound_as(g,SFX_EXPLODE,FOLEY_THUMP);}
 static int boss_step(Game *g,float dt){

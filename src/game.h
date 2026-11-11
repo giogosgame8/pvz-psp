@@ -6,6 +6,7 @@
 #include "extra_state.h"
 #include "polish_state.h"
 #include "completion_state.h"
+#include "fidelity_state.h"
 #include "foley_defs.h"
 /* Transient presentation hook, excluded from every saved Game layout. */
 void game_sound_listener(void (*listener)(int event));
@@ -90,6 +91,7 @@ typedef struct {
     uint32_t legacy_pad10;
     PolishState polish;
     CompletionState completion;
+    FidelityState fidelity;
 } Game;
 
 extern const char *seed_names[ALL_SEEDS];
@@ -159,6 +161,10 @@ void game_animate_pickups(Game *g,float dt);
 int game_spawn_zombie(Game *g, int row, int kind, float x);
 int game_alive(const Game *g);
 int game_zombie_body_stage(const Zombie *z);
+int game_zombie_max_health(const Game *g,const Zombie *z);
+int game_zombie_body_stage_for(const Game *g,const Zombie *z);
+int game_zombie_has_head(const Game *g,const Zombie *z);
+float game_vault_duration(const Zombie *z);
 int game_head_particle(const Game *g,int index,HeadParticle *out);
 int game_zombie_armor_stage(const Zombie *z);
 int game_sunflower_count(const Game *g);

@@ -33,7 +33,7 @@ static int zombie_chew_events(int index,float dt){
  Zombie *z=&game.zombies[index];SoundActor *state=&sound_actors[index];
  if(!z->used||z->death>0||!z->eating||z->vault>0||!zombie_chewing_kind(z->kind)){state->chewing=0;return 0;}
  if(game.frozen[index]>0)return 0;
- if(z->kind<Z_DUCK&&game.level!=25&&!game_mini_active(&game,MINI_LITTLE)&&game_zombie_body_stage(z)==2){state->chewing=0;return 0;}
+ if(!game_zombie_has_head(&game,z)){state->chewing=0;return 0;}
  const Animation *clip=zombie_visible_clip(z,index,0);
  float seconds=zombie_visible_time(z,clip),step=dt*zombie_eating_rate(z->kind)/fmaxf(1,clip->fps);
  return chew_advance(state,clip,z->kind,seconds,step);

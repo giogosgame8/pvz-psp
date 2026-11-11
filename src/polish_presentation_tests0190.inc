@@ -15,7 +15,7 @@ static int polish_presentation_selftest(FILE *out){Game saved=game;int pass=0,to
  game.polish.death_style[id]=DEATH_WATER;PP("drowning selects the water-death bank",zombie_visible_clip(z,id,0)==&assets[A_ZOMBIE_WATERDEATH]);
  z->death=0;z->kind=Z_DOLPHIN;z->vault=1;z->age=0;game.polish.action[id]=0;game.polish.pose[id]=100;
  PP("a Dolphin starts its jump at frame zero regardless of prior walking",zombie_visible_clip(z,id,0)==&assets[A_DOLPHIN_JUMP]&&zombie_visible_time(z,&assets[A_DOLPHIN_JUMP])==0);
- z->age=43/48.0f;PP("a Dolphin reaches the middle of its own vault clip",fabsf(zombie_visible_time(z,&assets[A_DOLPHIN_JUMP])*assets[A_DOLPHIN_JUMP].fps-assets[A_DOLPHIN_JUMP].frames*.5f)<.001f);
+ z->age=game_vault_duration(z)*.5f;PP("a Dolphin reaches the middle of its own vault clip",fabsf(zombie_visible_time(z,&assets[A_DOLPHIN_JUMP])*assets[A_DOLPHIN_JUMP].fps-assets[A_DOLPHIN_JUMP].frames*.5f)<.001f);
  game.wave=3;game.num_waves=10;game.spawned=0;game.polish.wave_pending=1;PP("a queued wave retains the completed portion of the progress meter",fabsf(wave_meter_target()-.2f)<.001f);
  game=saved;
  #undef PP

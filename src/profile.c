@@ -7,18 +7,21 @@
 #include "garden.h"
 #include "legacy_profile02.h"
 _Static_assert(sizeof(LegacyProfile02)==312,"0.9 profile layout");
-const int shop_visible_items[SHOP_VISIBLE_COUNT]={SHOP_SLOTS,SHOP_POOL_CLEANER,SHOP_RAKE,SHOP_ROOF_CLEANER,SHOP_GATLING,SHOP_TWIN,SHOP_GLOOM,SHOP_CATTAIL,SHOP_SPIKEROCK,SHOP_GOLDMAGNET,SHOP_WINTER,SHOP_COB,SHOP_IMITATER,SHOP_FIRST_AID,SHOP_MARIGOLD1,SHOP_MARIGOLD2,SHOP_MARIGOLD3,SHOP_GOLD_CAN,SHOP_FERTILIZER,SHOP_SPRAY,SHOP_PHONOGRAPH,SHOP_GLOVE,SHOP_MUSHROOM_GARDEN,SHOP_BARROW,SHOP_SNAIL,SHOP_AQUARIUM,SHOP_TREE,SHOP_TREE_FOOD};
-const char *shop_item_names[SHOP_ITEMS]={"GATLING PEA","TWIN SUNFLOWER","GLOOM-SHROOM","CATTAIL","WINTER MELON","GOLD MAGNET","SPIKEROCK","COB CANNON","IMITATER","BONUS MOWER","MARIGOLD","MARIGOLD","MARIGOLD","GOLD WATERING CAN","FERTILIZER","BUG SPRAY","PHONOGRAPH","GARDENING GLOVE","MUSHROOM GARDEN","WHEELBARROW","STINKY THE SNAIL","EXTRA SEED SLOT","POOL CLEANER","ROOF CLEANER","GARDEN RAKE","AQUARIUM GARDEN","CHOCOLATE","TREE OF WISDOM","TREE FOOD","WALL-NUT FIRST AID"};
+const int shop_visible_items[SHOP_VISIBLE_COUNT]={SHOP_SLOTS,SHOP_POOL_CLEANER,SHOP_RAKE,SHOP_ROOF_CLEANER,SHOP_GATLING,SHOP_TWIN,SHOP_GLOOM,SHOP_CATTAIL,SHOP_SPIKEROCK,SHOP_GOLDMAGNET,SHOP_WINTER,SHOP_COB,SHOP_IMITATER,SHOP_FIRST_AID,SHOP_MARIGOLD1,SHOP_MARIGOLD2,SHOP_MARIGOLD3,SHOP_GOLD_CAN,SHOP_FERTILIZER,SHOP_SPRAY,SHOP_PHONOGRAPH,SHOP_GLOVE,SHOP_MUSHROOM_GARDEN,SHOP_BARROW,SHOP_SNAIL,SHOP_AQUARIUM,SHOP_TREE,SHOP_TREE_FOOD,SHOP_HOUSE_NORMAL,SHOP_HOUSE_SCARY,SHOP_HOUSE_TRUCK,SHOP_HOUSE_SPACE,SHOP_HOUSE_FUN};
+const char *shop_item_names[SHOP_ITEMS]={"GATLING PEA","TWIN SUNFLOWER","GLOOM-SHROOM","CATTAIL","WINTER MELON","GOLD MAGNET","SPIKEROCK","COB CANNON","IMITATER","BONUS MOWER","MARIGOLD","MARIGOLD","MARIGOLD","GOLD WATERING CAN","FERTILIZER","BUG SPRAY","PHONOGRAPH","GARDENING GLOVE","MUSHROOM GARDEN","WHEELBARROW","STINKY THE SNAIL","EXTRA SEED SLOT","POOL CLEANER","ROOF CLEANER","GARDEN RAKE","AQUARIUM GARDEN","CHOCOLATE","TREE OF WISDOM","TREE FOOD","WALL-NUT FIRST AID","SWITCH HOUSE","NORMAL HOUSE BLUEPRINTS","SCARY HOUSE BLUEPRINTS","FUTURHAUS BLUEPRINTS","TRAILER BLUEPRINTS","FUNHOUSE BLUEPRINTS"};
 /* Ten-dollar units, recovered from PS3 GetItemCost at VA 0x2a0bf4. */
 static const int prices[SHOP_ITEMS]={500,500,750,1000,1000,300,750,2000,3000,200,250,250,250,1000,75,100,1500,100,3000,20,300,75,100,300,20,3000,0,1000,250,200};
-void profile_init(Profile *p){memset(p,0,sizeof(*p));p->highest=1;p->next_session=1;p->seen_plants=1;p->completion.house_owned=31;}
+void profile_init(Profile *p){memset(p,0,sizeof(*p));p->highest=1;p->next_session=1;p->seen_plants=1;p->completion.house_owned=1;}
 int profile_item_cost(const Profile *p,int item){
     if(item<0||item>=SHOP_ITEMS)return -1;
+    if(item>=SHOP_HOUSE_NORMAL&&item<=SHOP_HOUSE_FUN){unsigned level=p->purchases[item];if(level>=(item==SHOP_HOUSE_NORMAL?2u:5u))return -1;return item==SHOP_HOUSE_NORMAL?2400+800*(level>0):800*(level+1);}
     if(item==SHOP_SLOTS){static const int cost[4]={75,500,2000,8000};return p->purchases[item]<4?cost[p->purchases[item]]:-1;}
     if(item==SHOP_EXTRA_MOWER)return p->purchases[item]?500:200;return prices[item];
 }
 int profile_item_available(const Profile *p,int item){
     if(item<0||item>=SHOP_ITEMS)return 0;
+    if(item>=SHOP_HOUSE_NORMAL&&item<=SHOP_HOUSE_FUN)return p->highest>=25&&profile_item_cost(p,item)>=0;
+    if(item==SHOP_BLUEPRINT_SWITCH||item==36)return 0;
     if(item==SHOP_SLOTS)return p->highest>=13&&p->purchases[item]<4;
     if(p->highest<25)return 0;
     if(item==SHOP_RAKE)return !p->purchases[item];
@@ -41,6 +44,7 @@ int profile_item_available(const Profile *p,int item){
 int profile_purchase(Profile *p,int item){
     if(!profile_item_available(p,item))return 0;int cost=profile_item_cost(p,item);if(cost<0||p->money<(uint32_t)cost)return 0;
     p->money-=cost;
+    if(item>=SHOP_HOUSE_NORMAL&&item<=SHOP_HOUSE_FUN){p->purchases[item]++;for(int n=0;n<5;n++)if(profile_house_item(n)==item){p->completion.house_owned|=1u<<n;p->completion.house_selected=n;}return 1;}
     if(item>=SHOP_MARIGOLD1&&item<=SHOP_MARIGOLD3){if(!garden_add(p,MARIGOLD,(int64_t)time(NULL))){p->money+=cost;return 0;}p->garden.shop_days[item-SHOP_MARIGOLD1]=(int64_t)time(NULL)/86400;p->purchases[item]=1;return 1;}
     if(item==SHOP_FERTILIZER||item==SHOP_SPRAY){p->purchases[item]+=5;return 1;}
     if(item==SHOP_TREE){p->purchases[item]=1;p->garden.tree_height=1;if(!p->garden.tree_gift){p->garden.tree_gift=1;p->purchases[SHOP_TREE_FOOD]+=5;}return 1;}
@@ -83,19 +87,21 @@ int profile_trophy_count(const Profile *p){return bit_count(p->mini_trophies&0xf
 int profile_gold_eligible(const Profile *p){return p->adventure_finished&&(p->mini_trophies&0xfffffu)==0xfffffu&&(p->garden.puzzle_wins&0x7fdffu)==0x7fdffu&&(p->garden.survival_wins&1023u)==1023u;}
 int profile_collect_gold(Profile *p){if(p->completion.gold_sunflower!=1||!profile_gold_eligible(p))return 0;p->completion.gold_sunflower=2;p->money=p->money>99499?99999:p->money+500;return 1;}
 int profile_choose_house(Profile *p,int choice){if(choice<0||choice>=5||!(p->completion.house_owned&(1u<<choice)))return 0;p->completion.house_selected=choice;return 1;}
-int profile_house_tier(const Profile *p){int tier=profile_trophy_count(p)/12;return tier>4?4:tier;}
+int profile_house_item(int choice){static const int items[5]={SHOP_HOUSE_NORMAL,SHOP_HOUSE_SCARY,SHOP_HOUSE_TRUCK,SHOP_HOUSE_SPACE,SHOP_HOUSE_FUN};return choice>=0&&choice<5?items[choice]:-1;}
+int profile_house_owned(const Profile *p,int choice){return choice>=0&&choice<5&&(choice==0||p->purchases[profile_house_item(choice)]>0);}
+int profile_house_tier(const Profile *p){int choice=p->completion.house_selected,item=profile_house_item(choice);if(item<0)return 2;int tier=choice?((int)p->purchases[item]-1):(2+(int)p->purchases[item]);return tier<0?0:tier>4?4:tier;}
 int profile_apply_code(Profile *p,const char *code){
  char lower[24];size_t count=strlen(code);if(count>=sizeof(lower))return 0;for(size_t n=0;n<=count;n++)lower[n]=code[n]>='A'&&code[n]<='Z'?code[n]+32:code[n];
  static const struct {const char *name;uint32_t bit,height;} codes[]={{"future",COS_FUTURE,0},{"mustache",COS_MUSTACHE,0},{"trickedout",COS_TRICKED,0},{"daisies",COS_DAISIES,100},{"pinata",COS_PINATA,1000},{"dance",COS_DANCE,500},{"sukhbir",COS_SUKHBIR,0}};
  for(unsigned n=0;n<sizeof(codes)/sizeof(codes[0]);n++)if(!strcmp(lower,codes[n].name)){if(p->garden.tree_height<codes[n].height)return -1;p->completion.cosmetics^=codes[n].bit;return p->completion.cosmetics&codes[n].bit?1:2;}return 0;
 }
 static uint32_t check(const void *data,size_t bytes){const unsigned char *b=data;uint32_t v=2166136261u;for(size_t i=0;i<bytes;i++)v=(v^b[i])*16777619u;return v;}
-int profile_save(const Profile *p,const char *path){uint32_t h[4]={0x38504650,4,sizeof(*p),check(p,sizeof(*p))};return save_file_replace(path,h,p);}
+int profile_save(const Profile *p,const char *path){uint32_t h[4]={0x38504650,5,sizeof(*p),check(p,sizeof(*p))};return save_file_replace(path,h,p);}
 static int profile_load_one(Profile *p,const char *path){
     Profile q;memset(&q,0,sizeof(q));uint32_t h[4];FILE *f=fopen(path,"rb");if(!f)return 0;
     typedef struct {uint32_t money,purchases[SHOP_ITEMS],highest,adventure_finished,next_session,seen_zombies;uint64_t seen_plants;CoinCheckpoint credited[16];uint32_t journal_next;} PreviousProfile;
     int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x38504650;
-    if(ok&&h[1]==4&&h[2]==sizeof(q))ok=fread(&q,sizeof(q),1,f)==1&&h[3]==check(&q,sizeof(q));
+    if(ok&&(h[1]==4||h[1]==5)&&h[2]==sizeof(q))ok=fread(&q,sizeof(q),1,f)==1&&h[3]==check(&q,sizeof(q));
     else if(ok&&h[1]==3&&h[2]==offsetof(Profile,completion))ok=fread(&q,h[2],1,f)==1&&h[3]==check(&q,h[2]);
     else if(ok&&h[1]==2&&h[2]==sizeof(LegacyProfile02)){LegacyProfile02 old;ok=fread(&old,sizeof(old),1,f)==1&&h[3]==check(&old,sizeof(old));if(ok)memcpy(&q,&old,sizeof(old));}
     else if(ok&&h[1]==1&&h[2]==sizeof(PreviousProfile)){PreviousProfile old;ok=fread(&old,sizeof(old),1,f)==1&&h[3]==check(&old,sizeof(old));if(ok)memcpy(&q,&old,offsetof(Profile,mini_trophies));}
@@ -104,6 +110,7 @@ static int profile_load_one(Profile *p,const char *path){
     if(ok&&h[1]<4){q.completion.adventure_runs=q.adventure_finished?1:0;q.completion.house_owned=31;}
     if(ok)ok=q.completion.adventure_runs<=1000000&&q.completion.gold_sunflower<=2&&q.completion.house_owned<=31&&q.completion.house_selected<5&&(q.completion.house_owned&(1u<<q.completion.house_selected))&&q.completion.cosmetics<=127;
     if(ok&&!q.completion.gold_sunflower&&profile_gold_eligible(&q))q.completion.gold_sunflower=1;
+    if(ok){q.completion.house_owned=1;for(int choice=1;choice<5;choice++)if(profile_house_owned(&q,choice))q.completion.house_owned|=1u<<choice;if(!profile_house_owned(&q,q.completion.house_selected))q.completion.house_selected=0;for(int item=SHOP_HOUSE_NORMAL;item<=SHOP_HOUSE_FUN;item++)ok=ok&&q.purchases[item]<=(item==SHOP_HOUSE_NORMAL?2u:5u);}
     if(ok)*p=q;return ok;
 }
 static int profile_recovered;
@@ -149,6 +156,11 @@ int profile_selftest(FILE *out){
     T("completion each Tree cosmetic unlocks at its own height",daisy==1&&dance==1&&profile_apply_code(&p,"pinata")==1&&p.completion.cosmetics==(COS_DAISIES|COS_DANCE|COS_PINATA));
     T("completion unknown secret codes preserve existing effects",!profile_apply_code(&p,"not-a-code")&&p.completion.cosmetics==(COS_DAISIES|COS_DANCE|COS_PINATA));
     p.completion.house_owned=1;T("completion house selection rejects unowned and invalid styles",!profile_choose_house(&p,1)&&!profile_choose_house(&p,5)&&profile_choose_house(&p,0));
+    profile_init(&p);p.highest=50;p.money=99999;
+    T("023 a new profile owns only the original regular house",profile_house_owned(&p,0)&&!profile_house_owned(&p,1)&&profile_house_tier(&p)==2);
+    T("023 regular blueprints use the PS3 prices and two upgrade limit",profile_item_cost(&p,SHOP_HOUSE_NORMAL)==2400&&profile_purchase(&p,SHOP_HOUSE_NORMAL)&&profile_house_tier(&p)==3&&profile_item_cost(&p,SHOP_HOUSE_NORMAL)==3200&&profile_purchase(&p,SHOP_HOUSE_NORMAL)&&profile_house_tier(&p)==4&&!profile_purchase(&p,SHOP_HOUSE_NORMAL));
+    int blueprints=1;for(int n=0;n<5;n++){blueprints&=profile_item_cost(&p,SHOP_HOUSE_SCARY)==800*(n+1);blueprints&=profile_purchase(&p,SHOP_HOUSE_SCARY);blueprints&=profile_house_tier(&p)==n;}
+    T("023 alternate blueprints have five paid levels without trophy shortcuts",blueprints&&profile_house_owned(&p,1)&&!profile_item_available(&p,SHOP_HOUSE_SCARY)&&profile_choose_house(&p,1)&&profile_house_tier(&p)==4);
     const char *recovery="selftest-profile-recovery.dat";remove(recovery);remove("selftest-profile-recovery.dat.bak");profile_init(&p);p.money=10;int first=profile_save(&p,recovery);p.money=20;int second=profile_save(&p,recovery);
     f=fopen(recovery,"wb");if(f){fwrite("broken",6,1,f);fclose(f);}
     T("save corrupt profile primary recovers its previous committed wallet",first&&second&&profile_load(&q,recovery)&&profile_load_backup_used()&&q.money==10);
@@ -158,10 +170,10 @@ int profile_selftest(FILE *out){
     T("save interrupted replacement recovers backup and ignores unfinished temp",profile_load(&q,recovery)&&profile_load_backup_used()&&q.money==10);
     remove("selftest-profile-recovery.dat.bak");q.money=77;T("save failed load preserves the caller's existing profile",!profile_load(&q,recovery)&&q.money==77);
     remove("selftest-profile-recovery.dat.tmp");
-    uint32_t future[4]={0x38504650,5,sizeof(p),check(&p,sizeof(p))};f=fopen(recovery,"wb");int future_written=f&&fwrite(future,sizeof(future),1,f)==1&&fwrite(&p,sizeof(p),1,f)==1;if(f)fclose(f);
-    T("save this build refuses to overwrite a newer profile format",future_written&&!profile_save(&p,recovery)&&save_container_valid(recovery,0x38504650,5));
+    uint32_t future[4]={0x38504650,6,sizeof(p),check(&p,sizeof(p))};f=fopen(recovery,"wb");int future_written=f&&fwrite(future,sizeof(future),1,f)==1&&fwrite(&p,sizeof(p),1,f)==1;if(f)fclose(f);
+    T("save this build refuses to overwrite a newer profile format",future_written&&!profile_save(&p,recovery)&&save_container_valid(recovery,0x38504650,6));
     int moved=!rename(recovery,"selftest-profile-recovery.dat.bak");
-    T("save this build also preserves a newer backup format",moved&&!profile_save(&p,recovery)&&save_container_valid("selftest-profile-recovery.dat.bak",0x38504650,5));remove("selftest-profile-recovery.dat.bak");remove(recovery);
+    T("save this build also preserves a newer backup format",moved&&!profile_save(&p,recovery)&&save_container_valid("selftest-profile-recovery.dat.bak",0x38504650,6));remove("selftest-profile-recovery.dat.bak");remove(recovery);
     #undef T
     fprintf(out,"PROFILE RESULT %d/%d\n",pass,total);return pass==total;
 }

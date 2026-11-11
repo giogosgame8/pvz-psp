@@ -10,7 +10,7 @@ static void fixture_defense(Game *g){
     if(game_world(g)==4&&g->level>=42)g->store_flags|=STORE_ROOF;
     for(int r=0;r<game_rows(g);r++)if(game_row_active(g,r))for(int c=0;c<COLS;c++){
         if(g->vases[r][c])continue;
-        int k=game_world(g)==4?CABBAGE:g->level>=9?REPEATER:PEA;
+        int k=game_world(g)==4?(g->level==50?MELON:CABBAGE):g->level>=9?REPEATER:PEA;
         if(c==0&&g->level>=36&&game_world(g)!=4)k=SPLIT;
         if(c==6&&g->level>=33&&game_world(g)!=4)k=CACTUS;
         if(game_world(g)==3&&g->level>=39&&(c==1||c==4))k=MAGNET;
@@ -39,6 +39,11 @@ int game_campaign_selftest(FILE *out){
                 if(n%8==0){int done=0;for(int c=8;c>=0&&!done;c--)for(int r=0;r<5&&!done;r++)if(g.vases[r][c])done=game_break_vase(&g,r,c);}
             }
             if((g.mode==MODE_BUNGEE||g.mode==MODE_CONVEYOR||g.mode==MODE_BOSS)&&g.packet_count){
+                /* Spend actual boss conveyor attacks during the vulnerable
+                   head window instead of leaving them in the tray forever. */
+                if(g.mode==MODE_BOSS&&g.extra.boss_action>=B_HEAD_WAIT&&g.extra.boss_action<=B_HEAD_AFTER){
+                    for(int p=0;p<g.packet_count;p++)if(g.packets[p]==JALAPENO){int row=g.boss_row,col=8;g.selected=p;game_shovel(&g,row,col);game_place(&g,row,col,JALAPENO);break;}
+                }
                 int row=-1;float closest=300;for(int z=0;z<MAX_ZOMBIES;z++)if(g.zombies[z].used&&g.zombies[z].death<=0&&g.zombies[z].kind!=Z_BUNGEE&&g.zombies[z].x<closest){row=g.zombies[z].row;closest=g.zombies[z].x;}
                 if(row>=0)for(int p=0;p<g.packet_count;p++)if(g.packets[p]==JALAPENO||g.packets[p]==CHERRY){int kind=g.packets[p],col=kind==JALAPENO?2:(int)((closest-GRID_X)/CELL_W);if(col<0)col=0;if(col>=COLS)col=COLS-1;g.selected=p;game_shovel(&g,row,col);if(game_place(&g,row,col,kind)==0)break;}
                 for(int p=0;p<g.packet_count;p++){

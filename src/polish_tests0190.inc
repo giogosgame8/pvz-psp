@@ -11,7 +11,7 @@
     CHECK("0190 the thrown Imp travels before it can attack",imp>=0&&g.zombies[imp].x<imp_start&&!g.zombies[imp].eating);
     advance(&g,2);int imps=0;for(int i=0;i<MAX_ZOMBIES;i++)imps+=g.zombies[i].used&&g.zombies[i].kind==Z_IMP;
     CHECK("0190 Imp landing completes without a second passenger",imps==1&&imp>=0&&!g.polish.action[imp]);
-    RESET0190(9,1901);pi=game_spawn_zombie(&g,2,Z_JACK,300);g.special[pi]=12;g.plants[2][6]=(Plant){.kind=WALLNUT,.hp=4000};advance(&g,.1f);
+    RESET0190(9,1901);pi=game_spawn_zombie(&g,2,Z_JACK,300);g.special[pi]=g.fidelity.actor_aux[pi]+.01f;g.plants[2][6]=(Plant){.kind=WALLNUT,.hp=4000};advance(&g,.1f);
     CHECK("0190 Jack starts a visible pop without instant explosion",g.polish.action[pi]==ACTION_JACK&&g.zombies[pi].death<=0&&g.plants[2][6].kind==WALLNUT);
     g.frozen[pi]=1;float pop=g.polish.action_time[pi];advance(&g,.5f);CHECK("0190 an immobilized pop cannot advance or repeat",g.polish.action_time[pi]==pop);
     g.frozen[pi]=0;advance(&g,.5f);CHECK("0190 Jack plants remain until the impact time",g.plants[2][6].kind==WALLNUT);
@@ -34,12 +34,12 @@
     RESET0190(9,1905);g.plants[2][3]=(Plant){.kind=CHERRY,.hp=300,.age=2};pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);int friend=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+20);g.hypnotized[friend]=1;advance(&g,.1f);
     CHECK("0190 Cherry damage excludes friendly zombies",g.zombies[pi].death>0&&g.zombies[friend].death<=0&&g.zombies[friend].hp==270);
     CHECK("0190 explosions select a charred corpse with a complete fade",g.polish.death_style[pi]==DEATH_CHARRED&&g.zombies[pi].death>3);
-    RESET0190(21,1906);g.plants[2][3]=(Plant){.kind=KELP,.hp=300};pi=game_spawn_zombie(&g,2,Z_DUCK,plant_x(3)+10);advance(&g,.1f);
-    CHECK("0190 Kelp uses a water death instead of a walking corpse",g.polish.death_style[pi]==DEATH_WATER&&g.zombies[pi].death>2&&g.plants[2][3].kind<0);
-    RESET0190(9,1907);g.plants[2][3]=(Plant){.kind=CHOMPER,.hp=300};pi=game_spawn_zombie(&g,2,Z_GARG,plant_x(3)+10);advance(&g,.1f);
+    RESET0190(21,1906);g.plants[2][3]=(Plant){.kind=KELP,.hp=300};pi=game_spawn_zombie(&g,2,Z_DUCK,plant_x(3)+10);advance(&g,1.2f);
+    CHECK("0190 Kelp leaves no walking corpse above the water",!g.zombies[pi].used&&g.kills==1&&g.plants[2][3].kind<0);
+    RESET0190(9,1907);g.plants[2][3]=(Plant){.kind=CHOMPER,.hp=300};pi=game_spawn_zombie(&g,2,Z_GARG,plant_x(3)+10);advance(&g,.8f);
     CHECK("0190 Chomper bites a Gargantuar instead of swallowing it whole",g.zombies[pi].hp==2960&&g.zombies[pi].death<=0&&g.plants[2][3].digest<2);
-    RESET0190(9,1908);g.plants[2][3]=(Plant){.kind=CHOMPER,.hp=300};pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.1f);
-    CHECK("0190 a swallowed zombie leaves no falling corpse outside the mouth",!g.zombies[pi].used&&g.kills==1&&g.plants[2][3].digest>40);
+    RESET0190(9,1908);g.plants[2][3]=(Plant){.kind=CHOMPER,.hp=300};pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,1.2f);
+    CHECK("0190 a swallowed zombie leaves no falling corpse outside the mouth",!g.zombies[pi].used&&g.kills==1&&g.plants[2][3].digest>39);
     RESET0190(9,1909);pi=game_spawn_zombie(&g,2,Z_NORMAL,330);lob(&g,2,plant_x(2),4,pi);g.zombies[pi].row=1;advance(&g,.9f);
     CHECK("0190 a lob cannot damage its old target after a lane change",g.zombies[pi].hp==270&&!g.shots[0].used);
     RESET0190(9,1910);pi=game_spawn_zombie(&g,2,Z_NORMAL,330);lob(&g,2,plant_x(2),4,pi);g.zombies[pi].used=0;int reused=game_spawn_zombie(&g,2,Z_NORMAL,430);advance(&g,.9f);
@@ -70,7 +70,7 @@
     g.polish.wave_entry=50;g.polish.action[pi]=ACTION_PAPER;int continued=game_extra_continue(&g);
     CHECK("0190 a new Survival round clears old actor and wave transition state",continued&&!g.polish.action[pi]&&!g.polish.wave_entry);
     CHECK("0190 Survival saves remain valid after moving to the next wave plan",game_save(&g,"polish0190-survival.dat")&&game_load(&restored,"polish0190-survival.dat"));remove("polish0190-survival.dat");remove("polish0190-survival.dat.bak");
-    RESET0190(9,1917);pi=game_spawn_zombie(&g,2,Z_JACK,330);g.special[pi]=12;g.zombies[pi].slow=10;advance(&g,1.3f);
+    RESET0190(9,1917);pi=game_spawn_zombie(&g,2,Z_JACK,330);g.special[pi]=g.fidelity.actor_aux[pi]+.01f;g.zombies[pi].slow=10;advance(&g,1.3f);
     CHECK("0190 chill cannot double a countdown-driven Jack pop",g.zombies[pi].death>0&&g.kills==1);
     RESET0190(9,1918);pi=game_spawn_zombie(&g,2,Z_NORMAL,330);g.zombies[pi].slow=10;g.polish.action[pi]=ACTION_GARLIC;g.polish.target[pi]=2*ROWS+3;advance(&g,2.8f);
     CHECK("0190 Garlic reaction milestones use simulation time under chill",!g.polish.action[pi]&&g.zombies[pi].row==3);

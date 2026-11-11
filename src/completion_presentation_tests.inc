@@ -58,6 +58,12 @@ static int review_completion(int n){
     case 9:
         render_debug_frame("review-repeat-moneybag.ppm");game_start_level(&game,9,2180);screen=1;reset_level_ui();
         for(int row=0;row<4;row++){game.plants[row][2]=(Plant){.kind=TALLNUT,.hp=row==0?8000:row==1?5000:2000};game.plants[row][4]=(Plant){.kind=SUNFLOWER,.hp=300,.attack=20};game.pumpkin_hp[row][4]=row==0?4000:row==1?2500:900;if(row==3){game.imitated[row][2]=1;game.imitated[row][4]=4;}}break;
-    case 10:render_debug_frame("review-defender-damage.ppm");return 1;
+    case 10:render_debug_frame("review-defender-damage.ppm");story_begin(2412,0,0,0);story_phase=1;story_line_time=.1f;break;
+    case 11:render_debug_frame("review-dave-wallnut.ppm");story_begin(405,0,0,0);story_phase=1;story_line_time=.1f;break;
+    case 12:render_debug_frame("review-dave-hammer.ppm");story_begin(2601,0,0,0);story_phase=1;story_line_time=.1f;break;
+    case 13:render_debug_frame("review-dave-fertilizer.ppm");story_begin(602,0,0,0);story_phase=1;story_line_time=.1f;break;
+    case 14:render_debug_frame("review-dave-moneybag.ppm");game_start_level(&game,49,2308);screen=1;reset_level_ui();
+        for(int n=0;n<4;n++){game.plants[n][2]=(Plant){.kind=n==0?CABBAGE:n==1?KERNEL:n==2?MELON:CHOMPER,.hp=300};game.burst_left[n][2]=1;game.burst[n][2]=.3f;game.burst_target[n][2]=6;int id=game_spawn_zombie(&game,n,n==0?Z_JACK:n==1?Z_LADDER:n==2?Z_DIGGER:Z_YETI,350);game.fidelity.equipment_lost[id]=n<3;game.zombies[id].armor=0;game.zombies[id].hp=n<2?100:n==2?80:400;game.zombies[id].vaulted=1;}break;
+    case 15:render_debug_frame("review-fidelity-transitions.ppm");return 1;
     }return 0;
 }

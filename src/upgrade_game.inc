@@ -31,7 +31,7 @@ static void store_step(Game *g,float dt){
         int rows[ROWS],count=0;for(int r=0;r<game_rows(g);r++)if(game_row_active(g,r)&&!game_water_row(g,r))rows[count++]=r;
         if(!count)return;g->rake_row=rows[random_next(g)%count];g->rake_col=g->mode==MODE_VASE?COLS-4-g->stage:7;g->rake_state=1;
     }
-    if(g->rake_state==1){for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&!g->hypnotized[i]&&z->row==g->rake_row&&z->kind!=Z_BALLOON&&z->kind!=Z_BUNGEE&&z->kind!=Z_BOBSLED&&fabsf(z->x-plant_x(g->rake_col))<25){g->rake_state=2;g->rake_timer=0;break;}}}
+    if(g->rake_state==1){for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&!g->hypnotized[i]&&z->row==g->rake_row&&!zombie_airborne(g,z)&&z->kind!=Z_BUNGEE&&z->kind!=Z_BOBSLED&&fabsf(z->x-plant_x(g->rake_col))<25){g->rake_state=2;g->rake_timer=0;break;}}}
     else if(g->rake_state==2){float old=g->rake_timer;g->rake_timer+=dt;if(old<.28f&&g->rake_timer>=.28f){for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&z->row==g->rake_row&&fabsf(z->x-plant_x(g->rake_col))<25){hurt_zombie(g,z,1800,0);break;}}}if(g->rake_timer>=2)g->rake_state=3;}
 }
 static void upgrade_plant(Game *g,int r,int c,float dt){
@@ -50,7 +50,7 @@ static void upgrade_plant(Game *g,int r,int c,float dt){
     if(kind==WINTER&&p->attack<=0){int target=closest_enemy(g,r,x,0);if(target>=0||g->mode==MODE_BOSS){lob(g,r,x,12,target);p->attack=2.85f;p->flash=.4f;}return;}
     if(kind==GOLDMAGNET&&p->attack<=0){int count=0;for(int i=0;i<MAX_COINS&&count<5;i++){Coin *coin=&g->money[i];if(coin->used==1&&coin->value>0&&hypotf(coin->x-x,coin->y-game_ground_y(g,r))<CELL_W*6){coin->used=2;coin->age=0;coin->vx=coin->x;coin->vy=coin->y;count++;}}
         if(count){p->attack=6;p->flash=.5f;}return;}
-    if(kind==SPIKEROCK&&p->attack<=0){for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&z->row==r&&fabsf(z->x-x)<22&&z->kind!=Z_BALLOON){if(z->kind==Z_ZOMBONI||z->kind==Z_CATAPULT){cue(FOLEY_TIRE_POP);kill_zombie(g,z);p->hp-=50;if(p->hp<=0){p->kind=-1;break;}}else hurt_zombie(g,z,40,0);}}p->attack=1;return;}
+    if(kind==SPIKEROCK&&p->attack<=0){for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&z->row==r&&fabsf(z->x-x)<22&&!zombie_airborne(g,z)){if(z->kind==Z_ZOMBONI||z->kind==Z_CATAPULT){cue(FOLEY_TIRE_POP);kill_zombie(g,z);p->hp-=50;if(p->hp<=0){p->kind=-1;break;}}else hurt_zombie(g,z,40,0);}}p->attack=1;return;}
     if(kind==COB){if(p->attack<=0&&p->attack+dt>0)cue(FOLEY_SHOOP);
         if(c+1<COLS&&g->plants[r][c+1].kind!=-2)g->plants[r][c+1]=(Plant){.kind=-2};
         if(g->burst_left[r][c]){g->burst[r][c]-=dt;if(g->burst[r][c]<=0){int tile=g->burst_target[r][c];fire_cob(g,r,c,tile/COLS,tile%COLS);g->burst_left[r][c]=0;}}

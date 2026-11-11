@@ -14,10 +14,10 @@ static void draw_completion_trophies(void){
 static void draw_house_choice(void){
     static const char *names[]={"Regular House","Scary House","Truck House","Space House","Funhouse"};
     render_background(&assets[A_BACKGROUND]);ui_dialog(54,18,372,235,"Your house");
-    int tier=profile_house_tier(&player);render_image(&assets[A_HOUSE_PREVIEWS],114,66,252,139,house_cursor*5+tier,WHITE);
+    Profile preview=player;preview.completion.house_selected=house_cursor;int tier=profile_house_tier(&preview);render_image(&assets[A_HOUSE_PREVIEWS],114,66,252,139,house_cursor*5+tier,WHITE);
     char text[80];snprintf(text,sizeof(text),"%s%s",names[house_cursor],player.completion.house_selected==(unsigned)house_cursor?"  (Selected)":"");ui_center(70,52,340,text,UI_GOLD,.66f);
-    snprintf(text,sizeof(text),"Local trophy tier %d/5",tier+1);ui_center(70,208,340,text,WHITE,.55f);
-    ui_button(83,222,145,"X: Select house",1);ui_button(252,222,145,"O: Back",0);
+    int item=profile_house_item(house_cursor),cost=profile_item_cost(&player,item);if(cost<0)snprintf(text,sizeof(text),"Fully renovated");else if(profile_house_owned(&player,house_cursor))snprintf(text,sizeof(text),"Level %d/5  Square: Upgrade $%d",tier+1,cost*10);else snprintf(text,sizeof(text),"Blueprints $%d",cost*10);ui_center(70,208,340,text,WHITE,.55f);
+    ui_button(83,222,145,profile_house_owned(&player,house_cursor)?"X: Select":"X: Buy blueprints",1);ui_button(252,222,145,"O: Back",0);
 }
 static int completion_ui_input(uint32_t pressed){
     if(screen==28){
@@ -30,6 +30,7 @@ static int completion_ui_input(uint32_t pressed){
     if(screen!=29)return 0;
     if(pressed&(PSP_CTRL_LEFT|PSP_CTRL_UP))house_cursor=(house_cursor+4)%5;
     if(pressed&(PSP_CTRL_RIGHT|PSP_CTRL_DOWN))house_cursor=(house_cursor+1)%5;
+    if((pressed&PSP_CTRL_SQUARE)||((pressed&PSP_CTRL_CROSS)&&!profile_house_owned(&player,house_cursor))){Profile old=player;int item=profile_house_item(house_cursor);if(profile_purchase(&player,item)){if(!persist_profile()){player=old;notify("COULD NOT SAVE YOUR PURCHASE");}else{foley_play(FOLEY_COIN);notify("HOUSE RENOVATED");}}else notify(profile_item_available(&player,item)?"NOT ENOUGH MONEY":"BLUEPRINTS NOT AVAILABLE");return 1;}
     if(pressed&PSP_CTRL_CROSS){uint32_t old=player.completion.house_selected;if(profile_choose_house(&player,house_cursor)){if(persist_profile()){foley_sample(FX_TAP);notify("HOUSE SELECTED");}else{player.completion.house_selected=old;notify("COULD NOT SAVE THE HOUSE");}}}
     if(pressed&PSP_CTRL_CIRCLE)screen=25;return 1;
 }

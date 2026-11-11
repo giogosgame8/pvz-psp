@@ -56,7 +56,7 @@ void garden_step(Profile *p,int garden,float dt,int64_t now){
     }
     int awake=p->purchases[SHOP_SNAIL]&&((p->garden.snail_awake>0&&now-p->garden.snail_awake<180)||(p->garden.snail_chocolate>0&&now-p->garden.snail_chocolate<3600));
     int target=-1;float best=10000;for(int i=0;i<32;i++)if(p->garden.coins[i].used){GardenCoin *c=&p->garden.coins[i];c->age+=dt;if(c->age>60)c->used=0;else if(awake){float d=hypotf(c->x-p->garden.snail_x,c->y-p->garden.snail_y);if(d<best){best=d;target=i;}}}
-    if(target>=0&&garden==GARDEN_MAIN){GardenCoin *c=&p->garden.coins[target];if(best<7)collect_one(p,target);else{float speed=p->garden.snail_chocolate>0&&now-p->garden.snail_chocolate<3600?80:35;p->garden.snail_x+=(c->x-p->garden.snail_x)/best*speed*dt;p->garden.snail_y+=(c->y-p->garden.snail_y)/best*speed*dt;}}
+    if(target>=0&&garden==GARDEN_MAIN){GardenCoin *c=&p->garden.coins[target];if(best<7)collect_one(p,target);else{float speed=p->garden.snail_chocolate>0&&now-p->garden.snail_chocolate<3600?80:35;float step=fminf(best,speed*dt);p->garden.snail_x+=(c->x-p->garden.snail_x)/best*step;p->garden.snail_y+=(c->y-p->garden.snail_y)/best*step;}}
 }
 int garden_tree_feed(Profile *p){if(!p->purchases[SHOP_TREE]||!p->purchases[SHOP_TREE_FOOD])return 0;p->purchases[SHOP_TREE_FOOD]--;if(p->garden.tree_height<1000000)p->garden.tree_height++;uint32_t h=p->garden.tree_height;p->garden.tree_tip=h==100?800:h==500?900:h==1000?1000:h>1000?1100:h>1?(h-1<49?h-1:49):1;return 1;}
 #include "garden_tests.inc"

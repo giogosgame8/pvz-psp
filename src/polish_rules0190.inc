@@ -18,8 +18,10 @@ static int polish_actor_step(Game *g,int i,float dt){
  if(action==ACTION_GARG_THROW){
   z->eating=0;
   if(!z->vaulted&&t>=.74f*(34/24.0f)){
+   /* Release is consumed even when the actor pool is full. */
+   z->vaulted=1;
    int child=game_spawn_zombie(g,z->row,Z_IMP,z->x-12);
-   if(child>=0){Zombie *imp=&g->zombies[child];z->vaulted=1;imp->vault_from=imp->x;imp->vault_to=fmaxf(GRID_X+30,z->x-140);g->polish.action[child]=ACTION_IMP_FLIGHT;g->polish.target[child]=(int)imp->vault_to;g->polish.action_time[child]=0;cue(FOLEY_SWING);}
+   if(child>=0){Zombie *imp=&g->zombies[child];imp->vault_from=imp->x;imp->vault_to=fminf(imp->x,fmaxf(GRID_X+30,z->x-140));g->polish.action[child]=ACTION_IMP_FLIGHT;g->polish.target[child]=(int)imp->vault_to;g->polish.action_time[child]=0;cue(FOLEY_SWING);}
   }
   if(z->vaulted&&t>=34/24.0f){g->polish.action[i]=0;g->polish.pose[i]=0;z->age=0;}return 1;
  }

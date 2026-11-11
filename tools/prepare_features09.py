@@ -109,10 +109,11 @@ def prepare_features09(imported,destination,previews,write_pva):
         a=n*math.tau/12;d.polygon([(96,96),(96+94*math.cos(a),96+94*math.sin(a)),(96+94*math.cos(a+.16),96+94*math.sin(a+.16))],fill=(255,244,140,130))
     save('award_rays',[rays])
     brain=im('images/brain.ptx');brain.thumbnail((20,18));save('brain',[brain])
-    for name,source in [('normal','ZombieHead'),('pole','ZombiePoleVaulterHead'),('football','ZombieFootballHead'),('dancer','ZombieDancerHead_disco'),('backup','ZombieBackupDancerHead_disco'),('classic_dancer','ZombieDancerHead')]:
+    for name,source in [('normal','ZombieHead'),('pole','ZombiePoleVaulterHead'),('football','ZombieFootballHead'),('dancer','ZombieDancerHead_disco'),('backup','ZombieBackupDancerHead_disco'),('classic_dancer','ZombieDancerHead'),('balloon','ZombieBalloonHead'),('bobsled','ZombieBobsledHead'),('digger','ZombieDiggerHead'),('dolphin','ZombieDolphinRiderHead'),('imp','ZombieImpHead'),('ladder','ZombieLadderHead'),('pogo','ZombiePogoHead'),('yeti','ZombieYetiHead')]:
         head=im('particles/'+source+'.ptx')
         head=head.resize((max(1,round(head.width*.48)),max(1,round(head.height*.48))),Image.Resampling.LANCZOS)
         save('head_'+name,[head])
+    ball=im("reanim/Zombie_catapult_basketball.ptx");ball.thumbnail((13,13),Image.Resampling.LANCZOS);save("projectile_basketball",[ball])
     return result
 
 if __name__=='__main__':

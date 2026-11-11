@@ -1,5 +1,5 @@
 /* Campaign state is independent of profile ownership and replay history. */
-static uint32_t campaign_random(uint32_t *state){uint32_t x=*state?*state:0x71e71u;x^=x<<13;x^=x>>17;x^=x<<5;return *state=x;}
+#include "level_random.h"
 int game_seed_locked(const Game *g,int kind){return kind>=0&&kind<ALL_SEEDS&&!!(g->completion.locked_seeds&(UINT64_C(1)<<kind));}
 int game_seed_slot(const Game *g,int slot){
     for(int pass=0;pass<2;pass++)for(int k=0;k<ALL_SEEDS;k++)if((g->seed_mask&(UINT64_C(1)<<k))&&game_seed_locked(g,k)==(pass==0)){if(slot--==0)return k;}
@@ -19,7 +19,7 @@ static int dave_seed_allowed(const Game *g,int kind){
     return 1;
 }
 void game_start_adventure(Game *g,int level,uint32_t seed,uint32_t run){
-    game_start_level(g,level,seed);g->completion.adventure_run=run;g->completion.level_seed=seed;
+    if(!seed)seed=0x51a7c0de;game_start_level(g,level,seed);g->completion.adventure_run=run;g->completion.level_seed=seed;
     if(!run)return;
     g->unlocked_mask=(UINT64_C(1)<<BASE_SEEDS)-1;
     g->row_mask=game_rows(g)==6?63:31;g->level_flags|=LEVEL_TUTORIAL_COMPLETE;
@@ -28,9 +28,9 @@ void game_start_adventure(Game *g,int level,uint32_t seed,uint32_t run){
     memset(g->wave_count,0,sizeof(g->wave_count));memset(g->wave_types,0,sizeof(g->wave_types));plan_waves(g);
     if(g->mode==MODE_LAWN){
         g->sun=50;g->spawn_timer=18;g->seed_mask=0;
-        int choices[BASE_SEEDS],count=0;for(int k=0;k<BASE_SEEDS;k++)if(dave_seed_allowed(g,k))choices[count++]=k;
-        uint32_t rng=seed^((uint32_t)level*0x9e3779b9u)^(run*0x85ebca6bu);
-        for(int n=0;n<3&&count;n++){int at=campaign_random(&rng)%count,kind=choices[at];g->completion.locked_seeds|=UINT64_C(1)<<kind;choices[at]=choices[--count];}
+        int choices[BASE_SEEDS],count=0;for(int original=0;original<BASE_SEEDS;original++){int k=original==2?CHERRY:original==3?WALLNUT:original;if(dave_seed_allowed(g,k))choices[count++]=k;}
+        LevelRandom rng;level_random_seed(&rng,seed);
+        for(int n=0;n<3&&count;n++){int at=level_random_below(&rng,count),kind=choices[at];g->completion.locked_seeds|=UINT64_C(1)<<kind;memmove(choices+at,choices+at+1,(--count-at)*sizeof(int));}
         g->seed_mask=g->completion.locked_seeds;
     }
     /* Yeti's introduction is one queued arrival halfway through 4-10. */
@@ -40,6 +40,7 @@ void game_restart_adventure(Game *g){int level=g->level;uint32_t run=g->completi
 int game_spawn_giga(Game *g,int row,float x){int id=game_spawn_zombie(g,row,Z_GARG,x);if(id>=0){g->completion.giga[id]=1;g->zombies[id].hp=6000;}return id;}
 static int completion_yeti_step(Game *g,int i,float dt){
     Zombie *z=&g->zombies[i];if(z->kind!=Z_YETI||g->hypnotized[i])return 0;
+    if(!game_zombie_has_head(g,z))return 0;
     if(!g->completion.yeti_retreat[i]){
         g->completion.yeti_timer[i]=fmaxf(0,g->completion.yeti_timer[i]-dt);
         if(g->completion.yeti_timer[i]>0)return 0;
