@@ -7,6 +7,7 @@
 #include "polish_state.h"
 #include "completion_state.h"
 #include "fidelity_state.h"
+#include "polish024_state.h"
 #include "foley_defs.h"
 /* Transient presentation hook, excluded from every saved Game layout. */
 void game_sound_listener(void (*listener)(int event));
@@ -92,6 +93,7 @@ typedef struct {
     PolishState polish;
     CompletionState completion;
     FidelityState fidelity;
+    Polish024State polish024;
 } Game;
 
 extern const char *seed_names[ALL_SEEDS];

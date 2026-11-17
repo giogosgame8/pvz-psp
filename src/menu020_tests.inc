@@ -14,7 +14,7 @@ static int menu020_selftest(FILE *out){
  N("head loss retains the classic body instead of replacing its outfit",zombie_visible_clip(z,id,0)==&damaged[A_CLASSIC_DANCER_EAT][1]);z->hp=500;z->eating=0;z->age=.5f;
  N("walking spans the whole classic clip with its own source FPS",fabsf(zombie_visible_time(z,&assets[A_CLASSIC_DANCER])-assets[A_CLASSIC_DANCER].frames/(2*assets[A_CLASSIC_DANCER].fps))<.001f);
  N("the animation gallery follows the saved dancer choice",gallery_zombie(Z_DANCER,2)==&assets[A_CLASSIC_DANCER_DEATH]);classic_dancer=0;
- N("Disco remains available without modifying zombie behavior",zombie_visible_clip(z,id,0)==&assets[A_DANCER]&&z->kind==Z_DANCER);
+ N("Disco uses its authored entrance while keeping its zombie type",zombie_visible_clip(z,id,0)==&assets[A_DANCER_MOONWALK]&&z->kind==Z_DANCER);
  profile_init(&player);player.highest=1;screen=11;collection_cursor=0;collection_normalize();N("fresh Extras selects Back and has no locked selection",collection_cursor==4&&!collection_available(0)&&!collection_available(1)&&!collection_available(2)&&!collection_available(3));
  int stays_back=1;for(int n=0;n<20;n++){collection_move(n%2?1:-1);stays_back&=collection_cursor==4;}N("D-pad cannot hover locked Extras entries",stays_back);
  player.highest=10;collection_cursor=4;collection_move(-1);N("the first zombie note unlocks its Extras entry",collection_cursor==3&&collection_available(3)&&!collection_available(1));collection_move(1);N("Extras wraps between only available entries",collection_cursor==4);

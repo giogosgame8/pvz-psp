@@ -49,7 +49,7 @@ static int fidelity_plant_step(Game *g,int r,int c,float dt){
  if(k==MAGNET){
   if(p->attack<=0)for(int i=0;i<MAX_ZOMBIES;i++){
    Zombie *z=&g->zombies[i];if(!z->used||z->death>0||g->hypnotized[i]||g->fidelity.equipment_lost[i]||abs(z->row-r)>2||fabsf(z->x-x)>=CELL_W*3)continue;
-   int metal=z->armor>0&&(z->kind==Z_BUCKET||z->kind==Z_DOOR||z->kind==Z_FOOTBALL||z->kind==Z_LADDER);
+   int metal=z->armor>0&&(z->kind==Z_BUCKET||(z->kind==Z_DUCK&&g->polish024.pool_gear[i]==Z_BUCKET)||z->kind==Z_DOOR||z->kind==Z_FOOTBALL||z->kind==Z_LADDER);
    if(!metal&&z->kind!=Z_POGO&&z->kind!=Z_DIGGER&&z->kind!=Z_JACK)continue;
    z->armor=0;g->fidelity.equipment_lost[i]=1;
    if(z->kind==Z_DIGGER&&!z->vaulted){z->vaulted=1;g->polish.action[i]=ACTION_DIGGER_RISE;g->polish.action_time[i]=0;g->special[i]=0;cue(FOLEY_DIGGER);}

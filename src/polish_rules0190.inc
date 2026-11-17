@@ -21,13 +21,23 @@ static int polish_actor_step(Game *g,int i,float dt){
    /* Release is consumed even when the actor pool is full. */
    z->vaulted=1;
    int child=game_spawn_zombie(g,z->row,Z_IMP,z->x-12);
-   if(child>=0){Zombie *imp=&g->zombies[child];imp->vault_from=imp->x;imp->vault_to=fminf(imp->x,fmaxf(GRID_X+30,z->x-140));g->polish.action[child]=ACTION_IMP_FLIGHT;g->polish.target[child]=(int)imp->vault_to;g->polish.action_time[child]=0;cue(FOLEY_SWING);}
+   if(child>=0){
+    Zombie *imp=&g->zombies[child];float distance=(z->x-GRID_X)/.475f-360;
+    float minimum=game_world(g)==4?-140:40;if(game_world(g)==4)distance-=180;
+    if(distance<minimum)distance=minimum;else if(distance>140)distance-=random_unit(g)*100;
+    imp->x=z->x-133*.475f;imp->vault_from=imp->x;imp->vault_to=0;
+    g->polish024.altitude[child]=88*.4464f;g->polish024.velocity_y[child]=.5f*(distance/3)*.05f*100*.4464f;
+    g->polish.action[child]=ACTION_IMP_FLIGHT;g->polish.target[child]=0;g->polish.action_time[child]=0;cue(FOLEY_SWING);
+   }
   }
   if(z->vaulted&&t>=34/24.0f){g->polish.action[i]=0;g->polish.pose[i]=0;z->age=0;}return 1;
  }
  if(action==ACTION_IMP_FLIGHT){
-  float duration=fmaxf(.1f,fabsf(z->vault_from-z->vault_to)/142.5f),fraction=fminf(1,t/duration);z->eating=0;z->x=z->vault_from+(z->vault_to-z->vault_from)*fraction;
-  if(fraction>=1){g->polish.action[i]=ACTION_IMP_LAND;g->polish.action_time[i]=0;z->age=0;}return 1;
+  z->eating=0;z->x=z->vault_from-142.5f*t;
+  float height=88*.4464f+g->polish024.velocity_y[i]*t-111.6f*t*t;
+  height+=game_roof_offset(g,z->x)-game_roof_offset(g,z->vault_from);
+  g->polish024.altitude[i]=fmaxf(0,height);
+  if(height<=0){g->polish024.altitude[i]=0;g->polish.action[i]=ACTION_IMP_LAND;g->polish.action_time[i]=0;z->age=0;cue(FOLEY_THUMP);}return 1;
  }
  if(action==ACTION_IMP_LAND){if(t>=6/24.0f){g->polish.action[i]=0;g->polish.pose[i]=0;z->age=0;}return 1;}
  return 0;

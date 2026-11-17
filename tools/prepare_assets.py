@@ -96,6 +96,7 @@ from prepare_fidelity023 import FIDELITY_SPECS
 from prepare_story023 import STORY_SPECS,DaveProp
 SPECS.extend(FIDELITY_SPECS)
 SPECS.extend(STORY_SPECS)
+from prepare_polish024 import POLISH_SPECS,sample_transform
 
 # Both original dancer art sets remain on the supported PS3 disc.
 for _pose in ('walk','eat','death'):
@@ -132,6 +133,8 @@ for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
     for _stage in range(2):
         SPECS.append(('avatar_'+('wounded_' if _stage else 'body_')+_action,'Zombie',_marker,.48,
                       dict(gear='flag',base='flag_'+_action,body=_stage,omit_track=_avatar_omit,padding=(8,28,8,2))))
+
+SPECS.extend(POLISH_SPECS)
 
 def frames_from_xml(path):
     root = ET.fromstring("<reanim>" + path.read_text(encoding="utf-8-sig") + "</reanim>")
@@ -170,8 +173,8 @@ def write_motion_profiles(imported, destination):
     profiles=[]
     path=destination/"zombie_motion.bin"
     with path.open("wb") as output:
-        output.write(struct.pack("<4sI",b"PVM1",8))
-        for animation,clip in (("Zombie","anim_walk"),("Zombie_polevaulter","anim_run"),("Zombie_polevaulter","anim_walk"),("Zombie_paper","anim_walk"),("Zombie_paper","anim_walk_nopaper"),("Zombie_football","anim_walk"),("Zombie_disco","anim_walk"),("Zombie_backup","anim_walk")):
+        output.write(struct.pack("<4sI",b"PVM1",10))
+        for animation,clip in (("Zombie","anim_walk"),("Zombie_polevaulter","anim_run"),("Zombie_polevaulter","anim_walk"),("Zombie_paper","anim_walk"),("Zombie_paper","anim_walk_nopaper"),("Zombie_football","anim_walk"),("Zombie_disco","anim_walk"),("Zombie_backup","anim_walk"),("Zombie_boss_fireball","anim_role"),("Zombie_boss_iceball","anim_role")):
             fps,tracks=frames_from_xml(imported/"archives/compressed/reanim"/(animation+".reanim"))
             start,stop=clip_range(tracks,clip);ground=dict(tracks)["_ground"]
             origin=ground[start]["x"];values=[f["x"]-origin for f in ground[start:stop]]
@@ -183,7 +186,7 @@ def write_motion_profiles(imported, destination):
 def hidden_track(name, equipment):
     name = name.lower()
     if equipment=='planthead' and name.startswith(('anim_head','anim_hair','anim_tongue','zombie_eye')):return True
-    if equipment=="duck" and "duckytube" in name:return False
+    if isinstance(equipment,str) and equipment.startswith("duck") and "duckytube" in name:return False
     if equipment=='door':
         if name.startswith('anim_innerarm'):return True
         if 'screendoor' in name:return False
@@ -195,9 +198,9 @@ def hidden_track(name, equipment):
     if name == "anim_tongue":
         return True
     if name == "anim_cone":
-        return equipment != "cone"
+        return equipment not in ("cone","duck_cone")
     if name == "anim_bucket":
-        return equipment != "bucket"
+        return equipment not in ("bucket","duck_bucket")
     if name == "anim_hair" and equipment:
         return True
     return False
@@ -295,7 +298,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                                 (animation=="Zombie_polevaulter" and (name.lower().startswith("zombie_polevaulter_pole") or any(part in name.lower() for part in ("_innerarm","_innerhand"))))):
                     continue
                 if animation.startswith('Zombie') and body>=2 and any(part in name.lower() for part in ('_head','_jaw','_hair','_eye','_helmet')):continue
-                frame = frames[index]
+                frame = sample_transform(frames,index,start,stop,damage.get("sample_loop",False)) if damage.get("samples") else frames[index]
                 if animation=="GatlingPea":
                     if output_name=='gatling' and (frame['f']<0 or not frame['i']):
                         candidate=frames[29+(index-start)%25]
@@ -343,7 +346,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                         draw_matrix(canvas,texture(identifier),multiply(overlay,matrix(child)),child['a'])
             if attachment:attachment.draw(canvas,index,(index-start)/fps,draw_matrix)
             return canvas
-        rendered = render_frames(render_frame,range(start,stop))
+        factor=damage.get("samples",1)
+        rendered = render_frames(render_frame,[start+n/factor for n in range((stop-start)*factor)] if factor>1 else range(start,stop))
         union = Image.new("L", rendered[0].size)
         for frame in rendered:
             union = ImageChops.lighter(union, frame.getchannel("A"))
@@ -375,7 +379,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         if gear=="flag":
             base_box,_=geometry['zombie_eat' if marker=='anim_eat' else 'zombie_walk']
             anchor=(((base_box[0]+base_box[2])*.5-box[0])*size[0]/(box[2]-box[0]),(base_box[3]-box[1])*size[1]/(box[3]-box[1]))
-        assets.append(write_pva(destination / (output_name + ".pva"), baked, 24 if output_name.startswith("pole_jump") else fps,anchor))
+        assets.append(write_pva(destination / (output_name + ".pva"), baked, 24 if output_name.startswith("pole_jump") else fps*factor,anchor))
         if previews:
             baked[0].resize((size[0] * 4, size[1] * 4)).save(previews / (output_name + ".png"))
         print(f"Prepared {output_name}: {len(baked)} frames, {size[0]}x{size[1]}", flush=True)

@@ -56,8 +56,8 @@
     for(int i=0;i<MAX_ZOMBIES;i++)if(g.zombies[i].used&&g.zombies[i].kind==Z_BOBSLED){riders++;team_health+=g.zombies[i].hp+g.zombies[i].armor;}
     CHECK("0190 Bobsled admission keeps all riders and their wave health",!g.polish.wave_pending&&riders==4&&g.spawned==1&&g.polish.wave_health==team_health);
     RESET0190(19,1914);memset(g.graves,0,sizeof(g.graves));g.graves[2][4]=1;g.wave=g.num_waves;g.wave_count[g.wave-1]=1;g.wave_types[g.wave-1][0]=Z_NORMAL;for(int i=0;i<MAX_ZOMBIES-1;i++)game_spawn_zombie(&g,2,Z_NORMAL,480);spawn_wave(&g);
-    CHECK("0190 final grave arrivals wait rather than disappear at capacity",g.polish.wave_pending&&g.polish.wave_entry==1);g.zombies[0].used=0;finish_wave_entries(&g);
-    CHECK("0190 the final grave zombie is admitted once a slot becomes free",!g.polish.wave_pending&&g.zombies[0].x==plant_x(4)&&g.polish.wave_health==540);
+    wave_arrivals024(&g,2);CHECK("024 final grave arrivals wait rather than disappear at capacity",wave_arrivals_pending024(&g)&&!g.polish.wave_pending);g.zombies[0].used=0;wave_arrivals024(&g,.01f);
+    CHECK("024 the final grave zombie is admitted once a slot becomes free",!wave_arrivals_pending024(&g)&&g.zombies[0].x==plant_x(4)&&g.polish.action[0]==ACTION_POOL_RISE);
     RESET0190(9,1915);pi=game_spawn_zombie(&g,2,Z_NORMAL,330);g.polish.action[pi]=ACTION_GARLIC;g.polish.target[pi]=2*ROWS+3;g.polish.action_time[pi]=1.2f;g.polish.pose[pi]=.7f;g.polish.wave_pending=1;g.polish.wave_entry=0;g.polish.wave_health=270;
     int roundtrip=game_save(&g,"polish0190.dat")&&game_load(&restored,"polish0190.dat");CHECK("0190 save preserves pending actions, animation clocks and wave entries",roundtrip&&!memcmp(&g.polish,&restored.polish,sizeof(g.polish)));
     Game paused=g;game_step(&g,0);CHECK("0190 a paused frame cannot advance combat or wave clocks",!memcmp(&g,&paused,sizeof(g)));

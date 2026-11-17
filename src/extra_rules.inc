@@ -30,7 +30,7 @@ static void vase_put(Game *g,int content,int count,int blocked){
 }
 static void puzzle_clear(Game *g){
     memset(&g->fidelity,0,sizeof(g->fidelity));memset(g->burst,0,sizeof(g->burst));memset(g->burst_left,0,sizeof(g->burst_left));memset(g->burst_target,0,sizeof(g->burst_target));memset(g->pea_shoot_time,0,sizeof(g->pea_shoot_time));memset(g->ladders,0,sizeof(g->ladders));memset(g->support_hp,0,sizeof(g->support_hp));memset(g->ice_tiles,0,sizeof(g->ice_tiles));memset(g->imitated,0,sizeof(g->imitated));g->cob_aiming=0;g->cob_row=g->cob_col=-1;
-    memset(&g->polish,0,sizeof(g->polish));memset(g->zombies,0,sizeof(g->zombies));memset(g->shots,0,sizeof(g->shots));memset(g->suns,0,sizeof(g->suns));memset(g->vases,0,sizeof(g->vases));memset(g->graves,0,sizeof(g->graves));memset(g->craters,0,sizeof(g->craters));memset(g->asleep,0,sizeof(g->asleep));memset(g->hypnotized,0,sizeof(g->hypnotized));memset(g->frozen,0,sizeof(g->frozen));memset(g->extra.vase_green,0,sizeof(g->extra.vase_green));memset(g->extra.left_facing,0,sizeof(g->extra.left_facing));memset(g->extra.packet_age,0,sizeof(g->extra.packet_age));
+    memset(&g->polish024,0,sizeof(g->polish024));memset(&g->polish,0,sizeof(g->polish));memset(g->zombies,0,sizeof(g->zombies));memset(g->shots,0,sizeof(g->shots));memset(g->suns,0,sizeof(g->suns));memset(g->vases,0,sizeof(g->vases));memset(g->graves,0,sizeof(g->graves));memset(g->craters,0,sizeof(g->craters));memset(g->asleep,0,sizeof(g->asleep));memset(g->hypnotized,0,sizeof(g->hypnotized));memset(g->frozen,0,sizeof(g->frozen));memset(g->extra.vase_green,0,sizeof(g->extra.vase_green));memset(g->extra.left_facing,0,sizeof(g->extra.left_facing));memset(g->extra.packet_age,0,sizeof(g->extra.packet_age));
     for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){g->plants[r][c]=(Plant){.kind=-1};g->support[r][c]=0;g->pumpkin_hp[r][c]=0;g->morph_timer[r][c]=0;}
     g->packet_count=0;g->selected=0;g->wave=1;g->spawned=0;g->spawn_timer=100000;g->huge_wave_timer=0;g->huge_wave_announced=0;g->extra.pending=0;g->extra.transition=0;g->level_flags=LEVEL_TUTORIAL_COMPLETE;
 }
@@ -86,7 +86,7 @@ static int extra_pre_step(Game *g,float dt){
 }
 static int extra_progress(Game *g){
     int category=g->extra.category;if(!category)return 0;
-    if(category==EXTRA_SURVIVAL){if(g->wave==g->num_waves&&g->spawned>0&&!game_alive(g)){
+    if(category==EXTRA_SURVIVAL){if(g->wave==g->num_waves&&g->spawned>0&&!game_alive(g)&&!wave_arrivals_pending024(g)){
         g->extra.flags+=g->num_waves/10;if(g->extra.goal&&g->extra.flags>=g->extra.goal){g->status=WON;sound(g,SFX_WIN);}else{g->extra.pending=1;g->extra.repick=1;g->extra.transition=0;}return 1;}return 0;}
     if(category==EXTRA_VASE){int remaining=0;for(int r=0;r<5;r++)for(int c=0;c<9;c++)remaining+=!!g->vases[r][c];if(!remaining&&!game_alive(g)){if(g->extra.selection==9){g->extra.pending=(g->extra.stage+1)%10==0?2:1;g->extra.transition=0;}else{g->status=WON;sound(g,SFX_WIN);}}return 1;}
     if(category==EXTRA_IZOMBIE){int brains=0,sun=0;for(int r=0;r<5;r++)brains+=g->extra.brains[r]>0;for(int i=0;i<MAX_SUNS;i++)sun+=!!g->suns[i].used;
@@ -95,7 +95,7 @@ static int extra_progress(Game *g){
 }
 int game_extra_continue(Game *g){
     if(!g->extra.pending||(g->extra.pending==2&&!(g->level_flags&LEVEL_REWARD_COLLECTED)))return 0;g->extra.stage++;g->extra.pending=0;g->extra.transition=0;
-    if(extra_is(g,EXTRA_SURVIVAL)){g->level_flags&=~LEVEL_READY;memset(&g->polish,0,sizeof(g->polish));memset(g->zombies,0,sizeof(g->zombies));memset(g->shots,0,sizeof(g->shots));g->wave=1;g->spawned=0;g->wave_delay=0;g->spawn_timer=18;g->huge_wave_timer=0;g->huge_wave_announced=0;g->fog_clear=0;for(int r=0;r<ROWS;r++)g->row_mowed_wave[r]=-100;survival_pick(g);extra_replan(g);return 1;}
+    if(extra_is(g,EXTRA_SURVIVAL)){g->level_flags&=~LEVEL_READY;memset(&g->polish024,0,sizeof(g->polish024));memset(&g->polish,0,sizeof(g->polish));memset(g->zombies,0,sizeof(g->zombies));memset(g->shots,0,sizeof(g->shots));g->wave=1;g->spawned=0;g->wave_delay=0;g->spawn_timer=18;g->huge_wave_timer=0;g->huge_wave_announced=0;g->fog_clear=0;for(int r=0;r<ROWS;r++)g->row_mowed_wave[r]=-100;survival_pick(g);extra_replan(g);return 1;}
     if(extra_is(g,EXTRA_VASE))vase_setup(g);else if(extra_is(g,EXTRA_IZOMBIE))iz_setup(g);return 1;
 }
 
@@ -120,7 +120,7 @@ static int bobsled_step(Game *g,int i,float dt){
  Zombie *z=&g->zombies[i];int team=g->extra.bobsled_team[i];if(!team)return 0;int leader=team-1;
  if(leader<0||leader>=MAX_ZOMBIES){g->extra.bobsled_team[i]=0;return 0;}
     if(g->extra.bobsled_phase[i]<0){g->extra.bobsled_phase[i]+=dt;if(g->extra.bobsled_phase[i]<0){z->age+=dt;return 1;}g->extra.bobsled_team[i]=0;z->speed=.23f+random_unit(g)*.14f;return 0;}
-    int col=(int)((g->zombies[leader].x-GRID_X)/CELL_W);if(!g->zombies[leader].used||g->zombies[leader].death>0||(col>=0&&col<COLS&&g->ice_tiles[z->row][col]<=0)){for(int j=0;j<MAX_ZOMBIES;j++)if(g->extra.bobsled_team[j]==team)g->extra.bobsled_phase[j]=-.6f;return 1;}
+    int col=(int)((g->zombies[leader].x-GRID_X)/CELL_W);if(!g->zombies[leader].used||g->zombies[leader].kind!=Z_BOBSLED||(i!=leader&&g->polish024.leader_id[i]!=g->fidelity.actor_id[leader])||g->zombies[leader].death>0||(col>=0&&col<COLS&&g->ice_tiles[z->row][col]<=0)){for(int j=0;j<MAX_ZOMBIES;j++)if(g->extra.bobsled_team[j]==team&&(j==i||g->polish024.leader_id[j]==g->polish024.leader_id[i]))g->extra.bobsled_phase[j]=-.6f;return 1;}
  if(i!=leader){Zombie *head=&g->zombies[leader];z->x=head->x+g->extra.bobsled_position[i]*14;z->row=head->row;z->age=head->age;return 1;}
  z->eating=0;z->age+=dt;z->x-=47.5f*dt*(z->slow>0?.5f:1);return 1;
 }

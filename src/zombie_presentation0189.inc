@@ -27,6 +27,12 @@ static const Animation *zombie_visible_clip(const Zombie *z,int index,int *body_
  if(z->death<=0){if(action==ACTION_LADDER)clip=&assets[A_LADDER_PLACE];else if(action==ACTION_BALLOON_FALL)clip=&assets[A_BALLOON_POP];else if(action==ACTION_DIGGER_RISE)clip=&assets[game.polish.action_time[index]<.6f?A_DIGGER_DRILL:A_DIGGER_LAND];else if(action==ACTION_CATAPULT)clip=&assets[A_CATAPULT_EAT];}
  if(z->death>0){if(game.polish.death_style[index]==DEATH_CHARRED)clip=&assets[A_ZOMBIE_CHARRED];else if(game.polish.death_style[index]==DEATH_WATER)clip=&assets[A_ZOMBIE_WATERDEATH];}
  if(z->death<=0&&body&&(uintptr_t)clip>=(uintptr_t)assets&&(uintptr_t)clip<(uintptr_t)(assets+A_COUNT)){int id=(int)(clip-assets);if(damaged[id][body-1].loaded)clip=&damaged[id][body-1];}
+ if(z->death<=0&&body<2&&!z->eating&&(z->kind==Z_DANCER||z->kind==Z_BACKUP)){
+  int state=game.polish024.dancer_state[index],beat=((int)(game.time*100)%460)/20;
+  if(z->kind==Z_DANCER){if(!classic_dancer&&state==DANCE_ENTER)clip=&assets[A_DANCER_MOONWALK];else if(!classic_dancer&&(state==DANCE_POINT||state==DANCE_HOLD))clip=&assets[A_DANCER_POINT];else if((classic_dancer&&(state==DANCE_POINT||state==DANCE_HOLD))||(state==DANCE_GROUP&&beat>=12))clip=&assets[classic_dancer?A_CLASSIC_DANCER_ARMRAISE:A_DANCER_ARMRAISE];}
+  else if(state==DANCE_GROUP&&beat>=12)clip=&assets[A_BACKUP_ARMRAISE];
+ }
+ if(z->kind==Z_DUCK&&z->death<=0&&body<2&&z->armor>0){int id=game.polish024.pool_gear[index]==Z_CONE?A_DUCK_CONE_WALK:A_DUCK_BUCKET_WALK;id+=!!z->eating;int maximum=game.polish024.pool_gear[index]==Z_CONE?370:1100,damage=z->armor<maximum/3?2:z->armor<maximum*2/3?1:0;clip=damage&&damaged[id][damage-1].loaded?&damaged[id][damage-1]:&assets[id];}
  if(body_result)*body_result=body;return clip;
 }
 /* PS3 UpdateAnimSpeed, 0x2bca18-0x2bcacc: eating overrides the
@@ -38,6 +44,17 @@ static int zombie_chewing_kind(int kind){return kind!=Z_GARG&&kind!=Z_ZOMBONI&&k
 static float zombie_visible_time(const Zombie *z,const Animation *clip){
  if(z->death>0){int style=game.polish.death_style[z-game.zombies];return style?fminf((clip->frames-1)/fmaxf(1,clip->fps),z->age*(style==DEATH_CHARRED?15:12)/fmaxf(1,clip->fps)):classic_dancer&&z->kind==Z_DANCER?fminf(1,z->age/fmaxf(.01f,game_death_duration(z)-.6f))*(clip->frames-1)/fmaxf(1,clip->fps):game_zombie_animation_time(z);}
  int index=(int)(z-game.zombies),action=game.polish.action[index];
+ if(!z->eating&&(z->kind==Z_DANCER||z->kind==Z_BACKUP)&&game_zombie_has_head(&game,z)){
+  int state=game.polish024.dancer_state[index];float clock=game.polish024.actor_clock[index];
+  if(z->kind==Z_DANCER&&!classic_dancer&&state==DANCE_ENTER)return clock;
+  if(z->kind==Z_DANCER&&!classic_dancer&&(state==DANCE_POINT||state==DANCE_HOLD))return state==DANCE_HOLD?(clip->frames-1)/fmaxf(1,clip->fps):fminf((clip->frames-1)/fmaxf(1,clip->fps),clock);
+  if(state==DANCE_RISE)return 0;
+  int beat=(int)(game.time*100)%460;
+  if((state==DANCE_GROUP&&beat>=240)||(classic_dancer&&(state==DANCE_POINT||state==DANCE_HOLD))){float t=state==DANCE_GROUP?(beat<260?(beat-240)*.01f:beat<380?(beat-260)*.01f:(beat-380)*.01f):clock;
+   float rate=classic_dancer&&z->kind==Z_DANCER?1.5f:.75f;
+   return t*rate+(state==DANCE_GROUP&&beat<260?.6f*clip->frames/clip->fps:0);
+  }
+ }
  if(z->kind==Z_BUNGEE){int phase=game.fidelity.bungee_phase[index];return game.special[index]*(phase>=3?36:24)/fmaxf(1,clip->fps);}
  if(action==ACTION_SNORKEL_RISE||action==ACTION_SNORKEL_DIVE){float t=fminf(11/24.0f,game.polish.action_time[index]);return (action==ACTION_SNORKEL_DIVE?11/24.0f-t:t)*24/fmaxf(1,clip->fps);}
  if(z->kind==Z_DOLPHIN&&z->vault>0)return z->age*clip->frames/(game_vault_duration(z)*fmaxf(1,clip->fps));

@@ -1,3 +1,4 @@
+enum { REWARD_FLIGHT_DURATION=4 };
 static const char *reward_name(void){
     int type=game_reward_type(&game),seed=game_reward_seed(&game);
     switch(type){case REWARD_SHOVEL:return "SHOVEL";case REWARD_ALMANAC:return "ALMANAC";case REWARD_KEYS:return "CAR KEYS";case REWARD_TACO:return "TACO";case REWARD_WATERING_CAN:return "WATERING CAN";case REWARD_NOTE:return "ZOMBIE NOTE";case REWARD_TROPHY:return "TROPHY";case REWARD_SILVER_SUNFLOWER:return "SILVER SUNFLOWER";case REWARD_MONEY_BAG:return "MONEY BAG";default:return seed>=0?full_seed_names[seed]:"SEED PACKET";}
@@ -18,13 +19,20 @@ static void update_reward(float dt){
     }
     reward_elapsed+=dt;if(reward_collect_time>=0)reward_collect_time+=dt;
 }
+static void reward_pickup_audio(int type){
+ if(type==REWARD_TROPHY)foley_sample(FX_DIAMOND);
+ else if(type==REWARD_SHOVEL)foley_sample(FX_SHOVEL);
+ else if(type==REWARD_NOTE)foley_sample(FX_TAP2);
+ else if(type==REWARD_MONEY_BAG)foley_play(FOLEY_COIN);
+ else{foley_sample(FX_SEEDLIFT);foley_sample(FX_TAP2);}
+}
 static void draw_reward_glow(float x,float foot,float time,float scale){
     float pulse=.85f+.1f*sinf(time*3);render_image(&assets[A_AWARD_GLOW],x-32*scale,foot-45*scale,64*scale,64*scale,0,RGBA(255,255,255,(int)(180*pulse)));
     render_anim_rotated(&assets[A_AWARD_RAYS],x,foot+29*scale,time,.52f*scale,RGBA(255,255,255,150),time*.15f);
 }
 static void draw_reward_flight(int type,int seed,float elapsed,float startX,float startY){
-    float t=fminf(1,elapsed/.75f),ease=t*t*(3-2*t),x=startX+(240-startX)*ease;
-    int packet=type==REWARD_SEED;float target=packet?130:120,y=startY+(target-startY)*ease,h=packet?33+28*ease:24+14*ease,w=packet?24+20*ease:29+17*ease;
+    float t=fminf(1,elapsed/3.5f),ease=1-(1-t)*(1-t),grow=fminf(1,elapsed/4),growth=grow*grow*(3-2*grow),x=startX+(240-startX)*ease;
+    int packet=type==REWARD_SEED;float target=packet?130:120,y=startY+(target-startY)*ease,h=packet?33+28*growth:24+14*growth,w=packet?24+20*growth:29+17*growth;
     render_rect(0,0,480,272,RGBA(0,0,0,(int)(130*ease)));draw_reward_glow(x,y,elapsed,1+ease);
     render_image(&assets[packet?A_SEED_CARDS:A_REWARD_TROPHY],x-w*.5f,y-h,w,h,packet?seed:0,WHITE);
 }
@@ -34,8 +42,7 @@ static void draw_trophy_award(const char *subtitle){
     char title[100];ui_title_case(title,sizeof(title),subtitle);disc_text(187,163,106,title,UI_INK,.66f);ui_button(163,225,154,"X: Continue",1);ui_center(60,258,360,"O: Main menu",UI_INK,.6f);
 }
 static void draw_reward(void){
-    render_rect(0,248,314,24,RGBA(30,42,29,255));render_text(5,251,"LEVEL CLEARED!",RGBA(255,238,154,255),1);
-    if(reward_delay<0||reward_elapsed<reward_delay){render_text(5,263,"YOUR REWARD IS COMING...",WHITE,1);return;}
+    if(reward_delay<0||reward_elapsed<reward_delay)return;
     float t=fminf(.7f,reward_elapsed-reward_delay),drop=t<.7f?-8-140*t+(106/.49f)*t*t:0;
     float x=reward_x,foot=reward_ground+drop;
     int type=game_reward_type(&game),seed=game_reward_seed(&game),selected=game.cursor_row==reward_row&&game.cursor_col==reward_col;
@@ -46,14 +53,14 @@ static void draw_reward(void){
         draw_reward_glow(x,foot,reward_elapsed,1);render_anim(&assets[asset],x,foot,0,type==REWARD_TROPHY?.6f:.8f,WHITE,0);
     }
     if(selected&&t>=.7f)render_image(&assets[A_AWARD_ARROW],x-8,foot-51-3*sinf(reward_elapsed*5),16,13,0,WHITE);
-    render_text(5,263,t<.7f?"WAIT FOR YOUR REWARD TO LAND":selected?"X: COLLECT REWARD":"SELECT THE REWARD, THEN PRESS X",WHITE,1);
+
 }
 
 static void draw_plant_award(int seed){
-    if(reward_collect_time>=0&&reward_collect_time<.85f){
+    if(reward_collect_time>=0&&reward_collect_time<REWARD_FLIGHT_DURATION){
         draw_reward_flight(REWARD_SEED,seed,reward_collect_time,reward_x,reward_ground);return;
     }
     render_image(&assets[A_PLANT_AWARDS],0,0,480,272,seed,WHITE);
-    render_rect(187,231,106,26,RGBA(103,116,44,255));render_outline(187,231,106,26,RGBA(60,67,28,255));render_text(204,241,"X NEXT LEVEL",RGBA(255,241,154,255),1);
+    render_rect(187,231,106,26,RGBA(103,116,44,255));render_outline(187,231,106,26,RGBA(60,67,28,255));ui_center(187,239,106,"Next level",UI_GOLD,.65f);
     render_text(8,261,"O MAIN MENU",RGBA(70,53,31,255),1);
 }

@@ -1,4 +1,4 @@
-# Known limitations — 0.23.0
+# Known limitations — 0.24.0 development
 
 This is an unfinished native PSP reimplementation, not an exact PS3 reproduction.
 It imports resources from the original BLUS30852 version 01.00 PS3 ISO. It does
@@ -24,18 +24,20 @@ Local collectible trophies are separate from PlayStation system trophies.
 
 ## Testing and compatibility
 
-The final 0.23.0 executable passed 1,336 checks on the Street emulator profile
-and 1,337 on PSP-1000, with no failures or cache errors. These are emulator
-results, not physical-console certification or proof of complete PS3 parity.
+The final 0.24.0 development executable passed 1,384 checks on the
+Street emulator profile and 1,385 on PSP-1000, with no failures or cache
+errors. See [validation](reference/VALIDATION-0.24-DEVELOPMENT.md). These are
+emulator results, not physical-console certification or complete PS3 parity.
 
 PSP-1000 support is experimental. It defaults to 30 FPS and smaller caches;
 the optional 60 FPS target is not a physical-hardware performance guarantee.
 Suspend/resume, battery interruption and extended hardware play still need testing.
 
-0.23.0 requires newly prepared data and updates the game/profile save formats.
+0.24.0 requires newly prepared data and version 14 game saves. Profile format
+remains version 5; version 13 and older supported game saves import.
 Back up your existing folder before updating. Older builds cannot read the new
 saves; keep the backup if you want to revert.
 
-[Detailed status for items 4–34](reference/FIDELITY-0.23-DEVELOPMENT.md) ·
-[Validation results](reference/VALIDATION-0.23-DEVELOPMENT.md) ·
+[0.24 gameplay polish](reference/POLISH-0.24-DEVELOPMENT.md) ·
+[Validation results](reference/VALIDATION-0.24-DEVELOPMENT.md) ·
 [Full completion checklist](reference/COMPLETION-WORK.md)

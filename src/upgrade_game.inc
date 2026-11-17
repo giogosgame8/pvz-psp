@@ -44,7 +44,7 @@ static void upgrade_plant(Game *g,int r,int c,float dt){
         if(g->burst_left[r][c]>0){g->burst[r][c]-=dt;if(g->burst[r][c]<=0){g->burst_left[r][c]--;g->burst[r][c]+=kind==GLOOM?.28f:kind==CATTAIL?.18f:.17f;
             if(kind==GLOOM){upgrade_damage_ring(g,r,x);cue(FOLEY_FUME);}
             else if(kind==GATLING)shoot(g,r,x+13,0);
-            else{int target=closest_enemy(g,r,x,1);if(target>=0){int slot=-1;for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){slot=i;break;}if(slot>=0){shoot(g,r,x+10,11);g->shot_target[slot]=target;g->shot_vx[slot]=95;}}}
+            else{int target=closest_enemy(g,r,x,1);if(target>=0){int slot=-1;for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){slot=i;break;}if(slot>=0){shoot(g,r,x+10,11);g->shot_target[slot]=target;g->polish024.shot_actor[slot]=g->fidelity.actor_id[target];g->shot_vx[slot]=95;}}}
         }}return;
     }
     if(kind==WINTER&&p->attack<=0){int target=closest_enemy(g,r,x,0);if(target>=0||g->mode==MODE_BOSS){lob(g,r,x,12,target);p->attack=2.85f;p->flash=.4f;}return;}

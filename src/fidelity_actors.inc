@@ -3,6 +3,8 @@ static int fidelity_actor_step(Game *g,int i,float dt){
  Zombie *z=&g->zombies[i];int action=g->polish.action[i];
  if(action<ACTION_KELP)return 0;
  float before=g->polish.action_time[i];g->polish.action_time[i]+=dt*(z->slow>0?.5f:1);float t=g->polish.action_time[i];z->eating=0;
+ if(action==ACTION_POOL_RISE){float duration=game_water_row(g,z->row)?.5f:1;g->polish024.altitude[i]=-(game_water_row(g,z->row)?49.5f:36)*(1-fminf(1,t/duration));if(t>=duration){g->polish.action[i]=0;g->polish024.altitude[i]=0;z->age=g->polish.pose[i]=0;}return 1;}
+ if(action==ACTION_SKY_DROP){int parent=actor_by_id024(g,g->polish024.leader_id[i]);if(parent>=0&&g->zombies[parent].death<=0&&g->fidelity.bungee_phase[parent]==0){g->polish024.altitude[i]=fmaxf(0,g->fidelity.actor_aux[parent]-g->special[parent])*380;return 1;}g->polish024.altitude[i]=fmaxf(0,g->polish024.altitude[i]-380*dt);if(!g->polish024.altitude[i]){g->polish.action[i]=0;g->polish024.leader_id[i]=0;z->age=g->polish.pose[i]=0;}return 1;}
  if(action==ACTION_KELP){
   int cell=g->polish.target[i],r=cell/COLS,c=cell%COLS;
   if(r>=ROWS||c>=COLS||g->plants[r][c].kind!=KELP||!g->burst_left[r][c]){g->polish.action[i]=0;return 0;}return 1;

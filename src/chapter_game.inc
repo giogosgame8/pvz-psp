@@ -76,7 +76,17 @@ static void chapter_shots(Game *g,float dt){
     for(int i=0;i<MAX_SHOTS;i++)if(g->shots[i].used){
         Shot *s=&g->shots[i];float old=s->x,oldy=g->shot_y[i],vx=g->shot_vx[i];s->x+=vx*dt;g->shot_y[i]+=g->shot_vy[i]*dt;
         if(s->ice==14){g->shot_vy[i]+=300*dt;g->shot_remaining[i]-=dt;if(g->shot_remaining[i]<=0){int cell=g->shot_target[i],r=cell/COLS,c=cell%COLS;if(r>=0&&r<ROWS&&c>=0&&c<COLS){if(nearby_umbrella(g,r,c))cue(FOLEY_UMBRELLA);else if(g->plants[r][c].kind>=0){Plant *p=&g->plants[r][c];extra_plant_damage(g,r,c,p->hp,p->hp-g->shot_damage[i]);p->hp-=g->shot_damage[i];if(p->hp<=0)destroy_square(g,r,c,0);}}s->used=0;}continue;}
-        if(s->ice==11){int target=g->shot_target[i];if(target<0||!g->zombies[target].used||g->zombies[target].death>0){target=closest_enemy(g,s->row,s->x,1);g->shot_target[i]=target;}if(target<0){s->used=0;continue;}Zombie *enemy=&g->zombies[target];float ty=game_ground_y(g,enemy->row)+game_roof_offset(g,enemy->x)-18,dx=enemy->x-s->x,dy=ty-g->shot_y[i],distance=hypotf(dx,dy);if(distance<12){if(enemy->kind==Z_BALLOON&&!g->fidelity.equipment_lost[target]){g->fidelity.equipment_lost[target]=1;g->polish.action[target]=ACTION_BALLOON_FALL;g->polish.action_time[target]=0;cue(GAME_SAMPLE(FX_BALLOON_POP));}hurt_zombie(g,enemy,20,0);s->used=0;}else{float speed=fminf(285,hypotf(g->shot_vx[i],g->shot_vy[i])+190*dt);g->shot_vx[i]=dx/distance*speed;g->shot_vy[i]=dy/distance*speed;}continue;}
+        if(s->ice==11){
+         int target=g->shot_target[i];
+         if(target<0||target>=MAX_ZOMBIES||!g->zombies[target].used||g->zombies[target].death>0||g->hypnotized[target]||bungee_away(g,&g->zombies[target])||(g->polish024.shot_actor[i]&&g->polish024.shot_actor[i]!=g->fidelity.actor_id[target])){
+          target=-1;float best=1e9f;for(int n=0;n<MAX_ZOMBIES;n++){Zombie *z=&g->zombies[n];if(!z->used||z->death>0||g->hypnotized[n]||bungee_away(g,z)||(z->kind==Z_DIGGER&&!z->vaulted))continue;
+           float y=game_ground_y(g,z->row)+game_roof_offset(g,z->x)-18,d=hypotf(z->x-s->x,y-g->shot_y[i]);if(d<best){best=d;target=n;}}
+          g->shot_target[i]=target;g->polish024.shot_actor[i]=target>=0?g->fidelity.actor_id[target]:0;
+         }
+         if(target<0){s->used=0;continue;}Zombie *enemy=&g->zombies[target];float ty=game_ground_y(g,enemy->row)+game_roof_offset(g,enemy->x)-18,dx=enemy->x-s->x,dy=ty-g->shot_y[i],distance=hypotf(dx,dy);
+         if(distance<12){if(enemy->kind==Z_BALLOON&&!g->fidelity.equipment_lost[target]){g->fidelity.equipment_lost[target]=1;g->polish.action[target]=ACTION_BALLOON_FALL;g->polish.action_time[target]=0;cue(GAME_SAMPLE(FX_BALLOON_POP));}hurt_zombie(g,enemy,20,0);s->used=0;}
+         else{float speed=fminf(285,hypotf(g->shot_vx[i],g->shot_vy[i])+190*dt);g->shot_vx[i]=dx/distance*speed;g->shot_vy[i]=dy/distance*speed;}continue;
+        }
         int lobbed=(s->ice>=4&&s->ice<=7)||s->ice==12;
         if(s->ice==13){g->shot_remaining[i]-=dt;if(g->shot_remaining[i]>0)continue;
             if(g->shot_target[i]==-2){s->x=plant_x((int)g->shot_damage[i]);g->shot_y[i]=game_ground_y(g,s->row)+game_roof_offset(g,s->x)-334;g->shot_vy[i]=380;g->shot_remaining[i]=.88f;g->shot_target[i]=-3;continue;}
@@ -113,7 +123,7 @@ static int chapter_zombie(Game *g,int i,float dt){
     if(z->kind==Z_BUNGEE){
         int phase=g->fidelity.bungee_phase[i],r=z->row,c=(int)((z->x-GRID_X)/CELL_W);if(c<0)c=0;if(c>=COLS)c=COLS-1;
         g->special[i]+=dt*(phase==2&&z->slow>0?.5f:1);z->age+=dt;
-        if(phase==0&&g->special[i]>=fmaxf(.01f,g->fidelity.actor_aux[i])){g->special[i]=0;z->age=0;if(nearby_umbrella(g,r,c)){g->fidelity.bungee_phase[i]=4;cue(FOLEY_UMBRELLA);cue(GAME_SAMPLE(FX_BOING));}else g->fidelity.bungee_phase[i]=1;}
+        if(phase==0&&g->special[i]>=fmaxf(.01f,g->fidelity.actor_aux[i])){g->special[i]=0;z->age=0;int child=actor_by_id024(g,g->polish024.bungee_child_id[i]);if(nearby_umbrella(g,r,c)){if(child>=0)g->zombies[child].used=0;g->fidelity.bungee_phase[i]=4;cue(FOLEY_UMBRELLA);cue(GAME_SAMPLE(FX_BOING));}else if(child>=0){g->polish.action[child]=0;g->polish024.altitude[child]=0;g->polish024.leader_id[child]=0;g->fidelity.bungee_phase[i]=3;}else g->fidelity.bungee_phase[i]=1;}
         else if(phase==1&&g->special[i]>=3){
             int layer=g->plants[r][c].kind>=0?0:g->pumpkin_hp[r][c]>0?1:2;
             int kind=layer==0?g->plants[r][c].kind:layer==1?PUMPKIN:g->support[r][c]-1;

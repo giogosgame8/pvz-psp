@@ -28,7 +28,7 @@ void game_heavy_control(Game *g,float move,float aim,int fire,float dt){
  if(g->mode!=MODE_HEAVY||g->status!=PLAYING)return;
  g->mini.heavy_x=fminf(440,fmaxf(45,g->mini.heavy_x+move*150*dt));g->mini.heavy_y=245;g->mini.heavy_power=aim*.6f;g->mini.heavy_fire=fmaxf(0,g->mini.heavy_fire-dt);
  if(fire&&g->mini.heavy_fire<=0){int level=g->extra.heavy_level,count=level==0?1:level==1?2:level==2?3:1;g->mini.heavy_fire=level==3?.17f/(1+g->extra.heavy_cattail*.5f):.17f;
-  for(int n=0;n<count;n++)for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){int ice=level==3?11:g->extra.heavy_fire_time>0?10:g->extra.heavy_ice_time>0?1:8;g->shots[i]=(Shot){1,4,ice,g->mini.heavy_x};g->shot_y[i]=232;float angle=aim*.6f+(n-(count-1)*.5f)*.25f;g->shot_vx[i]=sinf(angle)*250;g->shot_vy[i]=-cosf(angle)*250;g->shot_damage[i]=ice==10?40:20;g->shot_remaining[i]=10;g->shot_target[i]=-1;sound(g,SFX_SHOOT);break;}
+  for(int n=0;n<count;n++)for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){int ice=level==3?11:g->extra.heavy_fire_time>0?10:g->extra.heavy_ice_time>0?1:0;g->shots[i]=(Shot){1,4,ice,g->mini.heavy_x};g->shot_y[i]=232;float angle=aim*.6f+(n-(count-1)*.5f)*.25f;g->shot_vx[i]=sinf(angle)*250;g->shot_vy[i]=-cosf(angle)*250;g->shot_damage[i]=ice==10?40:20;g->shot_remaining[i]=10;g->shot_target[i]=-1;g->polish024.shot_actor[i]=0;sound(g,SFX_SHOOT);break;}
  }
 }
 static int mini_zombie(Game *g,int i,float dt){
@@ -37,8 +37,8 @@ static int mini_zombie(Game *g,int i,float dt){
     if(head==1||head==4){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=0){
        if(head==4){if(!g->extra.zombotany_burst[i])g->extra.zombotany_burst[i]=4;g->extra.zombotany_burst[i]--;g->mini.zombie_attack[i]=g->extra.zombotany_burst[i]?.17f:.99f;}else g->mini.zombie_attack[i]=1.5f;
        for(int j=0;j<96;j++)if(!g->mini.enemy_used[j]){g->mini.enemy_used[j]=1;g->mini.enemy_x[j]=z->x-18;g->mini.enemy_y[j]=game_ground_y(g,z->row)-18;break;}}}
-    if(head==3){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=-10){for(int c=0;c<COLS;c++){g->plants[z->row][c].kind=-1;g->pumpkin_hp[z->row][c]=0;g->support[z->row][c]=0;}kill_zombie(g,z);g->flash=.25f;sound(g,SFX_EXPLODE);return 1;}}
-    if(head==5){if(g->extra.zombotany_jump[i]>0){float old=g->extra.zombotany_jump[i];g->extra.zombotany_jump[i]-=dt;if(old>.2f&&g->extra.zombotany_jump[i]<=.2f){int c=g->extra.squash_col[i];g->plants[z->row][c].kind=-1;g->pumpkin_hp[z->row][c]=0;g->support[z->row][c]=0;sound(g,SFX_CHOMP);}if(g->extra.zombotany_jump[i]<=0)kill_zombie(g,z);return 1;}
+    if(head==3){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=-10){for(int c=0;c<COLS;c++){destroy_square(g,z->row,c,1);}kill_zombie(g,z);g->flash=.25f;sound(g,SFX_EXPLODE);return 1;}}
+    if(head==5){if(g->extra.zombotany_jump[i]>0){float old=g->extra.zombotany_jump[i];g->extra.zombotany_jump[i]-=dt;if(old>.2f&&g->extra.zombotany_jump[i]<=.2f){int c=g->extra.squash_col[i];destroy_square(g,z->row,c,1);sound(g,SFX_CHOMP);}if(g->extra.zombotany_jump[i]<=0)kill_zombie(g,z);return 1;}
      for(int c=0;c<COLS;c++)if(g->plants[z->row][c].kind>=0&&fabsf(z->x-plant_x(c))<30){g->extra.squash_col[i]=c;g->extra.zombotany_jump[i]=.95f;return 1;}}
     return 0;
 }
@@ -153,8 +153,8 @@ static void mini_slot_resolve(Game *g){
 static void mini_portals(Game *g,float dt){
  g->mini.portal_timer-=dt;if(g->mini.portal_timer<=0){g->mini.portal_timer=60;g->mini.portal_generation++;cue(FOLEY_PORTAL);int at=random_next(g)%4,other=g->mini.portals[at^1],candidates[50],count=0;for(int row=0;row<5;row++)for(int col=0;col<10;col++){int cell=row*10+col,free=col!=other%10&&row!=other/10;for(int p=0;p<4;p++)if(g->mini.portals[p]==cell)free=0;if(free)candidates[count++]=cell;}if(count)g->mini.portals[at]=candidates[random_next(g)%count];memset(g->extra.last_portal_zombie,0,sizeof(g->extra.last_portal_zombie));memset(g->extra.last_portal_shot,0,sizeof(g->extra.last_portal_shot));}
  for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(!z->used||z->death>0)continue;int last=g->extra.last_portal_zombie[i];if(last&&fabsf(z->x-plant_x((last-1)%10))>26)g->extra.last_portal_zombie[i]=0;
-  for(int p=0;p<4;p++){int cell=g->mini.portals[p];if(z->row==cell/10&&cell+1!=g->extra.last_portal_zombie[i]&&fabsf(z->x-plant_x(cell%10))<21){int to=g->mini.portals[p^1];z->row=to/10;z->x=plant_x(to%10)-12;g->extra.last_portal_zombie[i]=to+1;g->mini.zombie_portal[i]=1;cue(FOLEY_PORTAL);break;}}}
- for(int i=0;i<MAX_SHOTS;i++){Shot *s=&g->shots[i];if(!s->used||g->shot_vy[i]!=0)continue;int last=g->extra.last_portal_shot[i];if(last&&fabsf(s->x-plant_x((last-1)%10))>26)g->extra.last_portal_shot[i]=0;
+  for(int p=0;p<4;p++){int cell=g->mini.portals[p];if(z->row==cell/10&&cell+1!=g->extra.last_portal_zombie[i]&&fabsf(z->x-plant_x(cell%10))<21){int to=g->mini.portals[p^1];float delta=plant_x(to%10)-12-z->x;z->row=to/10;z->x+=delta;if(z->vault>0||g->polish.action[i]==ACTION_IMP_FLIGHT){z->vault_from+=delta;z->vault_to+=delta;}g->extra.last_portal_zombie[i]=to+1;g->mini.zombie_portal[i]=1;cue(FOLEY_PORTAL);break;}}}
+ for(int i=0;i<MAX_SHOTS;i++){Shot *s=&g->shots[i];if(!s->used||g->shot_vy[i]!=0||s->ice==11)continue;int last=g->extra.last_portal_shot[i];if(last&&fabsf(s->x-plant_x((last-1)%10))>26)g->extra.last_portal_shot[i]=0;
   for(int p=0;p<4;p++){int cell=g->mini.portals[p];if(s->row==cell/10&&cell+1!=g->extra.last_portal_shot[i]&&fabsf(s->x-plant_x(cell%10))<19){int to=g->mini.portals[p^1];float delta=game_ground_y(g,to/10)-game_ground_y(g,s->row);s->row=to/10;s->x=plant_x(to%10)+(g->shot_vx[i]<0?-16:16);g->shot_y[i]+=delta;g->extra.last_portal_shot[i]=to+1;g->mini.shot_portal[i]=1;cue(FOLEY_PORTAL);break;}}}
  for(int i=0;i<ROWS;i++)if(g->mower_used[i]&&g->mower_x[i]<520){int row=g->extra.mower_row[i]?g->extra.mower_row[i]-1:i,last=g->extra.last_portal_mower[i];if(last&&fabsf(g->mower_x[i]-plant_x((last-1)%10))>26)g->extra.last_portal_mower[i]=0;
   for(int p=0;p<4;p++){int cell=g->mini.portals[p];if(row==cell/10&&cell+1!=g->extra.last_portal_mower[i]&&fabsf(g->mower_x[i]-plant_x(cell%10))<17){int to=g->mini.portals[p^1];g->mower_x[i]=plant_x(to%10)+12;g->extra.mower_row[i]=to/10+1;g->extra.last_portal_mower[i]=to+1;cue(FOLEY_PORTAL);break;}}}
@@ -188,7 +188,7 @@ static int mini_progress(Game *g){
         if(g->wave==g->num_waves&&g->spawned>0&&!game_alive(g)){g->wave=g->num_waves-1;g->spawned=0;g->spawn_timer=5;}
     }
     if(game_mini_active(g,MINI_STARS)){static const unsigned short star[5]={0x008,0x018,0x07e,0x038,0x048};g->mini.star_count=0;for(int r=0;r<5;r++)for(int c=0;c<9;c++)if((star[r]&(1<<c))&&g->plants[r][c].kind==STAR)g->mini.star_count++;}
-    if(game_mini_active(g,MINI_LASTSTAND)&&g->wave==g->num_waves&&g->spawned>0&&!game_alive(g)&&g->mini.stage<4){g->mini.stage++;g->mini.phase=0;g->sun+=250;g->wave=1;g->spawned=0;g->huge_wave_announced=0;g->huge_wave_timer=0;mini_replan(g);return 1;}
+    if(game_mini_active(g,MINI_LASTSTAND)&&g->wave==g->num_waves&&g->spawned>0&&!game_alive(g)&&!wave_arrivals_pending024(g)&&g->mini.stage<4){g->mini.stage++;memset(&g->polish024,0,sizeof(g->polish024));g->mini.phase=0;g->sun+=250;g->wave=1;g->spawned=0;g->huge_wave_announced=0;g->huge_wave_timer=0;mini_replan(g);return 1;}
     return 0;
 }
 int game_mini_total(const Game *g){return g->mode==MODE_MATCH?75:g->mode==MODE_SLOT?2000:g->mode==MODE_AQUARIUM?1000:game_mini_active(g,MINI_STARS)?14:g->num_waves;}

@@ -26,7 +26,7 @@ static int review_expansion(int n){
  case 18:render_debug_frame("review-garden-picker.ppm");screen=20;break;
  case 19:render_debug_frame("review-credits-menu.ppm");game_start_level(&game,5,3401);game.shovel_tutorial=0;game.spawn_timer=100000;for(int c=0;c<9;c++)game.plants[2][c].kind=-1;game.nuts[0]=(BowlingNut){.used=1,.row=2,.target_row=2,.last_hit=-1,.x=230,.y=game_ground_y(&game,2)};game_spawn_zombie(&game,2,Z_NORMAL,240);game_step(&game,.01f);screen=1;reset_level_ui();break;
  case 20:render_debug_frame("review-bowling-regular-hit.ppm");game_start_level(&game,5,3402);game.shovel_tutorial=0;game.spawn_timer=100000;game.nuts[0]=(BowlingNut){.used=1,.explosive=1,.row=2,.target_row=2,.last_hit=-1,.x=230,.y=game_ground_y(&game,2)};game_spawn_zombie(&game,2,Z_NORMAL,240);game_step(&game,.01f);reset_level_ui();break;
- case 21:render_debug_frame("review-bowling-red-hit.ppm");game_start_level(&game,50,3403);game.status=WON;game.level_flags|=LEVEL_REWARD_COLLECTED;reset_level_ui();reward_collect_time=1;screen=1;break;
+ case 21:render_debug_frame("review-bowling-red-hit.ppm");game_start_level(&game,50,3403);game.status=WON;game.level_flags|=LEVEL_REWARD_COLLECTED;reset_level_ui();reward_collect_time=REWARD_FLIGHT_DURATION;screen=1;break;
  case 22:render_debug_frame("review-final-result.ppm");game_start_level(&game,9,3404);screen=1;paused=1;reset_level_ui();break;
  case 23:render_debug_frame("review-pause-compact.ppm");paused=0;game_start_level(&game,49,3800);game.seed_mask=(UINT64_C(1)<<10)-1;game.seed_slots=10;screen=1;reset_level_ui();break;
  case 24:render_debug_frame("review012-seedbank-ten.ppm");game_start_puzzle(&game,0,0,3801);game.packet_count=10;for(int i=0;i<10;i++)game.packets[i]=i;reset_level_ui();break;
@@ -35,10 +35,10 @@ static int review_expansion(int n){
  case 27:render_debug_frame("review012-squash-jump.ppm");game.burst_left[2][3]=4;game.burst[2][3]=.075f;break;
  case 28:render_debug_frame("review012-squash-landing.ppm");game_start_level(&game,1,3803);game.status=WON;reset_level_ui();update_reward(.01f);reward_x=311;reward_ground=baseline(2);reward_elapsed=reward_delay+1;break;
  case 29:render_debug_frame("review012-seed-pickup.ppm");game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=.4f;break;
- case 30:render_debug_frame("review012-seed-flight.ppm");reward_collect_time=1;break;
+ case 30:render_debug_frame("review012-seed-flight.ppm");reward_collect_time=REWARD_FLIGHT_DURATION;break;
  case 31:render_debug_frame("review012-seed-award.ppm");game_start_mini(&game,MINI_BOWLING,3804);game.status=WON;screen=1;reset_level_ui();update_reward(.01f);reward_x=311;reward_ground=baseline(2);reward_elapsed=reward_delay+1;break;
  case 32:render_debug_frame("review012-trophy-pickup.ppm");game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=.4f;break;
- case 33:render_debug_frame("review012-trophy-flight.ppm");reward_collect_time=1;break;
+ case 33:render_debug_frame("review012-trophy-flight.ppm");reward_collect_time=REWARD_FLIGHT_DURATION;break;
  case 34:render_debug_frame("review012-trophy-award.ppm");screen=4;menu_volume_row=3;health_bars=3;break;
  case 35:render_debug_frame("review012-health-options.ppm");game_start_level(&game,9,3805);screen=1;reset_level_ui();meter_progress=.35f;break;
  case 36:render_debug_frame("review012-progress.ppm");game_start_puzzle(&game,0,9,3806);game.extra.stage=9;game.extra.pending=2;game.cursor_row=2;game.cursor_col=4;reset_level_ui();update_reward(1);break;

@@ -11,6 +11,7 @@ static void story_layout(void){
  if(!lo&&count)lo=1;memcpy(story_page,s,lo);story_page[lo]=0;story_end=story_offset+lo;while(story_text[story_end]==' '||story_text[story_end]=='\n')story_end++;
 }
 #include "story_data.h"
+static void story_speak(void){if(!strstr(story_raw,"{NO_SOUND}"))foley_play(strstr(story_raw,"{SCREAM2}")?FOLEY_CRAZY_DAVE_SCREAM_2:strstr(story_raw,"{SCREAM}")?FOLEY_CRAZY_DAVE_SCREAM:strstr(story_raw,"{SHAKE}")?FOLEY_CRAZY_DAVE_CRAZY:strstr(story_raw,"{SHORT_SOUND}")?FOLEY_CRAZY_DAVE_SHORT:strlen(story_text)>160?FOLEY_CRAZY_DAVE_EXTRA_LONG:strlen(story_text)>80?FOLEY_CRAZY_DAVE_LONG:FOLEY_CRAZY_DAVE_SHORT);}
 static void story_load(void){
  if(story_library)snprintf(story_key,sizeof(story_key),"%s",story_keys[story_index]);else snprintf(story_key,sizeof(story_key),"CRAZY_DAVE_%d",story_id);
  story_raw[0]=0;textdb_get(story_key,story_raw,sizeof(story_raw));size_t n=0;story_offset=0;story_prop=-1;
@@ -20,14 +21,21 @@ static void story_load(void){
    for(char *v=value;*v&&n+1<sizeof(story_text);v++)story_text[n++]=*v;s=e+1;continue;}
   if(*s=='<'&&strchr(s,'>')){const char *e=strchr(s,'>');if(e-s<10){if(n+3<sizeof(story_text)){story_text[n++]='(';story_text[n++]='X';story_text[n++]=')';}s=e+1;continue;}}
   if(*s!='\r')story_text[n++]=*s;s++;
- }story_text[n]=0;story_line_time=0;if(!strstr(story_raw,"{NO_SOUND}"))foley_play(strstr(story_raw,"{SCREAM2}")?FOLEY_CRAZY_DAVE_SCREAM_2:strstr(story_raw,"{SCREAM}")?FOLEY_CRAZY_DAVE_SCREAM:strstr(story_raw,"{SHAKE}")?FOLEY_CRAZY_DAVE_CRAZY:strstr(story_raw,"{SHORT_SOUND}")?FOLEY_CRAZY_DAVE_SHORT:strlen(story_text)>160?FOLEY_CRAZY_DAVE_EXTRA_LONG:strlen(story_text)>80?FOLEY_CRAZY_DAVE_LONG:FOLEY_CRAZY_DAVE_SHORT);
+ }story_text[n]=0;story_line_time=0;if(story_phase==1)story_speak();
 }
 static int story_begin(int id,int destination,int limit,int library){
  char key[64],line[8];snprintf(key,sizeof(key),"CRAZY_DAVE_%d",id);if(!library&&!textdb_get(key,line,sizeof(line)))return 0;
  story_id=id;story_return=destination;story_limit=limit;story_library=library;story_phase=0;story_time=0;story_index=0;screen=18;story_load();return 1;
 }
 static void story_leave(void){story_phase=2;story_time=0;}
-static void story_step(float dt){story_time+=dt;story_line_time+=dt;if(story_phase==0&&story_time>.75f){story_phase=1;story_time=0;}if(story_phase==2&&story_time>(story_return==1&&game.level==50?2.4f:.75f)){screen=story_return;if(screen==1){game.level_flags|=LEVEL_READY;warm_level();}story_phase=0;}}
+static float story_duration(int id,float rate){return fmaxf(.01f,(assets[id].frames-1)/rate);}
+static void story_step(float dt){
+ story_time+=dt;if(story_phase==1)story_line_time+=dt;
+ int enter=story_prop>=0?A_DAVE_WALLNUT_ENTER+story_prop*3:A_DAVE_ENTER;
+ if(story_phase==0&&story_time>=story_duration(enter,24)){story_phase=1;story_time=story_line_time=0;story_speak();}
+ int grab=story_return==1&&game.level==50;
+ if(story_phase==2&&story_time>=story_duration(grab?A_DAVE_GRAB:A_DAVE_LEAVE,grab?18:24)){screen=story_return;if(screen==1){game.level_flags|=LEVEL_READY;warm_level();}story_phase=0;}
+}
 static int story_level_id(void){
  if(game.extra.category==EXTRA_IZOMBIE)return game.extra.selection==0?2200:0;
  if(game.extra.category==EXTRA_VASE)return game.extra.selection==0?3000:0;
@@ -38,7 +46,7 @@ static int story_level_id(void){
 }
 static void draw_story(void){
  render_background(&assets[story_return==16?A_GARDEN_BG:story_return==17?A_TREE_STAGES:story_return==9?A_STORE_BACKGROUND:board_background()]);
- int talk=strstr(story_raw,"{SHAKE}")?A_DAVE_CRAZY:strstr(story_raw,"{SCREAM}")||strlen(story_text)<23?A_DAVE_SMALLTALK:strlen(story_text)<52?A_DAVE_TALK:A_DAVE_BLAHBLAH;
+ int talk=strstr(story_raw,"{SHAKE}")?A_DAVE_CRAZY:strstr(story_raw,"{SCREAM}")||strstr(story_raw,"{SCREAM2}")||strlen(story_text)<23?A_DAVE_SMALLTALK:strlen(story_text)<52?A_DAVE_TALK:A_DAVE_BLAHBLAH;
  int talking=story_line_time<story_token_time("{TIME_",(assets[talk].frames-1)/12.0f);
  int anim=story_phase==0?A_DAVE_ENTER:story_phase==2?(story_return==1&&game.level==50?A_DAVE_GRAB:A_DAVE_LEAVE):talking?talk:A_DAVE_IDLE;
  if(story_prop>=0&&story_phase!=2)anim=A_DAVE_WALLNUT_ENTER+story_prop*3+(story_phase==0?0:talking?2:1);
