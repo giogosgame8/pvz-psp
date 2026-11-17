@@ -1,4 +1,4 @@
-# Known limitations — 0.24.0 development
+# Known limitations — 0.24.1 development
 
 This is an unfinished native PSP reimplementation, not an exact PS3 reproduction.
 It imports resources from the original BLUS30852 version 01.00 PS3 ISO. It does
@@ -24,20 +24,21 @@ Local collectible trophies are separate from PlayStation system trophies.
 
 ## Testing and compatibility
 
-The final 0.24.0 development executable passed 1,384 checks on the
-Street emulator profile and 1,385 on PSP-1000, with no failures or cache
-errors. See [validation](reference/VALIDATION-0.24-DEVELOPMENT.md). These are
-emulator results, not physical-console certification or complete PS3 parity.
+The 0.24.1 scene/regression executable passed 1,389 checks on each of the
+Street and PSP-1000 emulator profiles, with no failures or cache errors.
+See [0.24.1 validation](reference/VALIDATION-0.24.1.md). The longer full-ending
+and audio runs are documented in [0.24.0 validation](reference/VALIDATION-0.24-DEVELOPMENT.md).
+Emulator results are not physical-console certification or complete PS3 parity.
 
 PSP-1000 support is experimental. It defaults to 30 FPS and smaller caches;
 the optional 60 FPS target is not a physical-hardware performance guarantee.
 Suspend/resume, battery interruption and extended hardware play still need testing.
 
-0.24.0 requires newly prepared data and version 14 game saves. Profile format
+0.24.1 requires newly prepared data. Game saves remain version 14. Profile format
 remains version 5; version 13 and older supported game saves import.
-Back up your existing folder before updating. Older builds cannot read the new
-saves; keep the backup if you want to revert.
+Back up your existing folder before updating. Builds before 0.24.0 cannot read
+version 14 saves; keep your backup if reverting.
 
-[0.24 gameplay polish](reference/POLISH-0.24-DEVELOPMENT.md) ·
-[Validation results](reference/VALIDATION-0.24-DEVELOPMENT.md) ·
+[0.24.1 scene corrections](reference/SCENE-0.24.1.md) ·
+[Validation results](reference/VALIDATION-0.24.1.md) ·
 [Full completion checklist](reference/COMPLETION-WORK.md)

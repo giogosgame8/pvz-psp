@@ -1,8 +1,8 @@
 static void draw_squash_flight(int row,int col){
- int phase=game.burst_left[row][col];float elapsed=game.burst[row][col],x=center(col),target=game.pea_shoot_time[row][col],height=0,anim;
- if(phase==3){float t=fminf(1,elapsed/.3f),ease=t*t*(3-2*t);x+=(target-x)*ease;height=54*ease;anim=.45f+elapsed;}
- else{x=target;if(phase==4)height=54*(1-fminf(1,elapsed/.1f));anim=phase==4?elapsed:.2f;}
- float foot=baseline(row)+game_roof_offset(&game,x);render_anim(&assets[phase==3?A_SQUASH_UP:A_SQUASH_DOWN],x,foot-height,anim,.68f,WHITE,0);
+ int phase=game.burst_left[row][col];float elapsed=game.burst[row][col],x=center(col)+potted_offset(row,col,SQUASH,0),support_y=potted_offset(row,col,SQUASH,1),target=game.pea_shoot_time[row][col],height=0,anim;
+ if(phase==3){float t=fminf(1,elapsed/.3f),ease=t*t*(3-2*t);x+=(target-x)*ease;height=54*ease;support_y*=1-ease;anim=.45f+elapsed;}
+ else{x=target;support_y=0;if(phase==4)height=54*(1-fminf(1,elapsed/.1f));anim=phase==4?elapsed:.2f;}
+ float foot=baseline(row)+game_roof_offset(&game,x)+support_y;render_anim(&assets[phase==3?A_SQUASH_UP:A_SQUASH_DOWN],x,foot-height,anim,.68f,WHITE,0);
 }
 static float current_wave_health(void){float health=0;for(int i=0;i<MAX_ZOMBIES;i++){const Zombie *z=&game.zombies[i];if(z->used&&z->death<=0&&!game.hypnotized[i]&&z->wave==game.wave)health+=fmaxf(0,z->hp)+fmaxf(0,z->armor);}return health;}
 static float wave_meter_target(void){

@@ -62,14 +62,16 @@ static int review_completion(int n){
     case 11:render_debug_frame("review-dave-wallnut.ppm");story_begin(405,0,0,0);story_phase=1;story_line_time=.1f;break;
     case 12:render_debug_frame("review-dave-hammer.ppm");story_begin(2601,0,0,0);story_phase=1;story_line_time=.1f;break;
     case 13:render_debug_frame("review-dave-fertilizer.ppm");story_begin(602,0,0,0);story_phase=1;story_line_time=.1f;break;
-    case 14:render_debug_frame("review-dave-moneybag.ppm");game_start_level(&game,49,2308);screen=1;reset_level_ui();
+    case 14:render_debug_frame("review-dave-moneybag.ppm");review_label="DAMAGE TEST: HEADLESS / DISARMED";game_start_level(&game,49,2308);screen=1;reset_level_ui();
         for(int n=0;n<4;n++){game.plants[n][2]=(Plant){.kind=n==0?CABBAGE:n==1?KERNEL:n==2?MELON:CHOMPER,.hp=300};game.burst_left[n][2]=1;game.burst[n][2]=.3f;game.burst_target[n][2]=6;int id=game_spawn_zombie(&game,n,n==0?Z_JACK:n==1?Z_LADDER:n==2?Z_DIGGER:Z_YETI,350);game.fidelity.equipment_lost[id]=n<3;game.zombies[id].armor=0;game.zombies[id].hp=n<2?100:n==2?80:400;game.zombies[id].vaulted=1;}break;
-    case 15:render_debug_frame("review-fidelity-transitions.ppm");game_start_level(&game,18,2422);screen=1;reset_level_ui();classic_dancer=0;game.spawn_timer=10000;game.time=2.7f;
+    case 15:render_debug_frame("review-fidelity-transitions.ppm");review_label=0;game_start_level(&game,18,2422);screen=1;reset_level_ui();classic_dancer=0;game.spawn_timer=10000;game.time=2.7f;
         for(int n=0;n<4;n++){int id=game_spawn_zombie(&game,n,n==3?Z_BACKUP:Z_DANCER,240+n*40);game.polish024.dancer_state[id]=n==0?DANCE_ENTER:n==1?DANCE_POINT:n==2?DANCE_GROUP:DANCE_RISE;game.polish024.actor_clock[id]=n==0?.6f:.15f;if(n==3)game.polish024.altitude[id]=-44.64f;}break;
     case 16:render_debug_frame("review024-dancer-poses.ppm");game_start_level(&game,29,2423);screen=1;reset_level_ui();for(int n=0;n<4;n++){int id=game_spawn_zombie(&game,2+n%2,Z_DUCK,240+(n/2)*90);game.polish024.pool_gear[id]=n<2?Z_CONE:Z_BUCKET;game.zombies[id].armor=n<2?(n==0?370:100):(n==2?1100:300);}break;
     case 17:render_debug_frame("review024-pool-armour.ppm");game_start_level(&game,50,2424);screen=1;reset_level_ui();game.extra.boss_action=B_BUNGEE_LEAVE;game.extra.boss_action_time=.4f;break;
     case 18:render_debug_frame("review024-boss-bungee-exit.ppm");game_start_level(&game,49,2425);screen=1;reset_level_ui();game.spawn_timer=10000;{int id=game_spawn_zombie(&game,2,Z_GARG,360);game.zombies[id].hp=1000;for(int n=0;n<90;n++)game_step(&game,1/60.0f);}break;
     case 19:render_debug_frame("review024-imp-arc.ppm");review_win(1,0,0);game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=1.75f;break;
-    case 20:render_debug_frame("review024-reward-flight.ppm");return 1;
+    case 20:render_debug_frame("review024-reward-flight.ppm");game_start_level(&game,49,24102);screen=1;reset_level_ui();game.spawn_timer=10000;review_label="FULL HEALTH: HEADS PRESENT";for(int n=0;n<4;n++){int id=game_spawn_zombie(&game,n,(int[]){Z_JACK,Z_LADDER,Z_DIGGER,Z_YETI}[n],350);game.zombies[id].vaulted=1;}break;
+    case 21:render_debug_frame("review-full-health-zombies.ppm");game_start_level(&game,49,24104);screen=1;reset_level_ui();game.spawn_timer=10000;review_label="POT ALIGNMENT REVIEW";{int kinds[5][3]={{CABBAGE,KERNEL,STAR},{PUFF,SUNSHROOM,SCAREDY},{SUNFLOWER,WALLNUT,SNOW},{COFFEE,-1,SPIKEROCK},{CHOMPER,MAGNET,-1}};for(int r=0;r<5;r++)for(int c=0;c<3;c++){game.plants[r][c]=(Plant){.kind=kinds[r][c],.hp=300,.attack=20};if(r==2&&c<2||r==3&&c==1)game.pumpkin_hp[r][c]=4000;}}break;
+    case 22:render_debug_frame("review0241-pot-variants.ppm");review_label=0;return 1;
     }return 0;
 }

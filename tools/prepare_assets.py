@@ -135,6 +135,8 @@ for _action,_marker in [('walk','anim_walk'),('eat','anim_eat')]:
                       dict(gear='flag',base='flag_'+_action,body=_stage,omit_track=_avatar_omit,padding=(8,28,8,2))))
 
 SPECS.extend(POLISH_SPECS)
+from prepare_scene0241 import source_canvas,swimming_specs,write_support_offsets,BossDriver
+SPECS=swimming_specs(SPECS)
 
 def frames_from_xml(path):
     root = ET.fromstring("<reanim>" + path.read_text(encoding="utf-8-sig") + "</reanim>")
@@ -186,7 +188,9 @@ def write_motion_profiles(imported, destination):
 def hidden_track(name, equipment):
     name = name.lower()
     if equipment=='planthead' and name.startswith(('anim_head','anim_hair','anim_tongue','zombie_eye')):return True
-    if isinstance(equipment,str) and equipment.startswith("duck") and "duckytube" in name:return False
+    if isinstance(equipment,str) and equipment.startswith("duck"):
+        if "leg" in name:return True
+        if "duckytube" in name or "whitewater" in name:return False
     if equipment=='door':
         if name.startswith('anim_innerarm'):return True
         if 'screendoor' in name:return False
@@ -270,22 +274,24 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     def invert(m):
         a,b,c,d,x,y=m;det=a*d-b*c
         return (d/det,-b/det,-c/det,a/det,(b*y-d*x)/det,(c*x-a*y)/det)
-    def draw_matrix(canvas,im,m,alpha=1):
-        a,b,c,d,x,y=m;inverse=invert((a,b,c,d,x+96,y+96))
+    def draw_matrix(canvas,im,m,alpha=1,origin=(96,96)):
+        a,b,c,d,x,y=m;ox,oy=origin;inverse=invert((a,b,c,d,x+ox,y+oy))
         ia,ib,ic,id,ix,iy=inverse
-        composite_affine(canvas,im,(a,b,c,d,x+96,y+96),(ia,ib,ix,ic,id,iy),alpha,layer_cache)
+        composite_affine(canvas,im,(a,b,c,d,x+ox,y+oy),(ia,ib,ix,ic,id,iy),alpha,layer_cache)
     for output_name, animation, marker, scale, equipment in SPECS:
         damage=equipment if isinstance(equipment,dict) else {}
         gear=damage.get("gear",equipment)
         source = files["reanim/" + animation.lower() + ".reanim"]
         fps, tracks = frames_from_xml(source)
         start, stop = clip_range(tracks, marker)
+        swimming=animation=="Zombie" and isinstance(gear,str) and gear.startswith("duck")
+        swim_start,swim_stop=clip_range(tracks,"anim_swim") if swimming else (0,0)
+        driver=BossDriver(files,tracks,frames_from_xml,clip_range,multiply,invert,texture,marker,start,stop) if animation=="Zombie_boss" else None
         attachment=DaveProp(damage['prop'],files,tracks,frames_from_xml,clip_range,texture,multiply,invert) if damage.get('prop') else None
         # A generous source canvas handles rotation and negative source coordinates.
         def render_frame(index):
-            canvas_size=1024 if animation=="Crow" else 1536 if animation in ("Zombie_boss","treeofWisdom") else 768 if animation in ("Zombie_gargantuar","CrazyDave") else 384
-            origin=192 if animation=="Crow" else 96
-            canvas = Image.new("RGBA", (canvas_size, canvas_size))
+            canvas_size,(origin_x,origin_y)=source_canvas(animation)
+            canvas = Image.new("RGBA", canvas_size)
             for name, frames in tracks:
                 if damage.get('only_track') and name not in damage['only_track']:continue
                 if name in damage.get('omit_track',()):continue
@@ -299,6 +305,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                     continue
                 if animation.startswith('Zombie') and body>=2 and any(part in name.lower() for part in ('_head','_jaw','_hair','_eye','_helmet')):continue
                 frame = sample_transform(frames,index,start,stop,damage.get("sample_loop",False)) if damage.get("samples") else frames[index]
+                if driver and name=="Boss_head2":driver.draw(canvas,frame,index,draw_matrix,(origin_x,origin_y))
+                if swimming and "whitewater" in name.lower():frame=frames[swim_start+(int(index)-start)%(swim_stop-swim_start)]
                 if animation=="GatlingPea":
                     if output_name=='gatling' and (frame['f']<0 or not frame['i']):
                         candidate=frames[29+(index-start)%25]
@@ -318,6 +326,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 if frame["f"] < 0 or frame["a"] <= 0 or not frame["i"]:
                     continue
                 identifier=damage.get("overrides",{}).get(frame["i"],frame["i"])
+                if swimming and "duckytube" in name.lower():identifier="IMAGE_REANIM_ZOMBIE_DUCKYTUBE_INWATER"
                 # The tank's MOW layer is a runtime attachment placeholder.
                 if identifier=='IMAGE_REANIM_MOW':continue
                 if damage.get("armor",0) and name in ("anim_cone","anim_bucket"):
@@ -332,7 +341,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 determinant = a * d - b * c
                 if abs(determinant) < 1e-6:
                     continue
-                tx, ty = frame["x"] + origin, frame["y"] + origin
+                tx, ty = frame["x"] + origin_x, frame["y"] + origin_y
                 inverse = (d / determinant, -b / determinant, (b * ty - d * tx) / determinant,
                            -c / determinant, a / determinant, (c * tx - a * ty) / determinant)
                 composite_affine(canvas,image,(a,b,c,d,tx,ty),inverse,frame["a"],layer_cache)
@@ -354,8 +363,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         box = union.getbbox()
         if box is None:
             raise ValueError(f"Empty animation {output_name}")
-        if animation=="Crow" and (box[0]<=0 or box[1]<=0 or box[2]>=rendered[0].width or box[3]>=rendered[0].height):
-            raise ValueError(f"Crow source canvas would crop {output_name}")
+        if animation in ("Crow","Zombie_boss") and (box[0]<=0 or box[1]<=0 or box[2]>=rendered[0].width or box[3]>=rendered[0].height):
+            raise ValueError(f"Source canvas would crop {output_name}")
         box = (max(0, box[0] - 2), max(0, box[1] - 2), min(rendered[0].width, box[2] + 2), min(rendered[0].height, box[3] + 2))
         size = (max(1, round((box[2] - box[0]) * scale)), max(1, round((box[3] - box[1]) * scale)))
         if 'base' in damage:
@@ -436,6 +445,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                 "texture_bytes": sum(asset["bytes"] - 32 for asset in assets), "audio": audio,
                 "note": "Private game data, generated from the user's copy; do not redistribute."}
     manifest["motion"]=write_motion_profiles(imported,destination)
+    manifest["plant_support"]=write_support_offsets(destination,geometry)
     print('Stage: menu and almanac graphics', flush=True)
     from prepare_ui import prepare_ui
     assets.extend(prepare_ui(imported,destination,previews,write_pva))

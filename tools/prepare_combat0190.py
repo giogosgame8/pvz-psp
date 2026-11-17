@@ -20,7 +20,7 @@ def align_zombie_clips(destination,specs,geometry,assets):
         path=destination/(name+'.pva');raw=bytearray(path.read_bytes());value=struct.pack('<2f',*anchor)
         if raw[32:40]!=value:raw[32:40]=value;path.write_bytes(raw);changed.append(name)
     for name,source in names.items():
-        box,size=geometry[name];ref,_=geometry[families[source]]
+        box,size=geometry[name];ref,_=geometry["duck_walk" if name.startswith("duck_") and "duck_walk" in geometry else families[source]]
         anchor=(((ref[0]+ref[2])*.5-box[0])*size[0]/(box[2]-box[0]),(ref[3]-box[1])*size[1]/(box[3]-box[1]))
         patch(name,anchor)
     for action in ('walk','eat','dance'):
