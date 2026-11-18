@@ -36,6 +36,8 @@ int render_selftest(void);
 int render_debug_frame(const char *filename);
 uint16_t *animation_frame(const Animation *animation,int frame);
 int animation_warm(const Animation *animation);
+int animation_retain_frame(const Animation *animation,int frame);
+int animation_frame_retained(const Animation *animation,int frame);
 int animation_bank_ready(const Animation *animation);
 int animation_prefetch(const Animation *animation);
 void animation_prefetch_poll(void);
@@ -43,6 +45,7 @@ typedef struct { uint32_t sync_reads,async_reads,waits,pending,bytes,limit; } An
 AnimationIOStats animation_io_stats(void);
 void animation_prefetch_test_delay(unsigned int milliseconds);
 void animation_cache_report(FILE *out);
+void animation_cache_next_frame(void);
 void animation_cache_suspend(void);
 int animation_cache_ok(void);
 void animation_cache_configure(int low_memory);

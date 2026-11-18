@@ -26,6 +26,7 @@ static int survival_allowed(const Game*,int);
 static int extra_break_vase(Game*,int,int);
 static void adventure_vases(Game*);
 static int bobsled_step(Game*,int,float);
+static int heavy_homing_target(const Game*,float);
 static int boss_exposed(const Game*);
 static int extra_iz_zombie(Game*,int,float);
 static void extra_plant_damage(Game*,int,int,float,float);
@@ -165,7 +166,8 @@ static void plan_waves(Game *g){
             for(int n=0;n<plain;n++)put_wave(g,w,Z_NORMAL,&points,counts);
             put_wave(g,w,Z_FLAG,&points,counts);
         }
-        points*=wave_multiplier024(g);
+        int multiplier=wave_multiplier024(g);
+        points=points>INT32_MAX/multiplier?INT32_MAX:points*multiplier;
         if(intro_wave024(g,introduced,w))put_wave(g,w,introduced,&points,counts);
         if(!g->challenge&&!g->extra.category&&w==g->num_waves-1)for(int k=0;k<Z_TYPES;k++)
             if(k!=Z_YETI&&allowed_in_game(g,k)&&counts[k]==0)put_wave(g,w,k,&points,counts);
@@ -626,7 +628,7 @@ static void finish_wave_entries(Game *g){
     int next_flag=game_flag_wave(g,g->wave);
     int long_flag=next_flag&&g->mode!=MODE_BOWLING&&!game_mini_active(g,MINI_LASTSTAND);
     g->polish.wave_fraction=long_flag?0:(.5f+random_unit(g)*.15f);
-    g->wave_health_threshold=g->polish.wave_fraction*g->polish.wave_health;
+    g->wave_health_threshold=floorf(g->polish.wave_fraction*g->polish.wave_health);
     g->spawn_timer=long_flag?45:(g->level==25||game_mini_active(g,MINI_LITTLE)||game_mini_active(g,MINI_COLUMN)||game_mini_active(g,MINI_LASTSTAND))?7.5f:(2500+(random_next(g)%600))/100.0f;
     g->wave_delay=0;g->huge_wave_announced=0;g->polish.wave_pending=0;
 }
@@ -830,13 +832,14 @@ void game_step(Game *g,float dt) {
     if(g->wave==g->num_waves&&g->spawned>0)return;
     if(g->huge_wave_timer>0){float before=g->huge_wave_timer;g->huge_wave_timer=fmaxf(0,before-dt);if(before>7.25f&&g->huge_wave_timer<=7.25f)cue(GAME_SAMPLE(FX_HUGE_WAVE));if(g->huge_wave_timer==0)spawn_wave(g);return;}
     g->spawn_timer-=dt;
-    if(g->spawned>0){
-        g->wave_delay+=dt;float remaining=0;
+    if(g->spawned>0)g->wave_delay+=dt;
+    if(g->spawned>0&&g->wave_delay>4&&g->spawn_timer>2&&g->wave_health_threshold>=1){
+        float remaining=0;
         for(int i=0;i<MAX_ZOMBIES;i++){
             Zombie *z=&g->zombies[i];
             if(z->used&&z->death<=0&&!g->hypnotized[i]&&z->wave==g->wave)remaining+=wave_health024(g,z);
         }
-        if(g->wave_delay>4&&remaining<=g->wave_health_threshold&&g->spawn_timer>2)g->spawn_timer=2;
+        if(remaining<floorf(g->wave_health_threshold))g->spawn_timer=2;
     }
     int next_index=g->spawned>0?g->wave:g->wave-1;
     if(g->spawn_timer<=.05f&&!g->huge_wave_announced&&game_flag_wave(g,next_index)){

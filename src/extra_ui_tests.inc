@@ -4,6 +4,15 @@ static int extra_ui_selftest(FILE *out){
  #define U(label,test) do{int ok=(test);pass+=ok;total++;fprintf(out,"extra UI %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
  profile_init(&player);player.highest=50;player.adventure_finished=1;player.garden.survival_wins=31;player.garden.puzzle_wins=7u<<10;player.money=1000;can_resume=0;replaying=0;
  open_extra(EXTRA_SURVIVAL,2,SURVIVAL_HARD);U("Survival starts a separate saved session",replaying&&game.extra.category==EXTRA_SURVIVAL&&screen==2);game.sun=825;game.level_flags|=LEVEL_READY;save_current();game.sun=0;resume_extra();U("Survival resumes its own sun and terrain",game.sun==825&&game.extra.selection==2&&screen==1);
+ screen=14;survival_bonus=0;survival_cursor=12;extra_menu_input(PSP_CTRL_SQUARE,0,0);
+ U("bonus boards stay locked until Pool Endless unlocks",!survival_bonus);
+ player.garden.survival_wins=1023;extra_menu_input(PSP_CTRL_SQUARE,0,0);extra_menu_input(PSP_CTRL_LEFT,0,0);
+ U("bonus page wraps from Day to Roof",survival_bonus&&bonus_terrain[bonus_cursor]==4);
+ extra_menu_input(PSP_CTRL_CROSS,0,0);
+ U("Roof starts as endless with its own record slot",screen==2&&game_world(&game)==4&&game.extra.goal==0&&game.extra.difficulty==SURVIVAL_ENDLESS);
+ int before_bonus=profile_trophy_count(&player);game.extra.flags=6;save_current();resume_extra();
+ U("bonus Roof can be saved and resumed",game.extra.flags==6&&game.extra.selection==4&&player.garden.survival_best[14]==6&&profile_trophy_count(&player)==before_bonus);
+ survival_bonus=0;
  open_extra(EXTRA_IZOMBIE,3,0);game.cursor_col=8;uint32_t money=player.money;game_extra_action(&game,0);save_current();U("I Zombie cannot unlock proxy Adventure levels",player.highest==50&&player.money==money&&game.extra.category==EXTRA_IZOMBIE);
  story_begin(1501,3,0,0);U("Dave dialogue keeps the original mixed-case text",screen==18&&strstr(story_text,"seed"));story_id=1503;story_phase=1;story_load();story_line_time=1;story_input(PSP_CTRL_CROSS);U("Dave's purchase offer buys a seed slot once",player.purchases[SHOP_SLOTS]==1&&player.money==925&&story_id==1510);
  story_id=1503;story_phase=1;story_load();story_line_time=1;story_input(PSP_CTRL_SQUARE);U("declining an offer does not spend money",player.money==925&&story_id==1520);

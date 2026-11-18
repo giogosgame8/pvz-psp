@@ -79,11 +79,13 @@ static void chapter_shots(Game *g,float dt){
         if(s->ice==11){
          int target=g->shot_target[i];
          if(target<0||target>=MAX_ZOMBIES||!g->zombies[target].used||g->zombies[target].death>0||g->hypnotized[target]||bungee_away(g,&g->zombies[target])||(g->polish024.shot_actor[i]&&g->polish024.shot_actor[i]!=g->fidelity.actor_id[target])){
-          target=-1;float best=1e9f;for(int n=0;n<MAX_ZOMBIES;n++){Zombie *z=&g->zombies[n];if(!z->used||z->death>0||g->hypnotized[n]||bungee_away(g,z)||(z->kind==Z_DIGGER&&!z->vaulted))continue;
+          target=-1;float best=1e9f;
+          if(g->mode==MODE_HEAVY)target=heavy_homing_target(g,g->mini.heavy_x);
+          else for(int n=0;n<MAX_ZOMBIES;n++){Zombie *z=&g->zombies[n];if(!z->used||z->death>0||g->hypnotized[n]||bungee_away(g,z)||(z->kind==Z_DIGGER&&!z->vaulted))continue;
            float y=game_ground_y(g,z->row)+game_roof_offset(g,z->x)-18,d=hypotf(z->x-s->x,y-g->shot_y[i]);if(d<best){best=d;target=n;}}
           g->shot_target[i]=target;g->polish024.shot_actor[i]=target>=0?g->fidelity.actor_id[target]:0;
          }
-         if(target<0){s->used=0;continue;}Zombie *enemy=&g->zombies[target];float ty=game_ground_y(g,enemy->row)+game_roof_offset(g,enemy->x)-18,dx=enemy->x-s->x,dy=ty-g->shot_y[i],distance=hypotf(dx,dy);
+         if(target<0){if(g->mode!=MODE_HEAVY||s->x>490||s->x<0||g->shot_y[i]<0||g->shot_y[i]>270)s->used=0;continue;}Zombie *enemy=&g->zombies[target];float ty=game_ground_y(g,enemy->row)+game_roof_offset(g,enemy->x)-18,dx=enemy->x-s->x,dy=ty-g->shot_y[i],distance=hypotf(dx,dy);
          if(distance<12){if(enemy->kind==Z_BALLOON&&!g->fidelity.equipment_lost[target]){g->fidelity.equipment_lost[target]=1;g->polish.action[target]=ACTION_BALLOON_FALL;g->polish.action_time[target]=0;cue(GAME_SAMPLE(FX_BALLOON_POP));}hurt_zombie(g,enemy,20,0);s->used=0;}
          else{float speed=fminf(285,hypotf(g->shot_vx[i],g->shot_vy[i])+190*dt);g->shot_vx[i]=dx/distance*speed;g->shot_vy[i]=dy/distance*speed;}continue;
         }
@@ -109,7 +111,8 @@ static void chapter_shots(Game *g,float dt){
             if(g->mode!=MODE_HEAVY&&s->ice!=8&&z->row!=s->row)continue;
             
             float dx=s->x-old,dy=g->shot_y[i]-oldy,l=dx*dx+dy*dy,t=l?fmaxf(0,fminf(1,((z->x-8-old)*dx+(zy-oldy)*dy)/l)):0;
-            if(hypotf(old+dx*t-(z->x-8),oldy+dy*t-zy)<13&&fabsf(z->x-old)<closest){target=j;closest=fabsf(z->x-old);}
+            float order=g->mode==MODE_HEAVY?t:fabsf(z->x-old);
+            if(hypotf(old+dx*t-(z->x-8),oldy+dy*t-zy)<13&&order<closest){target=j;closest=order;}
         }
         if(target>=0){Zombie *z=&g->zombies[target];if(z->kind==Z_BALLOON&&s->ice==9&&!g->fidelity.equipment_lost[target]){g->fidelity.equipment_lost[target]=1;g->polish.action[target]=ACTION_BALLOON_FALL;g->polish.action_time[target]=0;z->age=0;cue(GAME_SAMPLE(FX_BALLOON_POP));}hurt_zombie(g,z,g->shot_damage[i],s->ice==1);
             s->used=0;}

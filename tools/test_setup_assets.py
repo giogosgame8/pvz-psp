@@ -21,10 +21,19 @@ def fixture(folder):
         (folder / name).write_bytes(b'test fixture')
     (folder / 'shoot-alignment.bin').write_bytes(b'PPA1'+bytes.fromhex('03000000500000003c000000')+bytes(1920))
     (folder / 'music-index.json').write_text('[{"file":"music0.wav"}]', encoding='utf-8')
+    (folder / 'crow-paths.bin').write_bytes(b'crow test fixture')
     write_integrity(folder)
 
 
 class SetupTests(unittest.TestCase):
+    def test_reuse_rejects_an_older_install_without_crow_routes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'data';fixture(folder)
+            (folder/'crow-paths.bin').unlink()
+            write_integrity(folder)
+            with self.assertRaisesRegex(ValueError, 'crow routes are missing'):
+                validate_prepared(folder)
+
     def test_integrity_requires_every_adaptive_layer_even_when_the_index_is_rewritten(self):
         with tempfile.TemporaryDirectory() as temp:
             folder=Path(temp)/'data';fixture(folder)

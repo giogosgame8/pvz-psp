@@ -17,7 +17,7 @@ static int review_expansion(int n){
  case 9:render_debug_frame("review-tree.ppm");game_start_level(&game,11,3003);story_begin(201,1,0,0);story_phase=1;break;
  case 10:render_debug_frame("review-dave.ppm");game_start_level(&game,50,3004);game.extra.boss_action=B_HEAD_ENTER;game.extra.boss_action_time=4.5f;screen=1;reset_level_ui();break;
  case 11:render_debug_frame("review-boss-head-enter.ppm");game.extra.boss_action=B_STOMP;game.extra.boss_action_time=1.4f;break;
- case 12:render_debug_frame("review-boss-stomp.ppm");game_start_mini(&game,MINI_HEAVY,3005);game.extra.heavy_level=3;game.extra.heavy_cattail=1;reset_level_ui();break;
+ case 12:render_debug_frame("review-boss-stomp.ppm");game_start_mini(&game,MINI_HEAVY,3005);game.sun=375;game.extra.heavy_level=2;game.extra.heavy_cattail=2;game.extra.heavy_fire_time=5;game.mini.heavy_x=240;reset_level_ui();game_heavy_control(&game,0,.18f,1,1.0f/60);break;
  case 13:render_debug_frame("review-heavy-cattail.ppm");screen=6;more_cursor=0;break;
  case 14:render_debug_frame("review-more-ways.ppm");screen=11;collection_cursor=0;break;
  case 15:render_debug_frame("review-extras.ppm");screen=21;adventure_cursor=1;break;

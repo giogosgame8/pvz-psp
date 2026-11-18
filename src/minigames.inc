@@ -19,22 +19,11 @@ static int mini_allowed(const Game *g,int k){
     default:return k==Z_NORMAL||k==Z_CONE||k==Z_BUCKET;
     }
 }
-static int heavy_cost(const Game *g,int selection){(void)g;return selection==0?100:selection==1?200:selection==2?200:selection==3?400:selection==4?125:200;}
-static int heavy_buy(Game *g){int tool=g->selected%6,cost=heavy_cost(g,tool);if(g->sun<cost)return -1;
- if(tool==1&&g->extra.heavy_level!=0)return -1;if(tool==3&&g->extra.heavy_level!=1)return -1;if(tool==5&&(g->extra.heavy_level<2||g->extra.heavy_cattail>=3))return -1;
- if(tool==0)g->extra.heavy_ice_time=20;else if(tool==4)g->extra.heavy_fire_time=20;else if(tool==2){for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used)hurt_zombie(g,&g->zombies[i],1800,0);g->craters[2][4]=180;g->flash=.25f;sound(g,SFX_EXPLODE);}else if(tool==5){g->extra.heavy_level=3;g->extra.heavy_cattail++;}else g->extra.heavy_level++;g->sun-=cost;return 1;
-}
-void game_heavy_control(Game *g,float move,float aim,int fire,float dt){
- if(g->mode!=MODE_HEAVY||g->status!=PLAYING)return;
- g->mini.heavy_x=fminf(440,fmaxf(45,g->mini.heavy_x+move*150*dt));g->mini.heavy_y=245;g->mini.heavy_power=aim*.6f;g->mini.heavy_fire=fmaxf(0,g->mini.heavy_fire-dt);
- if(fire&&g->mini.heavy_fire<=0){int level=g->extra.heavy_level,count=level==0?1:level==1?2:level==2?3:1;g->mini.heavy_fire=level==3?.17f/(1+g->extra.heavy_cattail*.5f):.17f;
-  for(int n=0;n<count;n++)for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){int ice=level==3?11:g->extra.heavy_fire_time>0?10:g->extra.heavy_ice_time>0?1:0;g->shots[i]=(Shot){1,4,ice,g->mini.heavy_x};g->shot_y[i]=232;float angle=aim*.6f+(n-(count-1)*.5f)*.25f;g->shot_vx[i]=sinf(angle)*250;g->shot_vy[i]=-cosf(angle)*250;g->shot_damage[i]=ice==10?40:20;g->shot_remaining[i]=10;g->shot_target[i]=-1;g->polish024.shot_actor[i]=0;sound(g,SFX_SHOOT);break;}
- }
-}
+#include "heavy_weapon.inc"
 static int mini_zombie(Game *g,int i,float dt){
     if(!g->challenge)return 0;Zombie *z=&g->zombies[i];int head=g->mini.zombie_heads[i];if(!head||z->death>0||g->frozen[i]>0)return 0;
     if((head==2||head==6)&&z->armor<=0)g->mini.zombie_heads[i]=0;
-    if(head==1||head==4){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=0){
+    if((head==1||head==4)&&game_zombie_has_head(g,z)&&!g->hypnotized[i]){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=0){
        if(head==4){if(!g->extra.zombotany_burst[i])g->extra.zombotany_burst[i]=4;g->extra.zombotany_burst[i]--;g->mini.zombie_attack[i]=g->extra.zombotany_burst[i]?.17f:.99f;}else g->mini.zombie_attack[i]=1.5f;
        for(int j=0;j<96;j++)if(!g->mini.enemy_used[j]){g->mini.enemy_used[j]=1;g->mini.enemy_x[j]=z->x-18;g->mini.enemy_y[j]=game_ground_y(g,z->row)-18;break;}}}
     if(head==3){g->mini.zombie_attack[i]-=dt;if(g->mini.zombie_attack[i]<=-10){for(int c=0;c<COLS;c++){destroy_square(g,z->row,c,1);}kill_zombie(g,z);g->flash=.25f;sound(g,SFX_EXPLODE);return 1;}}
@@ -112,7 +101,7 @@ int game_mini_action(Game *g,int action){
     if(!g->challenge||g->status!=PLAYING)return 0;
     if(game_mini_active(g,MINI_LASTSTAND)&&action==4&&g->mini.phase==0){g->mini.phase=1;g->spawn_timer=2;return 1;}
     if(g->mode==MODE_SLOT&&action==1){if(g->mini.spinning||g->sun<25||g->packet_count>7)return -1;g->sun-=25;g->mini.spinning=1;g->mini.spin_time=3.0f;cue(GAME_SAMPLE(FX_SLOT_MACHINE));return 1;}
-    if(g->mode==MODE_HEAVY){if(action==2||action==3){g->selected=(g->selected+(action==2?5:1))%6;return 1;}if(action==1)return heavy_buy(g);}
+    if(g->mode==MODE_HEAVY){if(action==2||action==3){g->selected=(g->selected+(action==2?HEAVY_UPGRADES-1:1))%HEAVY_UPGRADES;return 1;}if(action==1)return heavy_buy(g);}
     if(g->mode==MODE_AQUARIUM){
         if(action==2||action==3){g->mini.upgrade^=1;return 1;}
         if(action==1){int price=g->mini.upgrade?1000:100;if(g->sun<price)return -1;if(g->mini.upgrade){g->sun-=price;g->status=WON;sound(g,SFX_WIN);}else if(mini_fish(g))g->sun-=price;return 1;}
@@ -151,7 +140,7 @@ static void mini_slot_resolve(Game *g){
     else for(int i=0;i<count&&g->packet_count<MAX_PACKETS;i++)g->packets[g->packet_count++]=kind;
 }
 static void mini_portals(Game *g,float dt){
- g->mini.portal_timer-=dt;if(g->mini.portal_timer<=0){g->mini.portal_timer=60;g->mini.portal_generation++;cue(FOLEY_PORTAL);int at=random_next(g)%4,other=g->mini.portals[at^1],candidates[50],count=0;for(int row=0;row<5;row++)for(int col=0;col<10;col++){int cell=row*10+col,free=col!=other%10&&row!=other/10;for(int p=0;p<4;p++)if(g->mini.portals[p]==cell)free=0;if(free)candidates[count++]=cell;}if(count)g->mini.portals[at]=candidates[random_next(g)%count];memset(g->extra.last_portal_zombie,0,sizeof(g->extra.last_portal_zombie));memset(g->extra.last_portal_shot,0,sizeof(g->extra.last_portal_shot));}
+ g->mini.portal_timer-=dt;if(g->mini.portal_timer<=0){g->mini.portal_timer=60;g->mini.portal_generation++;cue(FOLEY_PORTAL);int at=random_next(g)%4,other=g->mini.portals[at^1],candidates[50],count=0;for(int row=0;row<5;row++)for(int col=0;col<10;col++){int cell=row*10+col,free=col!=other%10&&row!=other/10;for(int p=0;p<4;p++)if(g->mini.portals[p]==cell)free=0;if(free)candidates[count++]=cell;}if(count)g->mini.portals[at]=candidates[random_next(g)%count];}
  for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&g->zombies[i];if(!z->used||z->death>0)continue;int last=g->extra.last_portal_zombie[i];if(last&&fabsf(z->x-plant_x((last-1)%10))>26)g->extra.last_portal_zombie[i]=0;
   for(int p=0;p<4;p++){int cell=g->mini.portals[p];if(z->row==cell/10&&cell+1!=g->extra.last_portal_zombie[i]&&fabsf(z->x-plant_x(cell%10))<21){int to=g->mini.portals[p^1];float delta=plant_x(to%10)-12-z->x;z->row=to/10;z->x+=delta;if(z->vault>0||g->polish.action[i]==ACTION_IMP_FLIGHT){z->vault_from+=delta;z->vault_to+=delta;}g->extra.last_portal_zombie[i]=to+1;g->mini.zombie_portal[i]=1;cue(FOLEY_PORTAL);break;}}}
  for(int i=0;i<MAX_SHOTS;i++){Shot *s=&g->shots[i];if(!s->used||g->shot_vy[i]!=0||s->ice==11)continue;int last=g->extra.last_portal_shot[i];if(last&&fabsf(s->x-plant_x((last-1)%10))>26)g->extra.last_portal_shot[i]=0;
@@ -166,7 +155,23 @@ static int mini_pre_step(Game *g,float dt){
  for(int i=0;i<MAX_SUNS;i++)if(g->suns[i].used==1&&fabsf(g->suns[i].x-g->mini.heavy_x)<22&&g->suns[i].y>215){Sun *v=&g->suns[i];v->used=2;v->age=0;v->vx=v->x;v->vy=v->y;v->flight=.35f;}
  for(int i=0;i<MAX_COINS;i++)if(g->money[i].used==1&&fabsf(g->money[i].x-g->mini.heavy_x)<22){Coin *v=&g->money[i];v->used=2;v->age=0;v->vx=v->x;v->vy=v->y;}}
 
-    for(int i=0;i<96;i++)if(g->mini.enemy_used[i]){g->mini.enemy_x[i]-=150*dt;int r=(int)((g->mini.enemy_y[i]+20.01f-GRID_Y)/game_row_height(g))-1;if(r<0)r=0;if(r>=game_rows(g))r=game_rows(g)-1;for(int c=0;c<COLS;c++)if(g->plants[r][c].kind>=0&&fabsf(g->mini.enemy_x[i]-plant_x(c))<12){g->plants[r][c].hp-=20;if(g->plants[r][c].hp<=0)g->plants[r][c].kind=-1;g->mini.enemy_used[i]=0;break;}if(g->mini.enemy_x[i]<0)g->mini.enemy_used[i]=0;}
+    for(int i=0;i<96;i++)if(g->mini.enemy_used[i]){
+        float before=g->mini.enemy_x[i];g->mini.enemy_x[i]-=150*dt;
+        int row=(int)((g->mini.enemy_y[i]+20.01f-GRID_Y)/game_row_height(g))-1;
+        if(row<0)row=0;if(row>=game_rows(g))row=game_rows(g)-1;
+        for(int col=COLS-1;col>=0;col--){
+            float center=plant_x(col);
+            if(before<center-12||g->mini.enemy_x[i]>center+12)continue;
+            int anchor=col;
+            if(col>0&&g->plants[row][col].kind==-2&&g->plants[row][col-1].kind==COB)anchor--;
+            Plant *plant=&g->plants[row][anchor];
+            if(g->pumpkin_hp[row][col]>0)g->pumpkin_hp[row][col]=fmaxf(0,g->pumpkin_hp[row][col]-20);
+            else if(plant->kind>=0){plant->hp-=20;if(plant->hp<=0)destroy_square(g,row,anchor,0);}
+            else continue;
+            g->mini.enemy_used[i]=0;cue(FOLEY_SPLAT);break;
+        }
+        if(g->mini.enemy_x[i]<0)g->mini.enemy_used[i]=0;
+    }
     if(g->mode==MODE_AQUARIUM){int alive=0;for(int j=0;j<3;j++)if(g->mini.brains[j].used){AquariumBrain *b=&g->mini.brains[j];b->age+=dt;b->y+=5.7f*dt;if(b->y>240)b->used=0;}
         for(int i=0;i<100;i++)if(g->mini.fish[i].used){AquariumFish *f=&g->mini.fish[i];f->hunger-=dt;f->produce-=dt;if(f->hunger<=0){cue(GAME_SAMPLE(FX_ZOMBAQUARIUM_DIE));f->used=0;continue;}alive++;int target=-1;float best=10000;for(int j=0;j<3;j++)if(g->mini.brains[j].used){float d=hypotf(g->mini.brains[j].x-f->x,g->mini.brains[j].y-f->y);if(d<best){best=d;target=j;}}
             if(target>=0&&f->hunger<=15){AquariumBrain *b=&g->mini.brains[target];if(best<19&&b->age>=.15f){b->used=0;f->hunger=fminf(27,f->hunger+20);}else{f->dx=(b->x-f->x)/best*19;f->dy=(b->y-f->y)/best*19;}}

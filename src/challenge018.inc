@@ -15,7 +15,7 @@ static int challenge_available(int family,int index){
  return family==1&&index==10?count>=10:index<count+3;
 }
 static uint32_t challenge_mask(int family){uint32_t mask=0;for(int n=0;n<(family==0?20:family==1?11:10);n++)if(challenge_available(family,n))mask|=1u<<n;return mask;}
-static void challenge_seen_save(void){uint32_t data[6]={0x184c4843,1,challenge_seen[0],challenge_seen[1],challenge_seen[2],challenge_seen[3]};FILE *f=fopen("challenge-view.dat.tmp","wb");int ok=f&&fwrite(data,sizeof(data),1,f)==1;if(f&&fclose(f))ok=0;if(ok){remove("challenge-view.dat");rename("challenge-view.dat.tmp","challenge-view.dat");}}
+static void challenge_seen_save(void){uint32_t data[6]={0x184c4843,1,challenge_seen[0],challenge_seen[1],challenge_seen[2],challenge_seen[3]};const char *path=save_storage_path(SAVE_CHALLENGE_VIEW);char temp[96];snprintf(temp,sizeof(temp),"%s.tmp",path);FILE *f=fopen(temp,"wb");int ok=f&&fwrite(data,sizeof(data),1,f)==1;if(f&&fclose(f))ok=0;if(ok){remove(path);rename(temp,path);}}
 static void challenge_initialize(void){
  if(!(player.garden.story_seen&CHALLENGE_MIGRATED)){
   if(player.highest>=23||player.mini_trophies)player.garden.story_seen|=CHALLENGE_MINI;
@@ -23,7 +23,7 @@ static void challenge_initialize(void){
   if(player.adventure_finished||player.garden.survival_wins)player.garden.story_seen|=CHALLENGE_SURVIVAL;
   player.garden.story_seen|=CHALLENGE_MIGRATED;
  }
- uint32_t d[6];FILE *f=fopen("challenge-view.dat","rb");int ok=f&&fread(d,sizeof(d),1,f)==1&&d[0]==0x184c4843&&d[1]==1;if(f)fclose(f);
+ uint32_t d[6];FILE *f=fopen(save_storage_path(SAVE_CHALLENGE_VIEW),"rb");int ok=f&&fread(d,sizeof(d),1,f)==1&&d[0]==0x184c4843&&d[1]==1;if(f)fclose(f);
  for(int n=0;n<4;n++)challenge_seen[n]=ok?d[n+2]:challenge_mask(n);
 }
 static int challenge_enter(int family){if(challenge_gate(family)||challenge_wins(family))return 1;notify(family==0?"Find the Mini-games present in level 3-2.":family==1?"Finish Adventure to unlock Survival.":"Find the Puzzle present in level 4-6.");foley_sample(FX_BUZZER);return 0;}

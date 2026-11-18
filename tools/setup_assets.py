@@ -154,7 +154,9 @@ def validate_prepared(folder, source_sha=None):
         relative = Path(song['file'])
         if relative.is_absolute() or '..' in relative.parts or not (folder / relative).is_file():
             raise ValueError('A prepared music track is missing.')
-    verify_integrity(folder,source_sha)
+    integrity = verify_integrity(folder,source_sha)
+    if 'crow-paths.bin' not in integrity['files']:
+        raise ValueError('The prepared crow routes are missing.')
     return manifest
 
 

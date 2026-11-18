@@ -11,11 +11,12 @@
 enum { PAGE_BYTES=4096,PAGES=6144 };
 static int low_memory_cache;
 static int page_limit=PAGES,bank_limit=8*1024*1024,static_limit=6*1024*1024;
-typedef struct { const Animation *owner;int frame,start,pages;uint32_t used,pinned; } CachedFrame;
+typedef struct { const Animation *owner;int frame,start,pages;uint32_t used,pinned;int retained; } CachedFrame;
 static CachedFrame entries[PAGES];static unsigned char page_used[PAGES];
 static uint16_t *frame_memory,*scratch;static Animation *animations;
 static uint32_t generation=1,serial,bank_bytes,bank_peak,frame_peak,static_bytes,static_peak,decode_count,cache_errors;
-static uint32_t error_kinds[5];
+static uint32_t error_kinds[5],retained_bytes,retained_peak;
+static unsigned used_pages;static int free_slot_hint;
 /* Only the kernel writes the pending buffer. The drawing thread adopts it
    after completion, and it counts against the same bank budget throughout. */
 static Animation *pending_owner;static unsigned char *pending_buffer;
@@ -27,15 +28,16 @@ static void cache_error(const Animation *a,int frame,int reason){
     if(cache_errors<=12){FILE *f=fopen("asset-cache-errors.txt","a");if(f){fprintf(f,"reason %d, asset %s, frame %d, banks %u, pages %d\n",reason,a?a->path:"none",frame,(unsigned)bank_bytes,page_limit);fclose(f);}}
 }
 void animation_cache_configure(int low){
-    animation_cache_suspend();free(frame_memory);frame_memory=0;low_memory_cache=!!low;page_limit=low?3072:PAGES;bank_limit=(low?2:8)*1024*1024;static_limit=low?0:6*1024*1024;
+    animation_cache_suspend();free_slot_hint=0;free(frame_memory);frame_memory=0;low_memory_cache=!!low;page_limit=low?3072:PAGES;bank_limit=(low?2:8)*1024*1024;static_limit=low?0:6*1024*1024;
 }
 int animation_cache_ok(void){return cache_errors==0;}
 extern int animation_load_legacy(Animation*,const char*);
 void animation_cache_next_frame(void){animation_prefetch_poll();generation++;}
 static void release_frame(int i){
     CachedFrame *e=&entries[i];if(!e->owner)return;
+    if(e->retained)retained_bytes-=e->pages*PAGE_BYTES;
     if(e->owner->cached_slots)((Animation*)e->owner)->cached_slots[e->frame]=-1;
-    for(int p=e->start;p<e->start+e->pages;p++)page_used[p]=0;memset(e,0,sizeof(*e));
+    for(int p=e->start;p<e->start+e->pages;p++)page_used[p]=0;used_pages-=e->pages;free_slot_hint=i;memset(e,0,sizeof(*e));
 }
 static int reserve_bank(Animation *a){
     if(a->packed_bytes>(uint32_t)bank_limit)return 0;
@@ -105,8 +107,8 @@ uint16_t *animation_frame(const Animation *source,int frame){
         if(!frame_memory)frame_memory=memalign(16,page_limit*PAGE_BYTES);if(!frame_memory){cache_error(a,frame,2);return 0;}
         for(;;){
             int run=0;start=-1;for(int p=0;p<page_limit;p++){run=page_used[p]?0:run+1;if(run==pages){start=p-pages+1;break;}}
-            if(start>=0){for(int i=0;i<page_limit;i++)if(!entries[i].owner){entry=i;break;}if(entry>=0)break;}
-            int oldest=-1;for(int i=0;i<page_limit;i++)if(entries[i].owner&&entries[i].pinned!=generation&&(oldest<0||entries[i].used<entries[oldest].used))oldest=i;
+            if(start>=0){int i=free_slot_hint;for(int n=0;n<page_limit;n++){if(!entries[i].owner){entry=i;free_slot_hint=i+1==page_limit?0:i+1;break;}if(++i==page_limit)i=0;}if(entry>=0)break;}
+            int oldest=-1;for(int i=0;i<page_limit;i++)if(entries[i].owner&&entries[i].pinned!=generation&&!entries[i].retained&&(oldest<0||entries[i].used<entries[oldest].used))oldest=i;
             if(oldest<0){cache_error(a,frame,3);return 0;}release_frame(oldest);
         }
         target=frame_memory+start*(PAGE_BYTES/2);
@@ -118,10 +120,27 @@ uint16_t *animation_frame(const Animation *source,int frame){
     if(a->grayscale)for(unsigned int i=0;i<a->stride/2;i++){uint16_t p=decoded_pixels[i];int gray=((p&15)*30+((p>>4)&15)*59+((p>>8)&15)*11)/100;decoded_pixels[i]=(p&0xf000)|gray|(gray<<4)|(gray<<8);}
     unsigned char *out=(unsigned char*)target,*in=(unsigned char*)scratch;int row_bytes=a->tw*2;
     if(!a->gpu_ready)for(unsigned int y=0;y<a->th;y+=8)for(int x=0;x<row_bytes;x+=16)for(int row=0;row<8;row++){memcpy(out,in+(y+row)*row_bytes+x,16);out+=16;}
-    if(entry>=0){a->cached_slots[frame]=entry;entries[entry]=(CachedFrame){a,frame,start,pages,++serial,generation};for(int p=start;p<start+pages;p++)page_used[p]=1;
-        unsigned int used=0;for(int p=0;p<page_limit;p++)used+=page_used[p];if(used*PAGE_BYTES>frame_peak)frame_peak=used*PAGE_BYTES;
+    if(entry>=0){a->cached_slots[frame]=entry;entries[entry]=(CachedFrame){a,frame,start,pages,++serial,generation,0};for(int p=start;p<start+pages;p++)page_used[p]=1;
+        used_pages+=pages;if(used_pages*PAGE_BYTES>frame_peak)frame_peak=used_pages*PAGE_BYTES;
     }
     decode_count++;sceKernelDcacheWritebackRange(target,a->stride);sceGuTexFlush();return target;
+}
+/* Small shared UI frames survive ordinary LRU churn. The fixed ceiling leaves
+   most of the 12 MiB profile available for combat and never grows the cache. */
+int animation_retain_frame(const Animation *source,int frame){
+ Animation *a=(Animation*)source;if(!a||!a->loaded||frame<0||frame>=(int)a->frames)return 0;
+ int slot=a->compressed?a->cached_slots[frame]:-1;
+ if(!a->compressed||(a->frames==1&&a->pixels)||(slot>=0&&entries[slot].retained))return 1;
+ unsigned bytes=((a->stride+PAGE_BYTES-1)/PAGE_BYTES)*PAGE_BYTES;
+ if(retained_bytes+bytes>1536*1024)return 0;
+ if(!animation_frame(a,frame))return 0;slot=a->cached_slots[frame];
+ if(slot>=0&&!entries[slot].retained){entries[slot].retained=1;retained_bytes+=bytes;if(retained_bytes>retained_peak)retained_peak=retained_bytes;}
+ return 1;
+}
+int animation_frame_retained(const Animation *a,int frame){
+ if(!a||!a->loaded||frame<0||frame>=(int)a->frames)return 0;
+ if(!a->compressed||(a->frames==1&&a->pixels))return 1;
+ int slot=a->cached_slots[frame];return slot>=0&&entries[slot].retained;
 }
 static unsigned char *catalog;static uint32_t catalog_count,catalog_offsets[1024];
 void animation_catalog_close(void){free(catalog);catalog=0;catalog_count=0;}
@@ -174,7 +193,7 @@ int animation_catalog_selftest(FILE *out){
  ok=!animation_catalog_load(path);pass+=ok;fprintf(out,"catalog rejects a damaged checksum: %s\n",ok?"PASS":"FAIL");header[3]=0xffffffffu;f=fopen(path,"wb");if(f){fwrite(header,sizeof(header),1,f);fclose(f);}ok=!animation_catalog_load(path);pass+=ok;fprintf(out,"catalog rejects oversized metadata before allocation: %s\n",ok?"PASS":"FAIL");remove(path);
  ok=animation_catalog_load("data/assets.idx");pass+=ok;fprintf(out,"catalog can reopen after invalid input: %s\nCATALOG RESULT %d/4\n",ok?"PASS":"FAIL",pass);return pass==4;
 }
-void animation_cache_report(FILE *out){if(out){struct mallinfo memory=mallinfo();fprintf(out,"Heap: %u allocated, %u free, %u arena bytes\n",(unsigned)memory.uordblks,(unsigned)memory.fordblks,(unsigned)memory.arena);fprintf(out,"Animation cache: bank peak %u, frame peak %u, static peak %u bytes, %u decoded frames, %u errors\n",(unsigned)bank_peak,(unsigned)frame_peak,(unsigned)static_peak,(unsigned)decode_count,(unsigned)cache_errors);fprintf(out,"Cache error kinds: bank %u, scratch %u, pool %u, pinned %u, decode %u\n",(unsigned)error_kinds[0],(unsigned)error_kinds[1],(unsigned)error_kinds[2],(unsigned)error_kinds[3],(unsigned)error_kinds[4]);fprintf(out,"Animation IO: %u synchronous reads, %u asynchronous reads, %u lifecycle waits\n",(unsigned)sync_reads,(unsigned)async_reads,(unsigned)async_waits);fflush(out);}}
+void animation_cache_report(FILE *out){if(out){struct mallinfo memory=mallinfo();fprintf(out,"Heap: %u allocated, %u free, %u arena bytes\n",(unsigned)memory.uordblks,(unsigned)memory.fordblks,(unsigned)memory.arena);fprintf(out,"Animation cache: bank peak %u, frame peak %u, static peak %u bytes, %u decoded frames, %u errors\n",(unsigned)bank_peak,(unsigned)frame_peak,(unsigned)static_peak,(unsigned)decode_count,(unsigned)cache_errors);fprintf(out,"Cache error kinds: bank %u, scratch %u, pool %u, pinned %u, decode %u\n",(unsigned)error_kinds[0],(unsigned)error_kinds[1],(unsigned)error_kinds[2],(unsigned)error_kinds[3],(unsigned)error_kinds[4]);fprintf(out,"Animation IO: %u synchronous reads, %u asynchronous reads, %u lifecycle waits\n",(unsigned)sync_reads,(unsigned)async_reads,(unsigned)async_waits);fprintf(out,"Retained UI frames: %u bytes, peak %u bytes (1536 KiB ceiling)\n",(unsigned)retained_bytes,(unsigned)retained_peak);fflush(out);}}
 void animation_cache_suspend(void){
     prefetch_finish(1);
     for(int i=0;i<PAGES;i++)if(entries[i].owner)release_frame(i);

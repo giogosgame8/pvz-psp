@@ -1,7 +1,10 @@
 /* Original wave budgets, kept separate from bounded native arrival storage. */
 static int wave_budget024(const Game *g,int wave){
  if(game_mini_active(g,MINI_LASTSTAND))return (g->mini.stage*g->num_waves+wave+10)*2/5+1;
- if(g->extra.category==EXTRA_SURVIVAL&&g->extra.stage>0)return (g->extra.stage*g->num_waves+wave)*2/5+1;
+ if(g->extra.category==EXTRA_SURVIVAL&&g->extra.stage>0){
+  int64_t points=((int64_t)g->extra.stage*g->num_waves+wave)*2/5+1;
+  return points>INT32_MAX?INT32_MAX:(int)points;
+ }
  if(!g->challenge&&!g->extra.category&&g->completion.adventure_run&&g->level!=5)return wave*2/5+1;
  return wave/3+1;
 }

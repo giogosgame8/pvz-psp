@@ -2,6 +2,8 @@
 #include "game.h"
 #include "music.h"
 #include "adaptive_music.h"
+#include "save_storage.h"
+#include "record_file.h"
 #include <pspkernel.h>
 #include <pspaudiolib.h>
 #include <stdint.h>
@@ -30,22 +32,28 @@ int audio_effects_volume(void){return effects_volume;}
 void audio_set_volumes(int music_level,int effects_level){music_volume=clamp_volume(music_level);effects_volume=clamp_volume(effects_level);}
 static int gain_sample(int sample,int volume,int boost){return sample*(volume*1024*boost/100)/1024;}
 static int16_t limit_sample(int value){return value>32767?32767:value< -32768?-32768:(int16_t)value;}
-static int write_settings(const char *filename,const uint32_t data[5]){
-    char temp[512];snprintf(temp,sizeof(temp),"%s.tmp",filename);
-    FILE *f=fopen(temp,"wb");if(!f)return 0;int ok=fwrite(data,20,1,f)==1;if(fclose(f)!=0)ok=0;
-    if(ok){remove(filename);ok=rename(temp,filename)==0;}return ok;
-}
+static int settings_valid(const char *filename);
+static int write_settings(const char *filename,const uint32_t data[5]){return record_replace(filename,data,20,settings_valid);}
 int audio_save_settings(const char *filename){
     uint32_t data[5]={0x55415650,2,(uint32_t)music_volume,(uint32_t)effects_volume,(uint32_t)preferred_track};return write_settings(filename,data);
 }
-int audio_load_settings(const char *filename){
-    uint32_t data[5];FILE *f=fopen(filename,"rb");if(!f)return 0;
+static int read_settings(const char *filename,uint32_t data[5]){
+    FILE *f=fopen(filename,"rb");if(!f)return 0;
     int ok=fread(data,16,1,f)==1&&data[0]==0x55415650&&(data[1]==1||data[1]==2)&&data[2]<=100&&data[3]<=100;
     data[4]=0xffffffffu;if(ok&&data[1]==2)ok=fread(&data[4],4,1,f)==1&&(data[4]==0xffffffffu||data[4]<MUSIC_COUNT);
-    if(ok)ok=fgetc(f)==EOF;fclose(f);if(ok){audio_set_volumes(data[2],data[3]);audio_set_preferred_track((int)data[4]);}return ok;
+    if(ok)ok=fgetc(f)==EOF;fclose(f);return ok;
+}
+static int settings_valid(const char *filename){uint32_t data[5];return read_settings(filename,data);}
+int audio_load_settings(const char *filename){
+    uint32_t data[5];
+    if(!read_settings(filename,data)){
+        char backup[160];
+        if(snprintf(backup,sizeof(backup),"%s.bak",filename)>=(int)sizeof(backup)||!read_settings(backup,data))return 0;
+    }
+    audio_set_volumes(data[2],data[3]);audio_set_preferred_track((int)data[4]);return 1;
 }
 void audio_queue_settings(void){
-    if(!worker_running){settings_result=audio_save_settings("audio-settings.dat");return;}
+    if(!worker_running){settings_result=audio_save_settings(save_storage_path(SAVE_AUDIO));return;}
     sceKernelWaitSema(lock,1,0);
     uint32_t data[5]={0x55415650,2,(uint32_t)music_volume,(uint32_t)effects_volume,(uint32_t)preferred_track};
     memcpy(settings_record,data,sizeof(data));settings_requested++;sceKernelSignalSema(lock,1);
@@ -58,7 +66,7 @@ int audio_flush_settings(void){
 }
 static void save_queued_settings(void){
     uint32_t data[5];sceKernelWaitSema(lock,1,0);unsigned int generation=settings_requested;memcpy(data,settings_record,sizeof(data));sceKernelSignalSema(lock,1);
-    if(generation!=settings_written){settings_result=write_settings("audio-settings.dat",data);settings_written=generation;}
+    if(generation!=settings_written){settings_result=write_settings(save_storage_path(SAVE_AUDIO),data);settings_written=generation;}
 }
 
 #include "audio_dynamic.inc"
@@ -72,7 +80,7 @@ int audio_select_music(int track){
 void audio_restart_music(int track){if(track<0||track>=MUSIC_COUNT)return;requested_track=track;requested_generation++;}
 float audio_music_seconds(int track){return music_track==track&&requested_track==track&&music_generation==requested_generation?music_position/22050.0f:-1;}
 int audio_init(void){
-    audio_load_settings("audio-settings.dat");
+    audio_load_settings(save_storage_path(SAVE_AUDIO));
     dynamic_load();int effects_ready=foley_init();
     for(int i=0;i<MUSIC_COUNT;i++){char path[64];snprintf(path,sizeof(path),"data/music%d.wav",i);FILE *f=fopen(path,"rb");if(f){track_available[i]=1;available_tracks++;fclose(f);}}
     lock=sceKernelCreateSema("pvzaudio",0,1,1,0);

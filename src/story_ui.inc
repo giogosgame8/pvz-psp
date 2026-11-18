@@ -1,7 +1,7 @@
 /* Dialogue text and Dave animation come from the player's imported resources. */
 static int story_id,story_return,story_phase,story_library,story_index,story_limit;
 static float story_time,story_line_time;static char story_key[64],story_raw[2048],story_text[2048];
-static int ending_return,ending_paused;static float ending_clock;
+static int ending_return,ending_paused;static float ending_clock,ending_wait,ending_tail;
 static int story_offset,story_end,story_prop;static char story_page[2048];
 static float story_token_time(const char *prefix,float fallback){const char *s=strstr(story_raw,prefix);return s?fminf(30,fmaxf(0,atoi(s+strlen(prefix))/100.0f)):fallback;}
 static void story_layout(void){
@@ -27,7 +27,7 @@ static int story_begin(int id,int destination,int limit,int library){
  char key[64],line[8];snprintf(key,sizeof(key),"CRAZY_DAVE_%d",id);if(!library&&!textdb_get(key,line,sizeof(line)))return 0;
  story_id=id;story_return=destination;story_limit=limit;story_library=library;story_phase=0;story_time=0;story_index=0;screen=18;story_load();return 1;
 }
-static void story_leave(void){story_phase=2;story_time=0;}
+static void story_leave(void){if(story_phase!=2){story_phase=2;story_time=0;}}
 static float story_duration(int id,float rate){return fmaxf(.01f,(assets[id].frames-1)/rate);}
 static void story_step(float dt){
  story_time+=dt;if(story_phase==1)story_line_time+=dt;
@@ -52,12 +52,20 @@ static void draw_story(void){
  if(story_prop>=0&&story_phase!=2)anim=A_DAVE_WALLNUT_ENTER+story_prop*3+(story_phase==0?0:talking?2:1);
  float rate=story_phase==1?12:story_phase==2&&game.level==50&&story_return==1?18:24;
  render_anim(&assets[anim],91,263,(story_phase==1?story_line_time:story_time)*rate/fmaxf(1,assets[anim].fps),1,WHITE,story_phase==1&&(story_prop>=0||!talking));
- if(story_phase!=2){render_image(&assets[A_SHOP_BUBBLE],158,43,312,181,0,WHITE);story_layout();disc_text(169,54,290,story_page,RGBA(42,33,22,255),.8f);}
+ if(story_phase==1){render_image(&assets[A_SHOP_BUBBLE],158,43,312,181,0,WHITE);story_layout();disc_text(169,54,290,story_page,RGBA(42,33,22,255),.8f);}
  ui_hint(story_library?"L/R: Passage   X: Next   O: Back":story_id==1503||story_id==1553?"X: Buy seed slot   Square: Decline":"X: Continue   O: Skip scene");
 }
 static void ending_finish(void){movie_close();player.garden.credits_seen=1;persist_profile();screen=ending_return;ending_paused=0;}
-static int ending_begin(int destination){animation_cache_suspend();if(!movie_open("data/ending.pvj")){notify("ENDING DATA COULD NOT BE OPENED");return 0;}ending_return=destination;ending_paused=0;ending_clock=0;screen=19;audio_restart_music(MUSIC_CREDITS);return 1;}
-static void ending_step(float dt){if(ending_paused)return;float t=audio_music_seconds(MUSIC_CREDITS);if(t>=0)ending_clock=t;else ending_clock+=dt;movie_update(ending_clock);if(movie_error()){ending_finish();notify("ENDING FRAME COULD NOT BE READ");}else if(ending_clock>movie_duration()+.5f)ending_finish();}
+static int ending_begin(int destination){animation_cache_suspend();if(!movie_open("data/ending.pvj")){notify("ENDING DATA COULD NOT BE OPENED");return 0;}ending_return=destination;ending_paused=0;ending_clock=ending_wait=ending_tail=0;screen=19;audio_restart_music(MUSIC_CREDITS);return 1;}
+static void ending_step(float dt){
+ if(ending_paused)return;
+ float audio=audio_music_seconds(MUSIC_CREDITS);
+ ending_wait+=dt;
+ if(audio>=0)ending_clock=fmaxf(ending_clock,audio);else if(ending_wait>.35f)ending_clock+=dt;
+ movie_update(ending_clock);
+ if(movie_error()){ending_finish();notify("ENDING FRAME COULD NOT BE READ");}
+ else if(ending_clock>=movie_duration()){ending_tail+=dt;if((ending_tail>.5f&&movie_at_end())||ending_tail>1.5f)ending_finish();}
+}
 static int story_input(uint32_t pressed){
  if(screen==19){if(pressed&PSP_CTRL_START)ending_paused=!ending_paused;if(pressed&PSP_CTRL_CIRCLE)ending_finish();return 1;}
  if(screen!=18)return 0;

@@ -505,6 +505,8 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     manifest['combat_alignment']=align_zombie_clips(destination,SPECS,geometry,assets)
     from prepare_gallery import prepare_gallery
     assets.extend(prepare_gallery(destination,previews,write_pva))
+    from prepare_crow_paths import prepare_crow_paths
+    prepare_crow_paths(imported,destination/'crow-paths.bin')
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     write_catalog(destination);write_launcher_images(destination);write_integrity(destination)

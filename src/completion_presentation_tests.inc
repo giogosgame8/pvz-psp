@@ -72,6 +72,10 @@ static int review_completion(int n){
     case 19:render_debug_frame("review024-imp-arc.ppm");review_win(1,0,0);game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=1.75f;break;
     case 20:render_debug_frame("review024-reward-flight.ppm");game_start_level(&game,49,24102);screen=1;reset_level_ui();game.spawn_timer=10000;review_label="FULL HEALTH: HEADS PRESENT";for(int n=0;n<4;n++){int id=game_spawn_zombie(&game,n,(int[]){Z_JACK,Z_LADDER,Z_DIGGER,Z_YETI}[n],350);game.zombies[id].vaulted=1;}break;
     case 21:render_debug_frame("review-full-health-zombies.ppm");game_start_level(&game,49,24104);screen=1;reset_level_ui();game.spawn_timer=10000;review_label="POT ALIGNMENT REVIEW";{int kinds[5][3]={{CABBAGE,KERNEL,STAR},{PUFF,SUNSHROOM,SCAREDY},{SUNFLOWER,WALLNUT,SNOW},{COFFEE,-1,SPIKEROCK},{CHOMPER,MAGNET,-1}};for(int r=0;r<5;r++)for(int c=0;c<3;c++){game.plants[r][c]=(Plant){.kind=kinds[r][c],.hp=300,.attack=20};if(r==2&&c<2||r==3&&c==1)game.pumpkin_hp[r][c]=4000;}}break;
-    case 22:render_debug_frame("review0241-pot-variants.ppm");review_label=0;return 1;
+    case 22:render_debug_frame("review0241-pot-variants.ppm");review_label=0;screen=0;menu_crow_page=-1;menu_motion_step(3,0);break;
+    case 23:render_debug_frame("review0242-crow-home.ppm");screen=6;menu_motion_step(.2f,0);break;
+    case 24:render_debug_frame("review0242-crow-flight.ppm");menu_motion_step(3,0);break;
+    case 25:render_debug_frame("review0242-crow-more.ppm");screen=11;menu_motion_step(3,0);break;
+    case 26:render_debug_frame("review0242-crow-extras.ppm");return 1;
     }return 0;
 }

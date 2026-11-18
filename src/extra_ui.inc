@@ -1,15 +1,24 @@
 static int survival_cursor,puzzle_cursor,puzzle_family,garden_view,garden_slot,garden_tool,garden_held=-1,garden_sale=-1,store_return=11,garden_return=11;
 static int garden_picker_cursor;
+static int survival_bonus,bonus_cursor;
+static const int bonus_terrain[4]={0,1,3,4};
 static float garden_clock;static int64_t garden_saved_time;
 static const char *terrains[5]={"DAY","NIGHT","POOL","FOG","ROOF"};
 static const char *garden_tools[TOOL_COUNT]={"WATER","FERTILIZER","BUG SPRAY","PHONOGRAPH","CHOCOLATE","GLOVE: MOVE","SELL PLANT","WHEELBARROW","WAKE STINKY"};
 static void open_extra(int category,int selection,int difficulty){if(!challenge_launch(category==EXTRA_SURVIVAL?1:category==EXTRA_VASE?2:3,category==EXTRA_SURVIVAL?(difficulty==SURVIVAL_ENDLESS?10:difficulty*5+selection):selection))return;if(!replaying)save_current();replaying=1;if(category==EXTRA_SURVIVAL)game_start_survival(&game,selection,difficulty,0x7100+selection+difficulty*17);else game_start_puzzle(&game,category==EXTRA_IZOMBIE,selection,0x7200+selection);read_costs();reset_level_ui();screen=2;paused=help=0;save_current();}
-static void resume_extra(void){Game saved;if(!game_load(&saved,"mode-save.dat")||!saved.extra.category){notify("NO SAVED SURVIVAL OR PUZZLE SESSION");return;}if(!replaying)save_current();replaying=1;game=saved;read_costs();reset_level_ui();screen=(game.level_flags&LEVEL_READY)?1:2;paused=0;}
+static void resume_extra(void){checkpoint_flush();Game saved;if(!game_load(&saved,save_storage_path(SAVE_CHALLENGE))||!saved.extra.category){notify("NO SAVED SURVIVAL OR PUZZLE SESSION");return;}if(!replaying)save_current();replaying=1;game=saved;read_costs();reset_level_ui();screen=(game.level_flags&LEVEL_READY)?1:2;paused=0;}
 static void draw_survival_menu(void){
  render_background(&assets[A_MINI_BACKGROUND]);ui_header("Survival");int difficulty=survival_cursor/5;static const char *tabs[]={"Normal","Hard","Endless"};
+ if(survival_bonus){
+  ui_center(24,51,432,"Bonus Endless",UI_INK,.95f);
+  for(int index=0;index<4;index++){int terrain=bonus_terrain[index],x=19+index*112;ui_card(x,85,106,90,-1-terrain,terrains[terrain],index==bonus_cursor,0,1);char best[32];snprintf(best,sizeof(best),"Best: %lu flags",player.garden.survival_best[10+terrain]);ui_center(x,183,106,best,UI_INK,.62f);}
+  ui_center(24,214,432,"Bonus boards from the disc's hidden list",UI_INK,.68f);
+  ui_hint("D-pad: Select   X: Play   Triangle: Resume   O: Back");return;
+ }
  for(int d=0;d<3;d++)ui_button(58+d*124,44,116,tabs[d],d==difficulty);
  for(int t=0;t<5;t++){if(difficulty==2&&t!=2)continue;int index=difficulty==2?10:difficulty*5+t;int x=12+t*94;ui_card(x,87,82,89,-1-t,terrains[t],t==survival_cursor%5,!!(player.garden.survival_wins&(1u<<(difficulty*5+t))),challenge_available(1,index));challenge_lock(x,87,82,89,1,index);char best[32];snprintf(best,sizeof(best),"Best: %lu flags",player.garden.survival_best[difficulty*5+t]);ui_center(x,183,82,best,UI_INK,.6f);}
- ui_center(24,213,432,difficulty==0?"Survive five flags":difficulty==1?"Survive ten flags":"Keep your lawn through endless rounds",UI_INK,.78f);ui_hint("D-pad: Select   L/R: Difficulty   X: Play   Triangle: Resume   O: Back");
+ int bonus_available=difficulty==2&&challenge_available(1,10);
+ ui_center(24,213,432,difficulty==0?"Survive five flags":difficulty==1?"Survive ten flags":bonus_available?"Square: Bonus Endless boards":"Keep your lawn through endless rounds",UI_INK,.78f);ui_hint("D-pad: Select   L/R: Difficulty   X: Play   Triangle: Resume   O: Back");
 }
 static void draw_puzzle_menu(void){
  render_background(&assets[A_MINI_BACKGROUND]);ui_button(82,13,151,"Vasebreaker",!puzzle_family);ui_button(247,13,151,"I, Zombie",puzzle_family);
@@ -44,7 +53,24 @@ static void draw_garden(void){
 static void draw_tree(void){render_image(&assets[A_TREE_STAGES],0,0,480,272,(player.garden.tree_height>51?51:player.garden.tree_height)-1,WHITE);char line[96];snprintf(line,sizeof(line),"TREE OF WISDOM: %lu FEET   FOOD %lu",player.garden.tree_height,player.purchases[SHOP_TREE_FOOD]);render_rect(0,0,480,25,RGBA(45,58,27,200));disc_text(8,3,464,line,UI_GOLD,.7f);char key[64];snprintf(key,sizeof(key),"TREE_OF_WISDOM_%lu",player.garden.tree_tip?player.garden.tree_tip:1);char tip[2048];textdb_get(key,tip,sizeof(tip));render_rect(143,50,330,180,RGBA(245,232,194,245));disc_text(153,60,310,tip,RGBA(42,33,22,255),strlen(tip)>250?.65f:.75f);ui_hint("X: Feed   Square: Repeat tip   Start: Shop   O: Garden");}
 static int extra_menu_input(uint32_t pressed,SceCtrlData *pad,float dt){
  (void)pad;(void)dt;
- if(screen==14){if(pressed&PSP_CTRL_LEFT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+4)%5;if(pressed&PSP_CTRL_RIGHT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+1)%5;if(pressed&PSP_CTRL_LTRIGGER)survival_cursor=(survival_cursor+10)%15;if(pressed&PSP_CTRL_RTRIGGER)survival_cursor=(survival_cursor+5)%15;if(pressed&PSP_CTRL_UP)survival_cursor=(survival_cursor+10)%15;if(pressed&PSP_CTRL_DOWN)survival_cursor=(survival_cursor+5)%15;if(survival_cursor>=10)survival_cursor=12;if(pressed&PSP_CTRL_CROSS)open_extra(EXTRA_SURVIVAL,survival_cursor%5,survival_cursor/5);if(pressed&PSP_CTRL_TRIANGLE)resume_extra();if(pressed&PSP_CTRL_CIRCLE)screen=6;return 1;}
+ if(screen==14){
+  if(survival_bonus){
+   if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_SQUARE)){survival_bonus=0;return 1;}
+   if(pressed&PSP_CTRL_LEFT)bonus_cursor=(bonus_cursor+3)%4;
+   if(pressed&PSP_CTRL_RIGHT)bonus_cursor=(bonus_cursor+1)%4;
+   if(pressed&PSP_CTRL_CROSS)open_extra(EXTRA_SURVIVAL,bonus_terrain[bonus_cursor],SURVIVAL_ENDLESS);
+  }else{
+   if(pressed&PSP_CTRL_LEFT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+4)%5;
+   if(pressed&PSP_CTRL_RIGHT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+1)%5;
+   if(pressed&(PSP_CTRL_UP|PSP_CTRL_LTRIGGER))survival_cursor=(survival_cursor+10)%15;
+   if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RTRIGGER))survival_cursor=(survival_cursor+5)%15;
+   if(survival_cursor>=10)survival_cursor=12;
+   if((pressed&PSP_CTRL_SQUARE)&&survival_cursor==12&&challenge_available(1,10)){survival_bonus=1;bonus_cursor=0;return 1;}
+   if(pressed&PSP_CTRL_CROSS)open_extra(EXTRA_SURVIVAL,survival_cursor%5,survival_cursor/5);
+   if(pressed&PSP_CTRL_CIRCLE)screen=6;
+  }
+  if(pressed&PSP_CTRL_TRIANGLE)resume_extra();return 1;
+ }
  if(screen==15){if(pressed&PSP_CTRL_LEFT)puzzle_cursor=(puzzle_cursor+9)%10;if(pressed&PSP_CTRL_RIGHT)puzzle_cursor=(puzzle_cursor+1)%10;if(pressed&(PSP_CTRL_UP|PSP_CTRL_DOWN))puzzle_cursor=(puzzle_cursor+5)%10;if(pressed&(PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER))puzzle_family^=1;if(pressed&PSP_CTRL_CROSS)open_extra(puzzle_family?EXTRA_IZOMBIE:EXTRA_VASE,puzzle_cursor,0);if(pressed&PSP_CTRL_TRIANGLE)resume_extra();if(pressed&PSP_CTRL_CIRCLE)screen=6;return 1;}
  if(screen==16){int cap=garden_view==GARDEN_MAIN?32:garden_view==GARDEN_BARROW?1:8;
   if(garden_sale>=0){if(pressed&PSP_CTRL_CROSS){garden_flush();garden_sell(&player,garden_sale);foley_play(FOLEY_MONEYFALLS);garden_sale=-1;persist_profile();}if(pressed&PSP_CTRL_CIRCLE)garden_sale=-1;return 1;}

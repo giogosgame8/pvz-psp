@@ -7,6 +7,7 @@ void movie_close(void);
 void movie_update(float seconds);
 const uint16_t *movie_pixels(void);
 float movie_duration(void);
+int movie_at_end(void);
 int movie_active(void);
 int movie_frame(void);
 int movie_error(void);

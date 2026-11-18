@@ -40,11 +40,31 @@ int game_mini_selftest(FILE *out){
     put_plant(&g,2,4,WALLNUT);put_plant(&g,1,4,WALLNUT);g.mini.enemy_x[0]=plant_x(4)+2;mini_pre_step(&g,.01f);MT("hostile peas damage the matching lane only",g.plants[2][4].hp==3980&&g.plants[1][4].hp==4000);
     game_start_mini(&g,MINI_BOSS,13);MT("standalone Zomboss has 60000 health",g.boss_hp==60000);
     game_start_mini(&g,MINI_HEAVY,14);game_heavy_control(&g,1,0,1,.05f);MT("Heavy Weapon moves mower and fires up through the lawn",g.mini.heavy_x>100&&g.shots[0].used&&g.shot_vy[0]<0);
-    g.sun=1000;g.selected=3;MT("Threepeater requires the Repeater first",game_mini_action(&g,1)<0&&g.sun==1000);
-    g.selected=1;int first=game_mini_action(&g,1);MT("Repeater upgrade costs 200 sun",first>0&&g.sun==800&&g.extra.heavy_level==1);memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.05f);count=0;for(int i=0;i<MAX_SHOTS;i++)count+=g.shots[i].used;MT("Repeater fires two spread shots",count==2);
-    g.selected=3;game_mini_action(&g,1);memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.05f);count=0;for(int i=0;i<MAX_SHOTS;i++)count+=g.shots[i].used;MT("Threepeater costs 400 and fires three shots",g.sun==400&&count==3);
-    g.selected=4;game_mini_action(&g,1);memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.05f);MT("Torchwood costs 125 and sets peas on fire temporarily",g.sun==275&&g.shot_damage[0]==40&&g.extra.heavy_fire_time>0);
-    g.selected=5;game_mini_action(&g,1);memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.05f);MT("Cattail upgrade launches homing spikes",g.sun==75&&g.extra.heavy_level==3&&g.shots[0].ice==11);
+    g.sun=1800;int gated=game_heavy_upgrade_open(&g,HEAVY_REPEATER);
+    for(int tool=1;tool<HEAVY_UPGRADES;tool++){g.selected=tool;gated&=!game_heavy_upgrade_open(&g,tool)&&game_mini_action(&g,1)<0;}
+    MT("Repeater is the only initial upgrade",gated&&g.sun==1800);
+    g.selected=HEAVY_REPEATER;int first=game_mini_action(&g,1);MT("Repeater costs 200 and unlocks the remaining shop",first>0&&g.sun==1600&&g.extra.heavy_level==1&&game_heavy_upgrade_open(&g,HEAVY_CATTAIL));
+    memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.01f);
+    MT("Repeater launches two peas at the disc's 20-degree spread",g.shots[0].used&&g.shots[1].used&&!g.shots[2].used&&fabsf(g.shot_vx[0]+27.47f)<.05f&&fabsf(g.shot_vx[1]-27.47f)<.05f);
+    g.selected=HEAVY_CATTAIL;MT("Cattail can be bought before Threepeater and uses its own timer",game_mini_action(&g,1)>0&&g.sun==1400&&g.extra.heavy_level==1&&g.mini.secondary==1);
+    g.selected=HEAVY_THREEPEATER;game_mini_action(&g,1);memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=g.mini.secondary=0;game_heavy_control(&g,0,0,1,.01f);
+    MT("Threepeater and Cattail fire together on independent timers",g.sun==1000&&g.shots[0].used&&g.shots[2].used&&g.shots[3].ice==11&&g.mini.heavy_fire==.25f&&g.mini.secondary==1);
+    g.selected=HEAVY_CATTAIL;int spikes=game_mini_action(&g,1)>0&&g.mini.secondary==.75f&&game_mini_action(&g,1)>0&&g.mini.secondary==.5f;
+    MT("Cattail has three paid ranks with 1.00, 0.75, and 0.50 s timing",spikes&&g.sun==600&&game_mini_action(&g,1)<0);
+    g.selected=HEAVY_SNOW;int snow=game_mini_action(&g,1)>0&&g.extra.heavy_ice_time==6&&game_mini_action(&g,1)<0;
+    g.selected=HEAVY_TORCH;int torch=game_mini_action(&g,1)>0&&g.extra.heavy_ice_time==0&&g.extra.heavy_fire_time==6;
+    memset(g.shots,0,sizeof(g.shots));g.mini.heavy_fire=0;game_heavy_control(&g,0,0,1,.01f);
+    MT("six-second fire and ice replace each other, and fire peas deal 40",snow&&torch&&g.sun==375&&g.shots[0].ice==10&&g.shot_damage[0]==40);
+    mini_pre_step(&g,6);MT("elemental shots return to normal when their timer expires",g.extra.heavy_fire_time==0&&game_heavy_upgrade_open(&g,HEAVY_TORCH));
+    int close=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(4)),far=game_spawn_zombie(&g,2,Z_NORMAL,480);
+    g.selected=HEAVY_DOOM;game_mini_action(&g,1);MT("Doom hits the central blast radius, not zombies outside it",g.zombies[close].death>0&&g.zombies[far].hp==270&&g.craters[2][4]==180);
+    int cadence=1;for(int rate=30;rate<=60;rate+=30){
+        game_start_mini(&g,MINI_HEAVY,2408);for(int tick=0;tick<rate;tick++)game_heavy_control(&g,0,0,1,1.0f/rate);
+        count=0;for(int i=0;i<MAX_SHOTS;i++)count+=g.shots[i].used;cadence&=count==4;
+    }
+    MT("held fire produces four primary shots per second at 30 and 60 FPS",cadence);
+    int upper=game_spawn_zombie(&g,1,Z_NORMAL,140),lower=game_spawn_zombie(&g,4,Z_NORMAL,300);
+    MT("Heavy Weapon Cattail prioritizes the zombie closest to the mower's end of the lawn",upper>=0&&lower>=0&&heavy_homing_target(&g,140)==lower);
     g.suns[0]=(Sun){.used=1,.x=g.mini.heavy_x,.y=230};mini_pre_step(&g,.01f);MT("Heavy Weapon collects sun using the mower",g.suns[0].used==2&&game_collect(&g)==0);
     memset(g.shots,0,sizeof(g.shots));memset(g.zombies,0,sizeof(g.zombies));z=game_spawn_zombie(&g,2,Z_NORMAL,210);g.shots[0]=(Shot){1,2,8,200};g.shot_y[0]=game_ground_y(&g,2)-17;g.shot_vx[0]=150;g.shot_vy[0]=0;g.shot_damage[0]=20;g.shot_target[0]=-1;chapter_shots(&g,.05f);MT("ordinary mower peas stop after one hit",!g.shots[0].used&&g.zombies[z].hp==250);
     game_start_level(&g,9,15);g.sun=1000;game_place(&g,2,1,PEA);g.spawn_timer=100000;game_spawn_zombie(&g,2,Z_NORMAL,350);g.plants[2][1].attack=0;game_step(&g,.05f);int shots=0;for(int i=0;i<MAX_SHOTS;i++)shots+=g.shots[i].used;MT("Peashooter starts shooting clip before releasing its pea",g.pea_shoot_time[2][1]>0&&!shots);for(int i=0;i<8;i++)game_step(&g,.05f);shots=0;for(int i=0;i<MAX_SHOTS;i++)shots+=g.shots[i].used;MT("Peashooter releases pea at the shooting pose",shots==1);
