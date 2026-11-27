@@ -1,6 +1,24 @@
 typedef enum { HEAVY_REPEATER,HEAVY_THREEPEATER,HEAVY_CATTAIL,HEAVY_SNOW,HEAVY_TORCH,HEAVY_DOOM,HEAVY_UPGRADES } HeavyUpgrade;
 static const int heavy_costs[HEAVY_UPGRADES]={200,400,200,100,125,200};
 static const int heavy_seeds[HEAVY_UPGRADES]={REPEATER,THREEPEATER,CATTAIL,SNOW,TORCHWOOD,DOOM};
+static int heavy_restore(Game *g){
+ if(g->mode!=MODE_HEAVY)return 1;
+ ExtraState *extra=&g->extra;MiniState *mini=&g->mini;
+ if(extra->heavy_level<0||extra->heavy_level>3||extra->heavy_cattail<0||extra->heavy_cattail>3||
+    !isfinite(extra->heavy_ice_time)||!isfinite(extra->heavy_fire_time)||extra->heavy_ice_time<0||extra->heavy_fire_time<0||
+    !isfinite(mini->heavy_x)||!isfinite(mini->heavy_power)||!isfinite(mini->heavy_fire)||!isfinite(mini->secondary))return 0;
+ if(extra->heavy_level==3){
+  static const int previous_order[HEAVY_UPGRADES]={HEAVY_SNOW,HEAVY_REPEATER,HEAVY_DOOM,HEAVY_THREEPEATER,HEAVY_TORCH,HEAVY_CATTAIL};
+  extra->heavy_level=2;
+  if(g->selected<HEAVY_UPGRADES)g->selected=previous_order[g->selected];
+ }
+ if(g->selected>=HEAVY_UPGRADES)g->selected=HEAVY_REPEATER;
+ extra->heavy_fire_time=fminf(6,extra->heavy_fire_time);
+ extra->heavy_ice_time=extra->heavy_fire_time>0?0:fminf(6,extra->heavy_ice_time);
+ mini->heavy_fire=fmaxf(0,fminf(.25f,mini->heavy_fire));
+ mini->secondary=extra->heavy_cattail?fmaxf(0,fminf(1,mini->secondary)):0;
+ return 1;
+}
 
 static float heavy_spike_interval(const Game *g){return 1.25f-.25f*g->extra.heavy_cattail;}
 
@@ -55,14 +73,12 @@ static int heavy_homing_target(const Game *g,float x){
 }
 static int heavy_shot(Game *g,int type,float aim,int target){
  float dx=sinf(aim),dy=-cosf(aim);
- for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){
-  g->shots[i]=(Shot){1,4,type,g->mini.heavy_x+(type==11?14:12*dx)};
-  g->shot_y[i]=222+12*dy;g->shot_vx[i]=158.175f*dx;g->shot_vy[i]=158.175f*dy;
-  g->shot_damage[i]=type==10?40:20;g->shot_remaining[i]=0;
-  g->shot_target[i]=target;g->polish024.shot_actor[i]=target<0?0:g->fidelity.actor_id[target];
-  return 1;
- }
- return 0;
+ int i=allocate_shot(g,4,g->mini.heavy_x+(type==11?14:12*dx),type);
+ if(i<0)return 0;
+ g->shot_y[i]=222+12*dy;g->shot_vx[i]=158.175f*dx;g->shot_vy[i]=158.175f*dy;
+ g->shot_damage[i]=type==10?40:20;g->shot_remaining[i]=0;
+ g->shot_target[i]=target;g->polish024.shot_actor[i]=target<0?0:g->fidelity.actor_id[target];
+ return 1;
 }
 static float heavy_countdown(float timer,float dt,int fire){
  return fire&&timer>0?timer-dt:fmaxf(0,timer-dt);

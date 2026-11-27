@@ -12,8 +12,33 @@ float disc_text_height(const char *text,float width,float scale){
  return lines*line_height*scale;
 }
 void disc_text(float x,float y,float width,const char *text,uint32_t color,float scale){
- if(!atlas||!atlas->loaded){render_text(x,y,text,color,scale);return;}float start=x;const unsigned char *p=(const unsigned char*)text;
- while(*p){if(*p=='\n'){p++;x=start;y+=line_height*scale;continue;}if(*p==' '){p++;x+=8*scale;continue;}const unsigned char *end=p;float length=0;while(*end&&*end!=' '&&*end!='\n'){unsigned c=next_char(&end);length+=glyphs[c<256?c:'?'].advance*scale;}if(x>start&&x+length>start+width){x=start;y+=line_height*scale;}
-  while(p<end){unsigned c=next_char(&p);Glyph *g=&glyphs[c<256?c:'?'];if(g->w&&g->h)render_part(atlas,0,g->x,g->y,g->w,g->h,x,y,g->w*scale,g->h*scale,color);x+=g->advance*scale;}
- }
+    if(!atlas||!atlas->loaded){render_text(x,y,text,color,scale);return;}
+    TexturePart parts[32];
+    unsigned used=0;
+    float start=x;
+    const unsigned char *p=(const unsigned char*)text;
+    while(*p){
+        if(*p=='\n'){p++;x=start;y+=line_height*scale;continue;}
+        if(*p==' '){p++;x+=8*scale;continue;}
+        const unsigned char *end=p;
+        float length=0;
+        while(*end&&*end!=' '&&*end!='\n'){
+            unsigned c=next_char(&end);
+            length+=glyphs[c<256?c:'?'].advance*scale;
+        }
+        if(x>start&&x+length>start+width){x=start;y+=line_height*scale;}
+        while(p<end){
+            unsigned c=next_char(&p);
+            const Glyph *g=&glyphs[c<256?c:'?'];
+            if(g->w&&g->h){
+                parts[used++]=(TexturePart){g->x,g->y,g->w,g->h,x,y,g->w*scale,g->h*scale};
+                if(used==sizeof(parts)/sizeof(*parts)){
+                    render_parts(atlas,0,parts,used,color);
+                    used=0;
+                }
+            }
+            x+=g->advance*scale;
+        }
+    }
+    if(used)render_parts(atlas,0,parts,used,color);
 }

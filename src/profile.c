@@ -2,6 +2,7 @@
 #include "profile.h"
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 #include "garden.h"
@@ -49,7 +50,18 @@ int profile_purchase(Profile *p,int item){
     if(item==SHOP_FERTILIZER||item==SHOP_SPRAY){p->purchases[item]+=5;return 1;}
     if(item==SHOP_TREE){p->purchases[item]=1;p->garden.tree_height=1;if(!p->garden.tree_gift){p->garden.tree_gift=1;p->purchases[SHOP_TREE_FOOD]+=5;}return 1;}
     if(item==SHOP_SNAIL)p->garden.snail_awake=(int64_t)time(NULL);
-    if(item==SHOP_RAKE)p->purchases[item]=3;else p->purchases[item]++;return 1;
+    if(item==SHOP_RAKE)p->purchases[item]=3;else p->purchases[item]++;
+    if(item<9)p->seen_plants|=UINT64_C(1)<<(GATLING+item);
+    return 1;
+}
+void profile_apply_loadout(const Profile *p,Game *g){
+    if(g->completion.adventure_run&&!g->challenge)g->unlocked_mask|=(UINT64_C(1)<<BASE_SEEDS)-1;
+    g->completion.cosmetics=p->completion.cosmetics;
+    g->purchased_mask=0;for(int k=0;k<9;k++)if(p->purchases[k])g->purchased_mask|=UINT64_C(1)<<(40+k);
+    g->unlocked_mask=(g->unlocked_mask&((UINT64_C(1)<<40)-1))|g->purchased_mask;
+    if(game_mini_active(g,MINI_LASTSTAND)){uint64_t banned=(UINT64_C(1)<<SUNFLOWER)|(UINT64_C(1)<<SUNSHROOM)|(UINT64_C(1)<<TWIN);g->unlocked_mask&=~banned;g->seed_mask&=~banned;}
+    g->seed_slots=6+p->purchases[SHOP_SLOTS];if(g->seed_slots>10)g->seed_slots=10;
+    int kept_rake=g->store_flags&STORE_RAKE;g->store_flags=kept_rake|(p->purchases[SHOP_POOL_CLEANER]?STORE_POOL:0)|(p->purchases[SHOP_ROOF_CLEANER]?STORE_ROOF:0)|(p->purchases[SHOP_FIRST_AID]?STORE_FIRST_AID:0)|(p->adventure_finished&&garden_count(p,GARDEN_MAIN)<32?STORE_GARDEN:0)|(p->purchases[SHOP_SNAIL]&&p->purchases[SHOP_CHOCOLATE]<10?STORE_CHOCOLATE:0)|((p->garden.story_seen&CHALLENGE_MINI)?STORE_MINI:0)|((p->garden.story_seen&CHALLENGE_PUZZLE)?STORE_PUZZLE:0)|((p->garden.story_seen&CHALLENGE_SURVIVAL)?STORE_SURVIVAL:0);
 }
 void profile_apply(Profile *p,Game *g){
     int fresh=!g->session_id;if(fresh)g->session_id=p->next_session++;
@@ -60,13 +72,7 @@ void profile_apply(Profile *p,Game *g){
     if(g->extra.category==EXTRA_VASE||g->extra.category==EXTRA_IZOMBIE){int id=g->extra.selection+(g->extra.category==EXTRA_IZOMBIE?10:0);uint32_t score=g->extra.stage+(g->extra.pending||g->status==WON);if(score>p->garden.puzzle_best[id])p->garden.puzzle_best[id]=score;if((g->status==WON||g->extra.pending==2)&&(g->level_flags&LEVEL_REWARD_COLLECTED))p->garden.puzzle_wins|=1u<<id;}
     if(!p->completion.gold_sunflower&&profile_gold_eligible(p))p->completion.gold_sunflower=1;
     if(p->adventure_finished)p->garden.story_seen|=CHALLENGE_MINI|CHALLENGE_PUZZLE|CHALLENGE_SURVIVAL;
-    if(g->completion.adventure_run&&!g->challenge)g->unlocked_mask|=(UINT64_C(1)<<BASE_SEEDS)-1;
-    g->completion.cosmetics=p->completion.cosmetics;
-    g->purchased_mask=0;for(int k=0;k<9;k++)if(p->purchases[k])g->purchased_mask|=UINT64_C(1)<<(40+k);
-    g->unlocked_mask=(g->unlocked_mask&((UINT64_C(1)<<40)-1))|g->purchased_mask;
-    if(game_mini_active(g,MINI_LASTSTAND)){uint64_t banned=(UINT64_C(1)<<SUNFLOWER)|(UINT64_C(1)<<SUNSHROOM)|(UINT64_C(1)<<TWIN);g->unlocked_mask&=~banned;g->seed_mask&=~banned;}
-    g->seed_slots=6+p->purchases[SHOP_SLOTS];if(g->seed_slots>10)g->seed_slots=10;
-    int kept_rake=g->store_flags&STORE_RAKE;g->store_flags=kept_rake|(p->purchases[SHOP_POOL_CLEANER]?STORE_POOL:0)|(p->purchases[SHOP_ROOF_CLEANER]?STORE_ROOF:0)|(p->purchases[SHOP_FIRST_AID]?STORE_FIRST_AID:0)|(p->adventure_finished&&garden_count(p,GARDEN_MAIN)<32?STORE_GARDEN:0)|(p->purchases[SHOP_SNAIL]&&p->purchases[SHOP_CHOCOLATE]<10?STORE_CHOCOLATE:0)|((p->garden.story_seen&CHALLENGE_MINI)?STORE_MINI:0)|((p->garden.story_seen&CHALLENGE_PUZZLE)?STORE_PUZZLE:0)|((p->garden.story_seen&CHALLENGE_SURVIVAL)?STORE_SURVIVAL:0);
+    profile_apply_loadout(p,g);
     if(fresh&&p->purchases[SHOP_RAKE]&&g->mode!=MODE_WHACK&&g->mode!=MODE_BOSS){g->store_flags|=STORE_RAKE;p->purchases[SHOP_RAKE]--;}
     p->seen_plants|=g->unlocked_mask;p->seen_zombies|=g->seen_zombies;for(int i=0;i<MAX_ZOMBIES;i++)if(g->zombies[i].used)p->seen_zombies|=1u<<g->zombies[i].kind;
 }
@@ -96,22 +102,70 @@ int profile_apply_code(Profile *p,const char *code){
  for(unsigned n=0;n<sizeof(codes)/sizeof(codes[0]);n++)if(!strcmp(lower,codes[n].name)){if(p->garden.tree_height<codes[n].height)return -1;p->completion.cosmetics^=codes[n].bit;return p->completion.cosmetics&codes[n].bit?1:2;}return 0;
 }
 static uint32_t check(const void *data,size_t bytes){const unsigned char *b=data;uint32_t v=2166136261u;for(size_t i=0;i<bytes;i++)v=(v^b[i])*16777619u;return v;}
-int profile_save(const Profile *p,const char *path){uint32_t h[4]={0x38504650,5,sizeof(*p),check(p,sizeof(*p))};return save_file_replace(path,h,p);}
-static int profile_load_one(Profile *p,const char *path){
-    Profile q;memset(&q,0,sizeof(q));uint32_t h[4];FILE *f=fopen(path,"rb");if(!f)return 0;
+enum { PROFILE_MAGIC=0x38504650, PROFILE_VERSION=5 };
+
+static int profile_file_valid(FILE *f,const uint32_t *h,void *context){
+    Profile *q=context;
+    memset(q,0,sizeof(*q));
     typedef struct {uint32_t money,purchases[SHOP_ITEMS],highest,adventure_finished,next_session,seen_zombies;uint64_t seen_plants;CoinCheckpoint credited[16];uint32_t journal_next;} PreviousProfile;
-    int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x38504650;
-    if(ok&&(h[1]==4||h[1]==5)&&h[2]==sizeof(q))ok=fread(&q,sizeof(q),1,f)==1&&h[3]==check(&q,sizeof(q));
-    else if(ok&&h[1]==3&&h[2]==offsetof(Profile,completion))ok=fread(&q,h[2],1,f)==1&&h[3]==check(&q,h[2]);
-    else if(ok&&h[1]==2&&h[2]==sizeof(LegacyProfile02)){LegacyProfile02 old;ok=fread(&old,sizeof(old),1,f)==1&&h[3]==check(&old,sizeof(old));if(ok)memcpy(&q,&old,sizeof(old));}
-    else if(ok&&h[1]==1&&h[2]==sizeof(PreviousProfile)){PreviousProfile old;ok=fread(&old,sizeof(old),1,f)==1&&h[3]==check(&old,sizeof(old));if(ok)memcpy(&q,&old,offsetof(Profile,mini_trophies));}
-    else ok=0;
-    ok=ok&&fgetc(f)==EOF&&q.money<=99999&&q.highest>=1&&q.highest<=50&&q.purchases[SHOP_SLOTS]<=4;fclose(f);if(ok){int occupied[4][32]={{0}};for(int i=0;i<GARDEN_PLANTS&&ok;i++){GardenPlant *v=&q.garden.plants[i];if(!v->used)continue;int cap=v->garden==GARDEN_MAIN?32:v->garden==GARDEN_BARROW?1:8;ok=v->kind>=0&&v->kind<ALL_SEEDS&&v->garden>=0&&v->garden<4&&v->slot>=0&&v->slot<cap&&v->age>=0&&v->age<=3&&v->required>=3&&v->required<=5&&v->waterings>=0&&v->waterings<=5&&v->need>=0&&v->need<=NEED_MUSIC&&isfinite(v->coin_timer);if(ok){ok=!occupied[v->garden][v->slot];occupied[v->garden][v->slot]=1;}}ok=ok&&q.garden.tree_height<=1000000&&isfinite(q.garden.snail_x)&&isfinite(q.garden.snail_y);}
-    if(ok&&h[1]<4){q.completion.adventure_runs=q.adventure_finished?1:0;q.completion.house_owned=31;}
-    if(ok)ok=q.completion.adventure_runs<=1000000&&q.completion.gold_sunflower<=2&&q.completion.house_owned<=31&&q.completion.house_selected<5&&(q.completion.house_owned&(1u<<q.completion.house_selected))&&q.completion.cosmetics<=127;
-    if(ok&&!q.completion.gold_sunflower&&profile_gold_eligible(&q))q.completion.gold_sunflower=1;
-    if(ok){q.completion.house_owned=1;for(int choice=1;choice<5;choice++)if(profile_house_owned(&q,choice))q.completion.house_owned|=1u<<choice;if(!profile_house_owned(&q,q.completion.house_selected))q.completion.house_selected=0;for(int item=SHOP_HOUSE_NORMAL;item<=SHOP_HOUSE_FUN;item++)ok=ok&&q.purchases[item]<=(item==SHOP_HOUSE_NORMAL?2u:5u);}
-    if(ok)*p=q;return ok;
+    if(((h[1]==4||h[1]==5)&&h[2]==sizeof(*q))||(h[1]==3&&h[2]==offsetof(Profile,completion))){
+        if(fread(q,h[2],1,f)!=1||h[3]!=check(q,h[2]))return 0;
+    }else if(h[1]==2&&h[2]==sizeof(LegacyProfile02)){
+        LegacyProfile02 old;
+        if(fread(&old,sizeof(old),1,f)!=1||h[3]!=check(&old,sizeof(old)))return 0;
+        memcpy(q,&old,sizeof(old));
+    }else if(h[1]==1&&h[2]==sizeof(PreviousProfile)){
+        PreviousProfile old;
+        if(fread(&old,sizeof(old),1,f)!=1||h[3]!=check(&old,sizeof(old)))return 0;
+        memcpy(q,&old,offsetof(Profile,mini_trophies));
+    }else return 0;
+
+    if(q->money>99999||q->highest<1||q->highest>50||q->purchases[SHOP_SLOTS]>4)return 0;
+    int occupied[4][32]={{0}};
+    for(int i=0;i<GARDEN_PLANTS;i++){
+        const GardenPlant *v=&q->garden.plants[i];
+        if(!v->used)continue;
+        int cap=v->garden==GARDEN_MAIN?32:v->garden==GARDEN_BARROW?1:8;
+        if(v->kind<0||v->kind>=ALL_SEEDS||v->garden<0||v->garden>=4||v->slot<0||v->slot>=cap||
+           v->age<0||v->age>3||v->required<3||v->required>5||v->waterings<0||v->waterings>5||
+           v->need<0||v->need>NEED_MUSIC||!isfinite(v->coin_timer))return 0;
+        if(occupied[v->garden][v->slot])return 0;
+        occupied[v->garden][v->slot]=1;
+    }
+    if(q->garden.tree_height>1000000||!isfinite(q->garden.snail_x)||!isfinite(q->garden.snail_y))return 0;
+
+    if(h[1]<4){
+        q->completion.adventure_runs=q->adventure_finished?1:0;
+        q->completion.house_owned=31;
+    }
+    if(q->completion.adventure_runs>1000000||q->completion.gold_sunflower>2||q->completion.house_owned>31||
+       q->completion.house_selected>=5||!(q->completion.house_owned&(1u<<q->completion.house_selected))||
+       q->completion.cosmetics>127)return 0;
+    for(int item=SHOP_HOUSE_NORMAL;item<=SHOP_HOUSE_FUN;item++){
+        if(q->purchases[item]>(item==SHOP_HOUSE_NORMAL?2u:5u))return 0;
+    }
+    if(!q->completion.gold_sunflower&&profile_gold_eligible(q))q->completion.gold_sunflower=1;
+    q->completion.house_owned=1;
+    for(int choice=1;choice<5;choice++)if(profile_house_owned(q,choice))q->completion.house_owned|=1u<<choice;
+    if(!profile_house_owned(q,q->completion.house_selected))q->completion.house_selected=0;
+    return 1;
+}
+
+int profile_save(const Profile *p,const char *path){
+    const uint32_t h[4]={PROFILE_MAGIC,PROFILE_VERSION,sizeof(*p),check(p,sizeof(*p))};
+    /* A Profile is larger than the checkpoint worker's stack. */
+    Profile *scratch=malloc(sizeof(*scratch));
+    if(!scratch)return 0;
+    int saved=save_file_replace(path,h,p,profile_file_valid,scratch);
+    free(scratch);
+    return saved;
+}
+
+static int profile_load_one(Profile *p,const char *path){
+    Profile staged;
+    if(save_checked_container_valid(path,PROFILE_MAGIC,PROFILE_VERSION,profile_file_valid,&staged)<=0)return 0;
+    *p=staged;
+    return 1;
 }
 static int profile_recovered;
 int profile_load_backup_used(void){return profile_recovered;}
@@ -170,6 +224,27 @@ int profile_selftest(FILE *out){
     T("save interrupted replacement recovers backup and ignores unfinished temp",profile_load(&q,recovery)&&profile_load_backup_used()&&q.money==10);
     remove("selftest-profile-recovery.dat.bak");q.money=77;T("save failed load preserves the caller's existing profile",!profile_load(&q,recovery)&&q.money==77);
     remove("selftest-profile-recovery.dat.tmp");
+    profile_init(&p);
+    p.money=110;
+    first=profile_save(&p,recovery);
+    p.money=120;
+    second=profile_save(&p,recovery);
+    p.highest=0;
+    T("save rejects invalid profile data before rotating the primary",first&&second&&!profile_save(&p,recovery)&&
+      profile_load(&q,recovery)&&!profile_load_backup_used()&&q.money==120);
+    uint32_t invalid[4]={PROFILE_MAGIC,PROFILE_VERSION,sizeof(p),check(&p,sizeof(p))};
+    f=fopen(recovery,"wb");
+    wrote=f&&fwrite(invalid,sizeof(invalid),1,f)==1&&fwrite(&p,sizeof(p),1,f)==1;
+    if(f&&fclose(f))wrote=0;
+    T("save a checksummed invalid profile falls back to the previous wallet",wrote&&
+      profile_load(&q,recovery)&&profile_load_backup_used()&&q.money==110);
+    q.money=130;
+    repaired=profile_save(&q,recovery)&&profile_load(&q,recovery)&&!profile_load_backup_used()&&q.money==130;
+    remove(recovery);
+    T("save repair keeps the valid backup after rejecting the old primary",repaired&&
+      profile_load(&q,recovery)&&profile_load_backup_used()&&q.money==110);
+    remove("selftest-profile-recovery.dat.bak");
+    profile_init(&p);
     uint32_t future[4]={0x38504650,6,sizeof(p),check(&p,sizeof(p))};f=fopen(recovery,"wb");int future_written=f&&fwrite(future,sizeof(future),1,f)==1&&fwrite(&p,sizeof(p),1,f)==1;if(f)fclose(f);
     T("save this build refuses to overwrite a newer profile format",future_written&&!profile_save(&p,recovery)&&save_container_valid(recovery,0x38504650,6));
     int moved=!rename(recovery,"selftest-profile-recovery.dat.bak");

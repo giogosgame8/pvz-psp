@@ -19,7 +19,7 @@ from launcher_media import repack_images
 
 ROOT = package_root()
 sys.path.insert(0, str(ROOT / 'importer'))
-from pvz_import import inspect_or_import
+from pvz_import import inspect_or_import, probe_disc, sha256_file
 
 
 def acquire_setup_lock(path):
@@ -180,6 +180,29 @@ def install_prepared(staging, destination):
     return backup
 
 
+def restore_prepared_backup(destination, source):
+    """Recover a verified installation if an interrupted swap left it missing."""
+    if destination.exists() or not destination.parent.is_dir():
+        return False
+    pattern = re.compile(re.escape(destination.name) + r'-backup-(\d{8}-\d{6})(?:-(\d+))?')
+    backups = []
+    for candidate in destination.parent.iterdir():
+        match = pattern.fullmatch(candidate.name)
+        if match and not candidate.is_symlink() and candidate.is_dir():
+            backups.append((match[1], int(match[2] or 0), candidate))
+    if not backups:
+        return False
+    source_sha = sha256_file(source)
+    for _, _, candidate in sorted(backups, reverse=True):
+        try:
+            validate_prepared(candidate, source_sha)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        candidate.rename(destination)
+        return True
+    return False
+
+
 def prepare_game(source, destination, ffmpeg, log, root=ROOT):
     destination.parent.mkdir(parents=True, exist_ok=True)
     # Work on the same drive as the final data, without touching old data/saves.
@@ -203,6 +226,8 @@ def prepare_game(source, destination, ffmpeg, log, root=ROOT):
                 stage = line.removeprefix('Stage: ').strip()
                 count = 0
                 print(f'Preparing {stage}...', flush=True)
+            elif line.startswith('Preparing music alongside '):
+                print(line.strip(), flush=True)
             elif line.startswith('Prepared original music: '):
                 music_count += 1
                 name = line.removeprefix('Prepared original music: ').split(',')[0]
@@ -264,15 +289,26 @@ def main():
         source = source.resolve()
         with log_path.open('w', encoding='utf-8') as log:
             print('Checking your PS3 disc...', flush=True)
-            with contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
-                disc=inspect_or_import(source, None)
-            print('PS3 disc verified.', flush=True)
-            if destination.exists() and not args.check_only and not args.rebuild:
-                print('Checking existing game files...', flush=True)
-                try:validate_prepared(destination,disc['source_sha256'])
-                except (OSError,ValueError,KeyError,TypeError):
-                    print('A complete verified rebuild is needed.',flush=True)
-                else:
+            if args.check_only:
+                with contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
+                    inspect_or_import(source, None)
+                print('PS3 disc verified.', flush=True)
+            else:
+                probe_disc(source)
+                print('Supported PS3 disc found.', flush=True)
+            if not args.check_only and not args.rebuild:
+                reused = False
+                if destination.exists():
+                    print('Checking existing game files...', flush=True)
+                    try:
+                        validate_prepared(destination, sha256_file(source))
+                        reused = True
+                    except (OSError, ValueError, KeyError, TypeError):
+                        print('A complete verified rebuild is needed.', flush=True)
+                elif restore_prepared_backup(destination, source):
+                    print('Recovered verified game files from a previous setup.', flush=True)
+                    reused = True
+                if reused:
                     repack_images(binary,binary,destination/'XMB_ICON0.PNG',destination/'XMB_PIC1.PNG')
                     print('READY! Existing game files passed verification.\nCopy this folder to PSP/GAME on your PSP:\n'+str(binary.parent),flush=True)
                     return 0

@@ -1,5 +1,7 @@
 # PSP-1000 60 FPS mode — 0.18.1
 
+See the [0.24.6 PSP-1000 results](reference/REMAINING-0.24.6.md#psp-1000-at-the-optional-60-fps-setting) for the current preview.
+
 The opt-in target works in the tested PSP-1000 emulator configuration. It is
 not a locked-60-FPS result, and no physical PSP-1000 was tested.
 

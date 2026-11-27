@@ -25,3 +25,67 @@ static int compact_ui_selftest(FILE *out){
  #undef UI
  fprintf(out,"COMPACT UI RESULT %d/%d\n",pass,total);return pass==total;
 }
+
+static void ending_test_frame(void){
+ if(screen==19)ending_step(.01f);
+ int track=soundtrack_context();
+ if(screen!=19)audio_select_music(track);
+ audio_music(ending_allows_music(track));
+ sceKernelDelayThread(10000);
+}
+
+static int ending_controls_selftest(FILE *out){
+ int pass=0,total=0,old_screen=screen,old_leaving=ending_music_leaving;
+ int old_seen=player.garden.credits_seen;
+ const char *old_profile=profile_path;
+ profile_path="selftest-ending-profile.dat";
+ #define ENDING_CHECK(label,test) do{int ok=(test);pass+=ok;total++;fprintf(out,"ending controls %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
+
+ screen=20;
+ audio_test_request_delay(0);
+ for(int n=0;n<150&&audio_music_seconds(MUSIC_MENU)<=0;n++)ending_test_frame();
+ float menu_time=audio_music_seconds(MUSIC_MENU);
+ audio_test_request_delay(650);
+ int opened=ending_begin(20),held=0;
+ for(int n=0;opened&&screen==19&&n<250&&ending_clock<.2f;n++){
+  ending_test_frame();
+  if(ending_phase==ENDING_WAITING_FOR_MUSIC&&ending_wait>.4f){
+   held=movie_frame()==0&&ending_clock==0&&!ending_allows_music(MUSIC_CREDITS);
+  }
+ }
+ ENDING_CHECK("a slow song load holds frame zero and suppresses the old song",menu_time>0&&held);
+ ENDING_CHECK("music readiness starts the ending clock and video",opened&&screen==19&&ending_phase==ENDING_WITH_MUSIC&&ending_clock>=.2f&&movie_frame()>0);
+
+ if(screen==19)story_input(PSP_CTRL_START);
+ for(int n=0;n<5;n++)ending_test_frame();
+ float paused_audio=audio_music_seconds(MUSIC_CREDITS),paused_clock=ending_clock;
+ int paused_frame=movie_frame();
+ for(int n=0;n<15;n++)ending_test_frame();
+ ENDING_CHECK("Start holds both the song and the displayed frame",screen==19&&ending_paused&&paused_audio>0&&
+  paused_audio==audio_music_seconds(MUSIC_CREDITS)&&ending_clock==paused_clock&&movie_frame()==paused_frame);
+ if(screen==19)story_input(PSP_CTRL_START);
+ for(int n=0;n<80&&audio_music_seconds(MUSIC_CREDITS)<paused_audio+.17f;n++)ending_test_frame();
+ ENDING_CHECK("Start resumes the same song and advances the video",screen==19&&!ending_paused&&
+  audio_music_seconds(MUSIC_CREDITS)>=paused_audio+.15f&&movie_frame()>paused_frame);
+ if(screen==19)story_input(PSP_CTRL_CIRCLE);
+ audio_select_music(MUSIC_MENU);
+ ENDING_CHECK("Circle closes the decoder and waits for the destination song",screen==20&&!movie_active()&&!ending_allows_music(MUSIC_MENU));
+ for(int n=0;n<180&&audio_music_seconds(MUSIC_MENU)<=0;n++)ending_test_frame();
+ ENDING_CHECK("the menu song plays after leaving the ending",screen==20&&audio_music_seconds(MUSIC_MENU)>0);
+
+ opened=ending_begin(20);
+ for(int n=0;opened&&screen==19&&ending_phase==ENDING_OPENING&&n<100;n++)ending_test_frame();
+ ending_wait=ending_music_timeout;
+ ending_test_frame();
+ for(int n=0;n<180&&audio_music_seconds(MUSIC_CREDITS)<0;n++)ending_test_frame();
+ ENDING_CHECK("a timed-out song never starts over a silent ending",opened&&screen==19&&ending_phase==ENDING_WITHOUT_MUSIC&&
+  ending_clock>0&&audio_music_seconds(MUSIC_CREDITS)==0&&!ending_allows_music(MUSIC_CREDITS));
+ audio_test_request_delay(0);
+ if(screen==19)ending_finish();
+ remove(profile_path);remove("selftest-ending-profile.dat.bak");
+ profile_path=old_profile;player.garden.credits_seen=old_seen;
+ screen=old_screen;ending_music_leaving=old_leaving;
+ audio_select_music(soundtrack_context());audio_music(0);
+ #undef ENDING_CHECK
+ fprintf(out,"ENDING CONTROLS RESULT %d/%d\n",pass,total);return pass==total;
+}

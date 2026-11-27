@@ -42,18 +42,22 @@ static void music_battle_tick(void){
 static void mix(void *buffer,unsigned int frames,void *userdata){
     (void)userdata;int16_t *output=buffer;sceKernelWaitSema(lock,1,0);
     int music_gain=music_volume*4096/100;
+    uint32_t end=music_end;
     for(unsigned int i=0;i<frames;i++){
         int value=0,night=playing_plan&&playing_plan->scheme==2;
         int layers=playing_plan?(night?2:3):1;
         int need_drums=!night||battle_music.drums>=2;
         int ready=ring_count[0]>=2;
         if(layers>1&&need_drums)ready&=ring_count[1]>=2;if(layers>2)ready&=ring_count[2]>=2;
-        if(ready&&play_music){
+        int at_end=end&&music_position>=end;
+        if(ready&&play_music&&!at_end){
             int gains[3]={playing_plan&&battle_active?battle_music.main_gain:4096,playing_plan&&battle_active?battle_music.drum_gain:0,playing_plan&&battle_active?battle_music.hat_gain:0};
             int sample=0;
             for(int layer=0;layer<layers;layer++){
                 if(layer==1&&night&&!need_drums)continue;
-                unsigned at=ring_read[layer],next=(at+1)&(MUSIC_RING-1);int v=music_ring[layer][at];if(music_half)v=(v+music_ring[layer][next])/2;
+                unsigned at=ring_read[layer],next=(at+1)&(MUSIC_RING-1);
+                int v=music_ring[layer][at];
+                if(music_half&&(!end||music_position+1<end))v=(v+music_ring[layer][next])/2;
                 sample+=v*gains[layer]/4096;
             }
             if(music_fade<2048)music_fade++;sample=sample*music_fade/2048;
@@ -64,7 +68,7 @@ static void mix(void *buffer,unsigned int frames,void *userdata){
                 if(playing_plan&&source_position>=playing_plan->samples)source_position=playing_plan->loop;
                 tick_fraction+=100;if(tick_fraction>=22050){tick_fraction-=22050;music_battle_tick();}
             }
-        }else if(i==0&&play_music&&music_track>=0)underruns++;
+        }else if(i==0&&play_music&&!at_end&&music_track>=0)underruns++;
         output[i*2]=output[i*2+1]=limit_sample(value);
     }
     sceKernelSignalSema(lock,1);foley_mix(output,frames,effects_volume,music_volume);
@@ -109,16 +113,16 @@ static int stream_worker(SceSize args,void *argp){
     /* Keep both banks at fixed addresses: stdio's setvbuf points into each
        reader. The active bank remains readable while a candidate is opened. */
     MusicReader banks[2][3]={{{0}}};int16_t chunk[3][MUSIC_CHUNK],prime[NIGHT_PRIME];
-    int active=-1,current=-1,failed=-1;uint32_t current_generation=0,failed_generation=0,handled_seek=0;const MusicPlan *plan=0;
+    int active=-1,current=-1;uint32_t current_generation=0,handled_seek=0;const MusicPlan *plan=0;
     while(worker_running){
         if(settings_requested!=settings_written)save_queued_settings();
         int worked=0;
-        if(active>=0){
+        if(active>=0&&(!music_end||music_position<music_end)){
             worked=fill_music_bundle(banks[active],plan,&handled_seek,chunk);
-            if(worked<0){failed_track=failed=current;failed_generation=current_generation;read_errors++;for(int n=0;n<3;n++)music_reader_close(&banks[active][n]);active=-1;}
+            if(worked<0){record_track_error(current,current_generation);for(int n=0;n<3;n++)music_reader_close(&banks[active][n]);active=-1;}
         }
-        int wanted=requested_track;uint32_t generation=requested_generation;
-        if((wanted!=current||generation!=current_generation||active<0)&&!(wanted==failed&&generation==failed_generation)){
+        int wanted=requested_track,once=requested_music_once;uint32_t generation=requested_generation;
+        if((wanted!=current||generation!=current_generation||active<0)&&!(wanted==failed_track&&generation==failed_music_generation)){
             /* Fill the old song before a potentially slow storage operation.
                Rapid stale requests therefore cannot starve active playback. */
             if(active>=0&&worked>0)continue;
@@ -127,13 +131,15 @@ static int stream_worker(SceSize args,void *argp){
             int ok=wanted>=0&&wanted<MUSIC_COUNT&&open_music_bundle(banks[next],wanted,candidate,prime);
             int layers=candidate?(candidate->scheme==2?2:3):1,night=candidate&&candidate->scheme==2;
             if(ok)for(int n=0;n<layers;n++)if(!(night&&n==1)&&music_reader_read(&banks[next][n],chunk[n],MUSIC_CHUNK)!=MUSIC_CHUNK)ok=0;
-            if(!ok){failed_track=failed=wanted;failed_generation=generation;read_errors++;for(int n=0;n<3;n++)music_reader_close(&banks[next][n]);continue;}
-            if(!worker_running||wanted!=requested_track||generation!=requested_generation)continue;
+            if(!ok){record_track_error(wanted,generation);for(int n=0;n<3;n++)music_reader_close(&banks[next][n]);continue;}
+            if(!worker_running||wanted!=requested_track||generation!=requested_generation||once!=requested_music_once)continue;
             sceKernelWaitSema(lock,1,0);
+            track_status[wanted]=TRACK_READY;
             memset(ring_read,0,sizeof(ring_read));memset(ring_write,0,sizeof(ring_write));memset(ring_count,0,sizeof(ring_count));
             for(int n=0;n<layers;n++)if(!(night&&n==1)){memcpy(music_ring[n],chunk[n],sizeof(chunk[n]));ring_write[n]=ring_count[n]=MUSIC_CHUNK;}
-            music_position=source_position=tick_fraction=0;music_half=music_fade=0;playing_plan=candidate;adaptive_music_reset(&battle_music,candidate?candidate->scheme:0);wave_music_cued=0;
-            night_prime_ready=night;night_seek_generation=handled_seek=0;music_track=wanted;music_generation=generation;failed_track=failed=-1;
+            music_position=source_position=tick_fraction=0;music_end=once?banks[next][0].total_samples:0;
+            music_half=music_fade=0;playing_plan=candidate;adaptive_music_reset(&battle_music,candidate?candidate->scheme:0);wave_music_cued=0;
+            night_prime_ready=night;night_seek_generation=handled_seek=0;music_track=wanted;music_generation=generation;failed_track=-1;
             sceKernelSignalSema(lock,1);
             if(active>=0)for(int n=0;n<3;n++)music_reader_close(&banks[active][n]);
             active=next;current=wanted;current_generation=generation;plan=candidate;worked=1;

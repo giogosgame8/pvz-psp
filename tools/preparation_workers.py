@@ -22,6 +22,11 @@ def available_memory():
     return None
 
 
+def can_overlap_music():
+    memory = available_memory()
+    return (os.cpu_count() or 1) >= 8 and memory is not None and memory >= 3 * 1024**3
+
+
 def worker_count(kind, jobs=None):
     logical = os.cpu_count() or 1
     defaults = {'graphics': min(16, max(1, logical - 2)),

@@ -5,8 +5,13 @@ static const int bonus_terrain[4]={0,1,3,4};
 static float garden_clock;static int64_t garden_saved_time;
 static const char *terrains[5]={"DAY","NIGHT","POOL","FOG","ROOF"};
 static const char *garden_tools[TOOL_COUNT]={"WATER","FERTILIZER","BUG SPRAY","PHONOGRAPH","CHOCOLATE","GLOVE: MOVE","SELL PLANT","WHEELBARROW","WAKE STINKY"};
-static void open_extra(int category,int selection,int difficulty){if(!challenge_launch(category==EXTRA_SURVIVAL?1:category==EXTRA_VASE?2:3,category==EXTRA_SURVIVAL?(difficulty==SURVIVAL_ENDLESS?10:difficulty*5+selection):selection))return;if(!replaying)save_current();replaying=1;if(category==EXTRA_SURVIVAL)game_start_survival(&game,selection,difficulty,0x7100+selection+difficulty*17);else game_start_puzzle(&game,category==EXTRA_IZOMBIE,selection,0x7200+selection);read_costs();reset_level_ui();screen=2;paused=help=0;save_current();}
-static void resume_extra(void){checkpoint_flush();Game saved;if(!game_load(&saved,save_storage_path(SAVE_CHALLENGE))||!saved.extra.category){notify("NO SAVED SURVIVAL OR PUZZLE SESSION");return;}if(!replaying)save_current();replaying=1;game=saved;read_costs();reset_level_ui();screen=(game.level_flags&LEVEL_READY)?1:2;paused=0;}
+static void open_extra(int category,int selection,int difficulty){
+ int family=category==EXTRA_SURVIVAL?1:category==EXTRA_VASE?2:3;
+ int entry=family==1?(difficulty==SURVIVAL_ENDLESS?10:difficulty*5+selection):selection;
+ if(!challenge_launch(family,entry))return;
+ LaunchMode mode=family==1?LAUNCH_SURVIVAL:family==2?LAUNCH_VASE:LAUNCH_IZOMBIE;
+ menu_launch_request(mode,selection,difficulty);
+}
 static void draw_survival_menu(void){
  render_background(&assets[A_MINI_BACKGROUND]);ui_header("Survival");int difficulty=survival_cursor/5;static const char *tabs[]={"Normal","Hard","Endless"};
  if(survival_bonus){
@@ -41,16 +46,53 @@ static void draw_extra_overlay(void){
 static void draw_garden(void){
  render_background(&assets[garden_view==GARDEN_MAIN?A_GARDEN_BG:garden_view==GARDEN_AQUARIUM?A_AQUARIUM_BACKGROUND:garden_view==GARDEN_MUSHROOM?A_MUSHROOM_GARDEN:A_GARDEN_BG]);
  if(garden_view==GARDEN_BARROW)render_anim(&assets[A_GARDEN_BARROW],240,223,0,1.3f,WHITE,0);
- for(int s=0;s<(garden_view==GARDEN_MAIN?32:garden_view==GARDEN_BARROW?1:8);s++){int i=garden_find(&player,garden_view,s);float x,y;garden_position(garden_view,s,&x,&y);if(i>=0){if(i!=garden_held)garden_draw_plant(i,x,y);}if(s==garden_slot)render_focus(x-24,y-39,48,43,FOCUS_SAGE);}
- for(int s=0;s<(garden_view==GARDEN_MAIN?32:garden_view==GARDEN_BARROW?1:8);s++){int i=garden_find(&player,garden_view,s);if(i>=0){int need=garden_need(&player,i,(int64_t)time(NULL));if(need){float x,y;garden_position(garden_view,s,&x,&y);render_image(&assets[A_GARDEN_NEEDS],x+8,y-43,20,20,need-1,WHITE);}}}
- if(player.purchases[SHOP_SNAIL]&&garden_view==GARDEN_MAIN){int pose=snail_pose==1?A_SNAIL_TURN:snail_pose==2?A_SNAIL_OUT:snail_pose==3?A_SNAIL_IN:snail_pose==4?A_SNAIL_IDLE:A_SNAIL_WALK;float rate=pose==A_SNAIL_WALK?((player.garden.snail_chocolate>0&&(int64_t)time(NULL)-player.garden.snail_chocolate<3600)?1:.5f):1;garden_anim(pose,player.garden.snail_x,player.garden.snail_y,snail_pose_time*rate,.6f,WHITE,snail_facing,pose==A_SNAIL_WALK||pose==A_SNAIL_IDLE);}
- garden_draw_actions();if(garden_held>=0){float x,y;garden_position(garden_view,garden_slot,&x,&y);garden_draw_plant(garden_held,x,y-12);render_anim(&assets[A_GARDEN_GLOVE],x+16,y-7,0,.7f,WHITE,0);}
+ int slots[GARDEN_MAX_SLOTS],capacity=garden_index_slots(&player,garden_view,slots);
+ int64_t now=(int64_t)time(NULL);
+ for(int s=0;s<capacity;s++){
+  int i=slots[s],draw_plant=i>=0&&i!=garden_held;
+  if(!draw_plant&&s!=garden_slot)continue;
+  float x,y;garden_position(garden_view,s,&x,&y);
+  if(draw_plant)garden_draw_plant(i,x,y,now);
+  if(s==garden_slot)render_focus(x-24,y-39,48,43,FOCUS_SAGE);
+ }
+ /* Draw needs over all plants so an icon cannot be covered by a later pot. */
+ for(int s=0;s<capacity;s++)if(slots[s]>=0){
+  int need=garden_need(&player,slots[s],now);
+  if(need){
+   float x,y;garden_position(garden_view,s,&x,&y);
+   render_image(&assets[A_GARDEN_NEEDS],x+8,y-43,20,20,need-1,WHITE);
+  }
+ }
+ if(player.purchases[SHOP_SNAIL]&&garden_view==GARDEN_MAIN){int pose=snail_pose==1?A_SNAIL_TURN:snail_pose==2?A_SNAIL_OUT:snail_pose==3?A_SNAIL_IN:snail_pose==4?A_SNAIL_IDLE:A_SNAIL_WALK;float rate=pose==A_SNAIL_WALK?((player.garden.snail_chocolate>0&&now-player.garden.snail_chocolate<3600)?1:.5f):1;garden_anim(pose,player.garden.snail_x,player.garden.snail_y,snail_pose_time*rate,.6f,WHITE,snail_facing,pose==A_SNAIL_WALK||pose==A_SNAIL_IDLE);}
+ garden_draw_actions();if(garden_held>=0){float x,y;garden_position(garden_view,garden_slot,&x,&y);garden_draw_plant(garden_held,x,y-12,now);render_anim(&assets[A_GARDEN_GLOVE],x+16,y-7,0,.7f,WHITE,0);}
  for(int i=0;i<32;i++)if(player.garden.coins[i].used){GardenCoin *c=&player.garden.coins[i];render_anim(&assets[c->value>=100?A_COIN_DIAMOND:c->value>=5?A_COIN_GOLD:A_COIN_SILVER],c->x,c->y,garden_clock,.65f,WHITE,1);}
- render_rect(0,0,480,34,RGBA(65,64,33,205));char label[128];snprintf(label,sizeof(label),"%s  $%lu",garden_view==GARDEN_MAIN?"Zen Garden":garden_view==GARDEN_MUSHROOM?"Mushroom Garden":garden_view==GARDEN_AQUARIUM?"Aquarium Garden":"Wheelbarrow",player.money*10);disc_text(8,2,330,label,UI_GOLD,.72f);char tool[64];ui_title_case(tool,sizeof(tool),garden_tools[garden_tool]);snprintf(label,sizeof(label),"%s   Fertilizer %lu   Spray %lu   Chocolate %lu",tool,player.purchases[SHOP_FERTILIZER],player.purchases[SHOP_SPRAY],player.purchases[SHOP_CHOCOLATE]);disc_text(8,18,464,label,WHITE,.57f);ui_hint(message_time>0?message:"L/R: Tool   X: Use   Square: Coins   Triangle: Gardens   Start: Shop   O: Back");
+ render_rect(0,0,480,34,RGBA(65,64,33,205));char label[128];snprintf(label,sizeof(label),"%s  $%lu",garden_view==GARDEN_MAIN?"Zen Garden":garden_view==GARDEN_MUSHROOM?"Mushroom Garden":garden_view==GARDEN_AQUARIUM?"Aquarium Garden":"Wheelbarrow",player.money*10);disc_text(8,2,330,label,UI_GOLD,.72f);char tool[64];ui_title_case(tool,sizeof(tool),garden_tools[garden_tool]);snprintf(label,sizeof(label),"%s   Fertilizer %lu   Spray %lu   Chocolate %lu",tool,garden_available_supply(SHOP_FERTILIZER),garden_available_supply(SHOP_SPRAY),garden_available_supply(SHOP_CHOCOLATE));disc_text(8,18,464,label,WHITE,.57f);ui_hint(message_time>0?message:"L/R: Tool   X: Use   Square: Coins   Triangle: Gardens   Start: Shop   O: Back");
 
  if(garden_sale>=0){ui_dialog(75,88,330,105,"");snprintf(label,sizeof(label),"Sell this plant for $%d?\n\nX: Sell   O: Keep plant",garden_sell_price(&player,garden_sale)*10);disc_text(95,106,290,label,WHITE,.75f);}
 }
-static void draw_tree(void){render_image(&assets[A_TREE_STAGES],0,0,480,272,(player.garden.tree_height>51?51:player.garden.tree_height)-1,WHITE);char line[96];snprintf(line,sizeof(line),"TREE OF WISDOM: %lu FEET   FOOD %lu",player.garden.tree_height,player.purchases[SHOP_TREE_FOOD]);render_rect(0,0,480,25,RGBA(45,58,27,200));disc_text(8,3,464,line,UI_GOLD,.7f);char key[64];snprintf(key,sizeof(key),"TREE_OF_WISDOM_%lu",player.garden.tree_tip?player.garden.tree_tip:1);char tip[2048];textdb_get(key,tip,sizeof(tip));render_rect(143,50,330,180,RGBA(245,232,194,245));disc_text(153,60,310,tip,RGBA(42,33,22,255),strlen(tip)>250?.65f:.75f);ui_hint("X: Feed   Square: Repeat tip   Start: Shop   O: Garden");}
+static char tree_tip_text[2048];
+static uint32_t tree_tip_loaded;
+static float tree_tip_scale;
+static void load_tree_tip(uint32_t tip){
+ if(!tip)tip=1;
+ if(tree_tip_loaded==tip)return;
+ char key[64];
+ snprintf(key,sizeof(key),"TREE_OF_WISDOM_%lu",tip);
+ textdb_get(key,tree_tip_text,sizeof(tree_tip_text));
+ tree_tip_scale=strlen(tree_tip_text)>250?.65f:.75f;
+ tree_tip_loaded=tip;
+}
+static void draw_tree(void){
+ uint32_t height=player.garden.tree_height;
+ render_image(&assets[A_TREE_STAGES],0,0,480,272,(height>51?51:height)-1,WHITE);
+ char line[96];
+ snprintf(line,sizeof(line),"TREE OF WISDOM: %lu FEET   FOOD %lu",height,player.purchases[SHOP_TREE_FOOD]);
+ render_rect(0,0,480,25,RGBA(45,58,27,200));disc_text(8,3,464,line,UI_GOLD,.7f);
+ load_tree_tip(player.garden.tree_tip);
+ render_rect(143,50,330,180,RGBA(245,232,194,245));
+ disc_text(153,60,310,tree_tip_text,RGBA(42,33,22,255),tree_tip_scale);
+ ui_hint("X: Feed   Square: Repeat tip   Start: Shop   O: Garden");
+}
 static int extra_menu_input(uint32_t pressed,SceCtrlData *pad,float dt){
  (void)pad;(void)dt;
  if(screen==14){
@@ -58,7 +100,7 @@ static int extra_menu_input(uint32_t pressed,SceCtrlData *pad,float dt){
    if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_SQUARE)){survival_bonus=0;return 1;}
    if(pressed&PSP_CTRL_LEFT)bonus_cursor=(bonus_cursor+3)%4;
    if(pressed&PSP_CTRL_RIGHT)bonus_cursor=(bonus_cursor+1)%4;
-   if(pressed&PSP_CTRL_CROSS)open_extra(EXTRA_SURVIVAL,bonus_terrain[bonus_cursor],SURVIVAL_ENDLESS);
+   if(pressed&PSP_CTRL_CROSS){open_extra(EXTRA_SURVIVAL,bonus_terrain[bonus_cursor],SURVIVAL_ENDLESS);return 1;}
   }else{
    if(pressed&PSP_CTRL_LEFT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+4)%5;
    if(pressed&PSP_CTRL_RIGHT)survival_cursor=survival_cursor/5*5+(survival_cursor%5+1)%5;
@@ -66,20 +108,67 @@ static int extra_menu_input(uint32_t pressed,SceCtrlData *pad,float dt){
    if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RTRIGGER))survival_cursor=(survival_cursor+5)%15;
    if(survival_cursor>=10)survival_cursor=12;
    if((pressed&PSP_CTRL_SQUARE)&&survival_cursor==12&&challenge_available(1,10)){survival_bonus=1;bonus_cursor=0;return 1;}
-   if(pressed&PSP_CTRL_CROSS)open_extra(EXTRA_SURVIVAL,survival_cursor%5,survival_cursor/5);
-   if(pressed&PSP_CTRL_CIRCLE)screen=6;
+   if(pressed&PSP_CTRL_CROSS){open_extra(EXTRA_SURVIVAL,survival_cursor%5,survival_cursor/5);return 1;}
+   if(pressed&PSP_CTRL_CIRCLE){screen=6;return 1;}
   }
   if(pressed&PSP_CTRL_TRIANGLE)resume_extra();return 1;
  }
- if(screen==15){if(pressed&PSP_CTRL_LEFT)puzzle_cursor=(puzzle_cursor+9)%10;if(pressed&PSP_CTRL_RIGHT)puzzle_cursor=(puzzle_cursor+1)%10;if(pressed&(PSP_CTRL_UP|PSP_CTRL_DOWN))puzzle_cursor=(puzzle_cursor+5)%10;if(pressed&(PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER))puzzle_family^=1;if(pressed&PSP_CTRL_CROSS)open_extra(puzzle_family?EXTRA_IZOMBIE:EXTRA_VASE,puzzle_cursor,0);if(pressed&PSP_CTRL_TRIANGLE)resume_extra();if(pressed&PSP_CTRL_CIRCLE)screen=6;return 1;}
- if(screen==16){int cap=garden_view==GARDEN_MAIN?32:garden_view==GARDEN_BARROW?1:8;
-  if(garden_sale>=0){if(pressed&PSP_CTRL_CROSS){garden_flush();garden_sell(&player,garden_sale);foley_play(FOLEY_MONEYFALLS);garden_sale=-1;persist_profile();}if(pressed&PSP_CTRL_CIRCLE)garden_sale=-1;return 1;}
+ if(screen==15){if(pressed&PSP_CTRL_LEFT)puzzle_cursor=(puzzle_cursor+9)%10;if(pressed&PSP_CTRL_RIGHT)puzzle_cursor=(puzzle_cursor+1)%10;if(pressed&(PSP_CTRL_UP|PSP_CTRL_DOWN))puzzle_cursor=(puzzle_cursor+5)%10;if(pressed&(PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER))puzzle_family^=1;if(pressed&PSP_CTRL_CROSS){open_extra(puzzle_family?EXTRA_IZOMBIE:EXTRA_VASE,puzzle_cursor,0);return 1;}if(pressed&PSP_CTRL_CIRCLE)screen=6;else if(pressed&PSP_CTRL_TRIANGLE)resume_extra();return 1;}
+ if(screen==16){int cap=garden_slot_count(garden_view);
+  if(garden_sale>=0){
+   if(pressed&PSP_CTRL_CIRCLE)garden_sale=-1;
+   else if(pressed&PSP_CTRL_CROSS){
+    if(!garden_flush())return 1;
+    Profile next=player;
+    if(!garden_sell(&next,garden_sale))garden_sale=-1;
+    else if(commit_profile_change(&next,"COULD NOT SAVE THE SALE")){
+     garden_sale=-1;foley_play(FOLEY_MONEYFALLS);
+    }
+   }
+   return 1;
+  }
   if(pressed&PSP_CTRL_LEFT)garden_slot=(garden_slot+cap-1)%cap;if(pressed&PSP_CTRL_RIGHT)garden_slot=(garden_slot+1)%cap;if(pressed&PSP_CTRL_UP)garden_slot=(garden_slot+cap-8)%cap;if(pressed&PSP_CTRL_DOWN)garden_slot=(garden_slot+8)%cap;if(pressed&PSP_CTRL_LTRIGGER)garden_tool=(garden_tool+TOOL_COUNT-1)%TOOL_COUNT;if(pressed&PSP_CTRL_RTRIGGER)garden_tool=(garden_tool+1)%TOOL_COUNT;
-  if(pressed&PSP_CTRL_SQUARE){if(garden_collect(&player))foley_play(FOLEY_COIN);if(!garden_pending())persist_profile();}
-  if(pressed&PSP_CTRL_TRIANGLE){garden_flush();screen=22;garden_picker_cursor=garden_view;}
-  if(pressed&PSP_CTRL_CROSS){int i=garden_find(&player,garden_view,garden_slot);if(garden_held>=0){garden_flush();if(garden_move(&player,garden_held,garden_view,garden_slot)){garden_held=-1;foley_play(FOLEY_DROP);persist_profile();}else notify("THIS MOVE NEEDS AN EMPTY SLOT AND THE RIGHT TOOL");}
+  if(pressed&PSP_CTRL_SQUARE){
+   Profile next=player;
+   if(garden_collect(&next)&&commit_profile_change(&next,"COULD NOT SAVE THE COINS"))foley_play(FOLEY_COIN);
+  }
+  if(pressed&PSP_CTRL_TRIANGLE){
+   if(garden_flush()){screen=22;garden_picker_cursor=garden_view;}
+   return 1;
+  }
+  if(pressed&PSP_CTRL_CROSS){int i=garden_find(&player,garden_view,garden_slot);if(garden_held>=0){
+    if(!garden_flush())return 1;
+    Profile next=player;
+    if(!garden_move(&next,garden_held,garden_view,garden_slot))notify("THIS MOVE NEEDS AN EMPTY SLOT AND THE RIGHT TOOL");
+    else if(commit_profile_change(&next,"COULD NOT SAVE THE MOVE")){garden_held=-1;foley_play(FOLEY_DROP);}
+   }
    else if(garden_tool==TOOL_GLOVE||garden_tool==TOOL_BARROW){if(i>=0&&!garden_busy(i)&&(garden_tool==TOOL_GLOVE?player.purchases[SHOP_GLOVE]:player.purchases[SHOP_BARROW])){garden_held=i;foley_play(FOLEY_FLOOP);}}else if(garden_tool==TOOL_SELL){if(!garden_busy(i))garden_sale=i;}else if(garden_action_start(i,garden_tool)){}else notify("PLANT DOES NOT NEED THIS, OR YOU NEED SUPPLIES");}
-  if(pressed&PSP_CTRL_START){garden_flush();persist_profile();store_return=16;screen=9;store_cursor=14;}if(pressed&PSP_CTRL_CIRCLE){garden_flush();garden_held=-1;garden_collect(&player);persist_profile();screen=garden_return;garden_return=11;}return 1;}
- if(screen==17){if(pressed&PSP_CTRL_CROSS){if(garden_tree_feed(&player)){persist_profile();audio_play(SFX_PLANT);}else notify("BUY TREE FOOD IN THE SHOP");}if(pressed&PSP_CTRL_SQUARE){player.garden.tree_tip=player.garden.tree_height>3?2+player.garden.rng%((player.garden.tree_height<49?player.garden.tree_height:49)-2):1;persist_profile();}if(pressed&PSP_CTRL_START){store_return=17;screen=9;store_cursor=26;}if(pressed&PSP_CTRL_CIRCLE)screen=16;return 1;}
+  if(pressed&PSP_CTRL_CIRCLE){
+   if(!garden_flush())return 1;
+   Profile next=player;garden_collect(&next);
+   if(commit_profile_change(&next,"COULD NOT SAVE THE GARDEN")){
+    garden_held=-1;screen=garden_return;garden_return=11;
+   }
+  }else if(pressed&PSP_CTRL_START){
+   if(garden_flush()&&persist_profile()){store_return=16;screen=9;store_cursor=14;}
+  }
+  return 1;
+ }
+ if(screen==17){
+  if(pressed&PSP_CTRL_CROSS){
+   Profile next=player;
+   if(!garden_tree_feed(&next))notify("BUY TREE FOOD IN THE SHOP");
+   else if(commit_profile_change(&next,"COULD NOT SAVE TREE GROWTH"))audio_play(SFX_PLANT);
+  }
+  if(pressed&PSP_CTRL_SQUARE){
+   Profile next=player;
+   next.garden.tree_tip=next.garden.tree_height>3?2+next.garden.rng%((next.garden.tree_height<49?next.garden.tree_height:49)-2):1;
+   commit_profile_change(&next,"COULD NOT SAVE THE TREE TIP");
+  }
+  if(pressed&(PSP_CTRL_START|PSP_CTRL_CIRCLE))tree_tip_loaded=0;
+  if(pressed&PSP_CTRL_START){store_return=17;screen=9;store_cursor=26;}
+  if(pressed&PSP_CTRL_CIRCLE)screen=16;
+  return 1;
+ }
  return 0;
 }

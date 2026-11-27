@@ -34,7 +34,8 @@
     g.zombies[id].used=0;id=game_spawn_zombie(&g,2,Z_GARG,350);CHECK("completion normal Gargantuar cannot inherit a recycled Giga flag",!g.completion.giga[id]&&g.zombies[id].hp==3000);
     uint32_t old_header[4]={0x31535650,11,offsetof(Game,completion),checksum(&g,offsetof(Game,completion))};FILE *old_file=fopen("completion-v11.dat","wb");int wrote=old_file&&fwrite(old_header,sizeof(old_header),1,old_file)==1&&fwrite(&g,old_header[2],1,old_file)==1;if(old_file)fclose(old_file);
     CHECK("completion version eleven saves import with a fresh campaign tail",wrote&&game_load(&restored,"completion-v11.dat")&&!restored.completion.adventure_run&&!restored.completion.locked_seeds&&restored.level==49);
-    g.completion.yeti_timer[0]=NAN;game_save(&g,"completion-invalid.dat");CHECK("completion nonfinite campaign timers are rejected",!game_load(&restored,"completion-invalid.dat"));
+    g.completion.yeti_timer[0]=NAN;CHECK("completion nonfinite campaign timers are rejected",
+        write_board_fixture(&g,"completion-invalid.dat")&&!game_load(&restored,"completion-invalid.dat"));
     game_start_adventure(&g,1,2130,1);CHECK("completion repeat tutorial stages use full twenty-wave boards",g.num_waves==20&&game_seed_slot(&g,0)>=0&&game_seed_locked(&g,game_seed_slot(&g,0)));
     game_start_adventure(&g,1,2131,1);g.status=WON;CHECK("completion repeat seed rewards become money bags",game_reward_type(&g)==REWARD_MONEY_BAG&&game_reward_seed(&g)<0);
     game_collect_reward(&g);int paid=g.money_collected;game_collect_reward(&g);CHECK("completion repeated reward clicks cannot duplicate bag coins",paid==25&&g.money_collected==paid);
@@ -66,5 +67,56 @@
     restored.sun=300;int repaired=game_save(&restored,recovery);damaged=fopen(recovery,"wb");if(damaged){fwrite("broken",6,1,damaged);fclose(damaged);}
     CHECK("save repairing gameplay never rotates corrupt data into its backup",repaired&&game_load(&restored,recovery)&&game_load_backup_used()&&restored.sun==100);
     remove(recovery);remove("completion-recovery.dat.bak");restored.sun=432;CHECK("save absent gameplay files preserve the caller's state",!game_load(&restored,recovery)&&restored.sun==432);
+    game_start_level(&g,9,2136);g.sun=500;int good_board=game_save(&g,recovery);
+    g.plants[0][0].kind=ALL_SEEDS;int bad_plant=!game_save(&g,recovery);g.plants[0][0].kind=-1;
+    g.support[0][0]=ALL_SEEDS+1;int bad_support=!game_save(&g,recovery);g.support[0][0]=0;
+    shoot(&g,2,220,0);g.shots[0].ice=SHOT_KIND_COUNT;
+    CHECK("save rejects invalid board entries before replacing a checkpoint",
+          good_board&&bad_plant&&bad_support&&!game_save(&g,recovery)&&game_load(&restored,recovery)&&restored.sun==500);
+    uint32_t old_writer[4]={0x31535650,14,sizeof(g),checksum(&g,sizeof(g))};
+    int bad_board=save_file_replace(recovery,old_writer,&g,NULL,NULL);
+    CHECK("save loads the backup when the current checkpoint has invalid board data",
+          bad_board&&game_load(&restored,recovery)&&game_load_backup_used()&&restored.sun==500);
+    const char *rejected="completion-rejected-board.dat";
+    remove(rejected);remove("completion-rejected-board.dat.bak");
+    uint32_t restored_hash=checksum(&restored,sizeof(restored));
+    int invalid_only=save_file_replace(rejected,old_writer,&g,NULL,NULL);
+    CHECK("save validation failure leaves the live board byte-identical",
+          invalid_only&&!game_load(&restored,rejected)&&!game_load_backup_used()&&
+          checksum(&restored,sizeof(restored))==restored_hash);
+    remove(rejected);
+    restored.sun=600;int fixed_board=game_save(&restored,recovery);
+    remove(recovery);
+    CHECK("save repairing invalid board data retains the last valid backup",
+          fixed_board&&game_load(&restored,recovery)&&game_load_backup_used()&&restored.sun==500);
+    remove("completion-recovery.dat.bak");
+    game_start_level(&g,19,2187);g.sun=610;
+    int initial=game_save(&g,recovery);g.sun=620;
+    int rotated=game_save(&g,recovery);
+    g.polish024.rise_delay=NAN;
+    CHECK("a board the loader would reject cannot replace the current checkpoint",
+          initial&&rotated&&!game_save(&g,recovery)&&game_load(&restored,recovery)&&
+          !game_load_backup_used()&&restored.sun==620);
+    int written_bad=write_board_fixture(&g,recovery);
+    int recovered_good=game_load(&restored,recovery)&&game_load_backup_used()&&restored.sun==610;
+    restored.sun=630;
+    int wrote_repair=game_save(&restored,recovery);
+    int primary_ok=game_load(&restored,recovery)&&!game_load_backup_used()&&restored.sun==630;
+    remove(recovery);
+    CHECK("repair preserves a valid backup when the old primary was checksummed but unloadable",
+          written_bad&&recovered_good&&wrote_repair&&primary_ok&&game_load(&restored,recovery)&&
+          game_load_backup_used()&&restored.sun==610);
+    remove("completion-recovery.dat.bak");
+    game_start_level(&g,35,2137);g.stage=0;g.vases[0][1]=1;
+    int early_vase=legacy071_fixture(&g,recovery,7)&&game_load(&restored,recovery)&&restored.extra.vase_content[0][1]==SQUASH;
+    g.stage=3;g.status=WON;
+    CHECK("save legacy vase reconstruction handles left columns and completed boards",
+          early_vase&&legacy071_fixture(&g,recovery,7)&&game_load(&restored,recovery)&&restored.stage==3&&restored.status==WON);
+    g.sun=345;
+    CHECK("a readable legacy primary remains available after being rotated to the backup",
+          game_save(&g,recovery)&&game_load(&restored,"completion-recovery.dat.bak")&&
+          restored.stage==3&&restored.status==WON&&restored.sun!=345);
+    remove(recovery);
+    remove("completion-recovery.dat.bak");
     for(int n=0;n<4;n++){const char *path=(const char*[]){"completion-state.dat","completion-giga.dat","completion-v11.dat","completion-invalid.dat"}[n];char backup[96];snprintf(backup,sizeof(backup),"%s.bak",path);remove(path);remove(backup);}
 }

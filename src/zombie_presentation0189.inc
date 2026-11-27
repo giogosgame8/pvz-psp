@@ -1,3 +1,11 @@
+static int zombotany_head_asset(const Zombie *z,int index,int body){
+ static const int heads[]={-1,A_PEA_HEAD,A_WALLNUT,A_JALAPENO,A_GATLING,A_SQUASH,A_TALLNUT};
+ int head=game.mini.zombie_heads[index];
+ if(z->death>0||body>=2||(unsigned)head>=sizeof(heads)/sizeof(*heads))return -1;
+ if((head==2||head==6)&&z->armor<=0)return -1;
+ return heads[head];
+}
+
 /* Shared by drawing and chewing cues so both use the same clip and clock. */
 static const Animation *zombie_visible_clip(const Zombie *z,int index,int *body_result){
  int asset=z->death>0?A_ZOMBIE_DEATH:z->armor>0&&z->kind==1?(z->eating?A_CONE_EAT:A_CONE):z->armor>0&&z->kind==2?(z->eating?A_BUCKET_EAT:A_BUCKET):(z->eating?A_ZOMBIE_EAT:A_ZOMBIE);

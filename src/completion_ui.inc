@@ -30,7 +30,13 @@ static int completion_ui_input(uint32_t pressed){
     if(screen!=29)return 0;
     if(pressed&(PSP_CTRL_LEFT|PSP_CTRL_UP))house_cursor=(house_cursor+4)%5;
     if(pressed&(PSP_CTRL_RIGHT|PSP_CTRL_DOWN))house_cursor=(house_cursor+1)%5;
-    if((pressed&PSP_CTRL_SQUARE)||((pressed&PSP_CTRL_CROSS)&&!profile_house_owned(&player,house_cursor))){Profile old=player;int item=profile_house_item(house_cursor);if(profile_purchase(&player,item)){if(!persist_profile()){player=old;notify("COULD NOT SAVE YOUR PURCHASE");}else{foley_play(FOLEY_COIN);notify("HOUSE RENOVATED");}}else notify(profile_item_available(&player,item)?"NOT ENOUGH MONEY":"BLUEPRINTS NOT AVAILABLE");return 1;}
+    if((pressed&PSP_CTRL_SQUARE)||((pressed&PSP_CTRL_CROSS)&&!profile_house_owned(&player,house_cursor))){
+        int item=profile_house_item(house_cursor);
+        PurchaseResult result=purchase_item(item);
+        if(result==PURCHASE_SAVED){foley_play(FOLEY_COIN);notify("HOUSE RENOVATED");}
+        else if(result==PURCHASE_REJECTED)notify(profile_item_available(&player,item)?"NOT ENOUGH MONEY":"BLUEPRINTS NOT AVAILABLE");
+        return 1;
+    }
     if(pressed&PSP_CTRL_CROSS){uint32_t old=player.completion.house_selected;if(profile_choose_house(&player,house_cursor)){if(persist_profile()){foley_sample(FX_TAP);notify("HOUSE SELECTED");}else{player.completion.house_selected=old;notify("COULD NOT SAVE THE HOUSE");}}}
     if(pressed&PSP_CTRL_CIRCLE)screen=25;return 1;
 }

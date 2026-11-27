@@ -8,10 +8,10 @@ static void live_combat_setup(int pool){
   *game_seed_cooldown(&game,k)=0;game_place(&game,r,c,k);
  }
  for(int n=0;n<(pool?42:30);n++){int r=n%game_rows(&game),kind=n%6==0?Z_BUCKET:n%3==0?Z_CONE:Z_NORMAL;game_spawn_zombie(&game,r,kind,285+n/game_rows(&game)*24);}
- reset_level_ui();read_costs();debug_info=1;live_replenished=live_updates=0;live_combat_seconds=0;live_music_timer=0;
+ reset_level_ui();apply_level_profile();debug_info=1;live_replenished=live_updates=0;live_combat_seconds=0;live_music_timer=0;
 }
 static void live_combat_step(float dt,float *accumulator){
- live_updates+=advance_game_frame(&game,dt,accumulator);live_combat_seconds+=dt;
+ live_updates+=advance_game_frame(&game,dt,accumulator,0);live_combat_seconds+=dt;
  /* Keep the synthetic scene populated; ordinary collision, damage, projectiles,
     sounds and deaths run through the same path used by real gameplay. */
  game.status=PLAYING;game.spawn_timer=100000;

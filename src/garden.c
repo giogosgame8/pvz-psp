@@ -12,7 +12,22 @@ void garden_position(int garden,int slot,float *x,float *y){
 }
 int garden_count(const Profile *p,int garden){int n=0;for(int i=0;i<GARDEN_PLANTS;i++)n+=p->garden.plants[i].used&&p->garden.plants[i].garden==garden;return n;}
 int garden_find(const Profile *p,int garden,int slot){for(int i=0;i<GARDEN_PLANTS;i++)if(p->garden.plants[i].used&&p->garden.plants[i].garden==garden&&p->garden.plants[i].slot==slot)return i;return -1;}
-static int free_slot(const Profile *p,int garden){int cap=garden==GARDEN_MAIN?32:garden==GARDEN_BARROW?1:8;for(int i=0;i<cap;i++)if(garden_find(p,garden,i)<0)return i;return -1;}
+int garden_slot_count(int garden){return garden==GARDEN_MAIN?GARDEN_MAX_SLOTS:garden==GARDEN_BARROW?1:8;}
+int garden_index_slots(const Profile *p,int garden,int slots[GARDEN_MAX_SLOTS]){
+    int capacity=garden_slot_count(garden);
+    for(int slot=0;slot<capacity;slot++)slots[slot]=-1;
+    for(int i=0;i<GARDEN_PLANTS;i++){
+        const GardenPlant *plant=&p->garden.plants[i];
+        if(plant->used&&plant->garden==garden&&(unsigned)plant->slot<(unsigned)capacity&&slots[plant->slot]<0)
+            slots[plant->slot]=i;
+    }
+    return capacity;
+}
+static int free_slot(const Profile *p,int garden){
+    int slots[GARDEN_MAX_SLOTS],capacity=garden_index_slots(p,garden,slots);
+    for(int i=0;i<capacity;i++)if(slots[i]<0)return i;
+    return -1;
+}
 int garden_add(Profile *p,int kind,int64_t now){int slot=free_slot(p,GARDEN_MAIN);if(slot<0||kind<0||kind>=ALL_SEEDS)return 0;for(int i=0;i<GARDEN_PLANTS;i++)if(!p->garden.plants[i].used){p->garden.plants[i]=(GardenPlant){.used=1,.kind=kind,.slot=slot,.required=3+next(p)%3,.variation=(kind==MARIGOLD?1+next(p)%11:0)|(next(p)%2?16:0),.watered=now-20,.coin_timer=20};return 1;}return 0;}
 void garden_initialize(Profile *p,int64_t now){if(p->garden.initialized||p->highest<45)return;p->garden.initialized=1;p->garden.rng=(uint32_t)now^0x6a720ab3;garden_add(p,MARIGOLD,now);garden_add(p,MARIGOLD,now);for(int i=0;i<2;i++)p->garden.plants[i].required=3;p->purchases[SHOP_FERTILIZER]+=5;p->garden.snail_x=50;p->garden.snail_y=230;}
 static int same_day(int64_t a,int64_t b){return a>0&&b>=a&&a/86400==b/86400;}
@@ -40,7 +55,7 @@ int garden_use(Profile *p,int index,int tool,int64_t now){
     int count=care(p,index,tool,now);if(tool==TOOL_WATER&&p->purchases[SHOP_GOLD_CAN]){GardenPlant *v=&p->garden.plants[index];for(int i=0;i<GARDEN_PLANTS;i++)if(i!=index&&p->garden.plants[i].used&&p->garden.plants[i].garden==v->garden&&abs(p->garden.plants[i].slot%8-v->slot%8)<=1&&abs(p->garden.plants[i].slot/8-v->slot/8)<=1)count+=care(p,i,tool,now);}return count;
 }
 int garden_move(Profile *p,int index,int garden,int slot){
-    if(index<0||index>=GARDEN_PLANTS||!p->garden.plants[index].used||garden<0||garden>3)return 0;GardenPlant *v=&p->garden.plants[index];int cap=garden==GARDEN_MAIN?32:garden==GARDEN_BARROW?1:8;
+    if(index<0||index>=GARDEN_PLANTS||!p->garden.plants[index].used||garden<0||garden>3)return 0;GardenPlant *v=&p->garden.plants[index];int cap=garden_slot_count(garden);
     if(slot<0||slot>=cap||garden_find(p,garden,slot)>=0||(garden==GARDEN_AQUARIUM&&!aquatic(v->kind)))return 0;
     if(garden==v->garden){if(!p->purchases[SHOP_GLOVE])return 0;}else{if(!p->purchases[SHOP_BARROW]||(garden==GARDEN_MUSHROOM&&!p->purchases[SHOP_MUSHROOM_GARDEN])||(garden==GARDEN_AQUARIUM&&!p->purchases[SHOP_AQUARIUM]))return 0;if(garden!=GARDEN_BARROW&&v->garden!=GARDEN_BARROW)return 0;}
     v->garden=garden;v->slot=slot;return 1;

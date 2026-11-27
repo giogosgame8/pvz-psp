@@ -16,6 +16,7 @@ static uint16_t __attribute__((aligned(16))) font_swizzled[128*64];
 static uint16_t *const font_vram=(uint16_t*)(0x04000000+512*272*2*2+512*512*2);
 static uint16_t *const background_vram=(uint16_t*)(0x04000000+512*272*2*2);
 static const Animation *background_source;
+static int clip_left,clip_top,clip_right=480,clip_bottom=272;
 static const uint16_t *bound_pixels;
 static int bound_tw,bound_th,bound_filter,texturing;
 static RenderStats stats;
@@ -27,7 +28,7 @@ typedef struct { float u,v;uint32_t color;float x,y,z; } TexturedVertex;
 typedef struct { uint32_t color;float x,y,z; } ColorVertex;
 
 // Original 5x7 bitmap lettering for the prototype UI; no external font asset.
-static const char *alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/+!?()$',\"";
+static const char *alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/+!?()$',\"_";
 static const uint8_t glyphs[][7]={
  {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
  {30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
@@ -44,7 +45,8 @@ static const uint8_t glyphs[][7]={
  {14,17,17,15,1,1,14},{0,4,4,0,4,4,0},{0,0,0,0,0,6,6},
  {0,0,0,31,0,0,0},{1,2,2,4,8,8,16},{0,4,4,31,4,4,0},
  {4,4,4,4,4,0,4},{14,17,1,2,4,0,4},{2,4,8,8,8,4,2},{8,4,2,2,2,4,8},
- {4,15,20,14,5,30,4},{4,4,8,0,0,0,0},{0,0,0,0,0,4,8},{10,10,20,0,0,0,0}
+ {4,15,20,14,5,30,4},{4,4,8,0,0,0,0},{0,0,0,0,0,4,8},{10,10,20,0,0,0,0},
+ {0,0,0,0,0,0,31}
 };
 
 static uint64_t tick(void){uint64_t value;sceRtcGetCurrentTick(&value);return value;}
@@ -80,7 +82,17 @@ static void quad(uint16_t *pixels,int tw,int th,float u,float v,float uw,float v
     stats.draw_calls++;
 }
 
+static int outside_clip(float x,float y,float w,float h){
+    return x+w<=clip_left||y+h<=clip_top||x>=clip_right||y>=clip_bottom;
+}
+static void animation_quad(const Animation *a,int frame,float u,float v,float uw,float vh,
+                           float x,float y,float w,float h,uint32_t color){
+    if(w>=0&&h>=0&&outside_clip(x,y,w,h))return;
+    quad(animation_frame(a,frame),a->tw,a->th,u,v,uw,vh,x,y,w,h,color);
+}
+
 void render_init(void){
+    background_source=0;
     for(size_t i=0;i<strlen(alphabet);i++){
         int code=(unsigned char)alphabet[i],ox=(code%16)*8,oy=(code/16)*8;
         for(int y=0;y<7;y++)for(int x=0;x<5;x++)if(glyphs[i][y]&(1<<(4-x)))font_pixels[(oy+y)*128+ox+x]=0xffff;
@@ -91,7 +103,7 @@ void render_init(void){
     // RGB565 scanout halves framebuffer traffic; textures retain RGBA4444 alpha.
     sceGuDrawBuffer(GU_PSM_5650,(void*)0,512);sceGuDispBuffer(480,272,(void*)(512*272*2),512);
     sceGuOffset(2048-240,2048-136);sceGuViewport(2048,2048,480,272);
-    sceGuScissor(0,0,480,272);sceGuEnable(GU_SCISSOR_TEST);sceGuDisable(GU_DEPTH_TEST);
+    render_clip(0,0,480,272);sceGuEnable(GU_SCISSOR_TEST);sceGuDisable(GU_DEPTH_TEST);
     sceGuEnable(GU_BLEND);sceGuBlendFunc(GU_ADD,GU_SRC_ALPHA,GU_ONE_MINUS_SRC_ALPHA,0,0);
     sceGuShadeModel(GU_SMOOTH);
     sceGuAlphaFunc(GU_GREATER,0,0xff);sceGuEnable(GU_ALPHA_TEST);
@@ -145,20 +157,81 @@ static void focus_point(float x,float y,float w,float h,float radius,int corner,
     *px=x+(corner==0||corner==3?radius:w-radius)+radius*dx;
     *py=y+(corner<2?radius:h-radius)+radius*dy;
 }
-static void focus_band(float x,float y,float w,float h,float radius,float outer,float inner,uint32_t outside,uint32_t inside){
-    ColorVertex *p=sceGuGetMemory(50*sizeof(*p));int n=0;
-    for(int k=0;k<=24;k++){int corner=k==24?0:k/6,segment=k==24?0:k%6;float px,py;
-        focus_point(x+outer,y+outer,w-2*outer,h-2*outer,fmaxf(0,radius-outer),corner,segment,&px,&py);p[n++]=(ColorVertex){outside,px,py,0};
-        focus_point(x+inner,y+inner,w-2*inner,h-2*inner,fmaxf(0,radius-inner),corner,segment,&px,&py);p[n++]=(ColorVertex){inside,px,py,0};
+enum { FOCUS_POINTS=25, FOCUS_EDGES=4, FOCUS_STRIP=FOCUS_POINTS*2 };
+static void focus_edges(ColorVertex edges[FOCUS_EDGES][FOCUS_POINTS],float x,float y,float w,float h,uint32_t tone){
+    static const float offsets[FOCUS_EDGES]={-2.5f,0,1.2f,2.5f};
+    static const uint32_t alphas[FOCUS_EDGES]={0,190u<<24,125u<<24,0};
+    float radius=fminf(6,fminf(w,h)*.18f);
+    uint32_t rgb=tone&0xffffffu;
+    for(int edge=0;edge<FOCUS_EDGES;edge++){
+        float offset=offsets[edge],r=fmaxf(0,radius-offset);
+        for(int k=0;k<FOCUS_POINTS-1;k++){
+            float px,py;
+            focus_point(x+offset,y+offset,w-2*offset,h-2*offset,r,k/6,k%6,&px,&py);
+            edges[edge][k]=(ColorVertex){rgb|alphas[edge],px,py,0};
+        }
+        edges[edge][FOCUS_POINTS-1]=edges[edge][0];
     }
+}
+static void fill_focus_strip(ColorVertex *p,const ColorVertex *outside,const ColorVertex *inside){
+    for(int k=0;k<FOCUS_POINTS;k++){p[k*2]=outside[k];p[k*2+1]=inside[k];}
+}
+static void submit_focus_strip(ColorVertex *p,int count){
     if(texturing){sceGuDisable(GU_TEXTURE_2D);texturing=0;}
-    sceGuDrawArray(GU_TRIANGLE_STRIP,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,n,0,p);stats.draw_calls++;
+    sceGuDrawArray(GU_TRIANGLE_STRIP,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,count,0,p);
+    stats.draw_calls++;
 }
 void render_focus(float x,float y,float w,float h,uint32_t tone){
-    if(w<8||h<8)return;float radius=fminf(6,fminf(w,h)*.18f);uint32_t rgb=tone&0xffffffu;
-    focus_band(x,y,w,h,radius,-2.5f,0,rgb,rgb|(190u<<24));
-    focus_band(x,y,w,h,radius,0,1.2f,rgb|(190u<<24),rgb|(125u<<24));
-    focus_band(x,y,w,h,radius,1.2f,2.5f,rgb|(125u<<24),rgb);
+    if(w<8||h<8)return;
+    ColorVertex edges[FOCUS_EDGES][FOCUS_POINTS];
+    focus_edges(edges,x,y,w,h,tone);
+    ColorVertex *p=sceGuGetMemory((3*FOCUS_STRIP+4)*sizeof(*p));
+    int used=0;
+    for(int band=0;band<FOCUS_EDGES-1;band++){
+        if(band){
+            /* Repeated endpoints join the strips without adding a visible triangle. */
+            p[used]=p[used-1];used++;
+            p[used++]=edges[band][0];
+        }
+        fill_focus_strip(p+used,edges[band],edges[band+1]);
+        used+=FOCUS_STRIP;
+    }
+    submit_focus_strip(p,used);
+}
+
+int render_focus_selftest(void){
+    static const float frames[][4]={{30,42,37,34},{63.5f,61.25f,33,40},{-3,15,45,29}};
+    const char *paths[]={"review-focus-separate.ppm","review-focus-batched.ppm"};
+    int ok=1;
+    for(int grouped=0;grouped<2;grouped++){
+        render_begin();render_clip(4,18,470,240);
+        for(int k=0;k<3;k++){
+            const float *f=frames[k];uint32_t color=k==1?FOCUS_ACTION:FOCUS_SAGE;
+            if(grouped)render_focus(f[0],f[1],f[2],f[3],color);
+            else{
+                ColorVertex edges[FOCUS_EDGES][FOCUS_POINTS];
+                focus_edges(edges,f[0],f[1],f[2],f[3],color);
+                for(int band=0;band<FOCUS_EDGES-1;band++){
+                    ColorVertex *p=sceGuGetMemory(FOCUS_STRIP*sizeof(*p));
+                    fill_focus_strip(p,edges[band],edges[band+1]);
+                    submit_focus_strip(p,FOCUS_STRIP);
+                }
+            }
+        }
+        render_clip(0,0,480,272);render_end();
+        ok&=render_stats().draw_calls==(grouped?3u:9u)&&render_stats().texture_binds==0;
+        ok&=render_debug_frame(paths[grouped]);
+    }
+    FILE *a=fopen(paths[0],"rb"),*b=fopen(paths[1],"rb");
+    if(!a||!b)ok=0;
+    while(ok){
+        unsigned char first[1024],second[1024];
+        size_t n=fread(first,1,sizeof(first),a),m=fread(second,1,sizeof(second),b);
+        ok=n==m&&!memcmp(first,second,n)&&!ferror(a)&&!ferror(b);
+        if(!n)break;
+    }
+    if(a)fclose(a);if(b)fclose(b);
+    return ok;
 }
 void render_text(float x,float y,const char *text,uint32_t color,float scale){
     float start=x;int count=0;
@@ -180,31 +253,52 @@ void render_text(float x,float y,const char *text,uint32_t color,float scale){
 }
 void render_anim_frame(const Animation *a,float x,float baseline,int frame,float scale,uint32_t tint,int mirrored){
     if(!a->loaded||frame<0||frame>=(int)a->frames)return;
-    quad(animation_frame(a,frame),a->tw,a->th,mirrored?a->width:0,0,mirrored?-(float)a->width:a->width,a->height,
+    animation_quad(a,frame,mirrored?a->width:0,0,mirrored?-(float)a->width:a->width,a->height,
          x-(mirrored?a->width-a->anchor_x:a->anchor_x)*scale,baseline-a->anchor_y*scale,a->width*scale,a->height*scale,tint);
 }
 void render_anim(const Animation *a,float x,float baseline,float seconds,float scale,uint32_t tint,int loop){
     if(!a->loaded||a->frames==0)return;
     int frame=(int)fmaxf(0,seconds*a->fps);if(loop)frame%=a->frames;else if(frame>=(int)a->frames)frame=a->frames-1;
     float width=a->width*scale,height=a->height*scale;
-    quad(animation_frame(a,frame),a->tw,a->th,0,0,a->width,a->height,x-a->anchor_x*scale,baseline-a->anchor_y*scale,width,height,tint);
+    animation_quad(a,frame,0,0,a->width,a->height,x-a->anchor_x*scale,baseline-a->anchor_y*scale,width,height,tint);
 }
 void render_part(const Animation *a,int frame,float sx,float sy,float sw,float sh,float x,float y,float w,float h,uint32_t tint){
     if(!a->loaded||!a->frames||sw<=0||sh<=0||w<=0||h<=0)return;
     frame=frame<0?0:frame%(int)a->frames;
-    quad(animation_frame(a,frame),a->tw,a->th,sx,sy,sw,sh,x,y,w,h,tint);
+    animation_quad(a,frame,sx,sy,sw,sh,x,y,w,h,tint);
+}
+void render_parts(const Animation *a,int frame,const TexturePart *parts,unsigned count,uint32_t tint){
+    if(!a->loaded||!a->frames)return;
+    TexturedVertex *vertices=NULL;
+    unsigned used=0;
+    for(unsigned i=0;i<count;i++){
+        const TexturePart *part=&parts[i];
+        if(part->sw<=0||part->sh<=0||part->w<=0||part->h<=0||
+           outside_clip(part->x,part->y,part->w,part->h))continue;
+        if(!vertices)vertices=sceGuGetMemory(count*2*sizeof(*vertices));
+        vertices[used++]=(TexturedVertex){part->sx,part->sy,tint,part->x,part->y,0};
+        vertices[used++]=(TexturedVertex){part->sx+part->sw,part->sy+part->sh,tint,part->x+part->w,part->y+part->h,0};
+    }
+    if(!used)return;
+    frame=frame<0?0:frame%(int)a->frames;
+    uint16_t *pixels=animation_frame(a,frame);
+    if(!pixels)return;
+    bind_texture(pixels,a->tw,a->th,GU_LINEAR);
+    sceGuDrawArray(GU_SPRITES,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,used,0,vertices);
+    stats.draw_calls++;
 }
 void render_anim_mirrored(const Animation *a,float x,float baseline,float seconds,float scale,uint32_t tint,int loop){
     if(!a->loaded||!a->frames)return;int frame=(int)fmaxf(0,seconds*a->fps);
     if(loop)frame%=a->frames;else if(frame>=(int)a->frames)frame=a->frames-1;
-    quad(animation_frame(a,frame),a->tw,a->th,a->width,0,-(float)a->width,a->height,
+    animation_quad(a,frame,a->width,0,-(float)a->width,a->height,
          x-(a->width-a->anchor_x)*scale,baseline-a->anchor_y*scale,a->width*scale,a->height*scale,tint);
 }
 void render_image(const Animation *a,float x,float y,float w,float h,int frame,uint32_t tint){render_part(a,frame,0,0,a->width,a->height,x,y,w,h,tint);}
 void render_background(const Animation *a){
-    uint16_t *pixels=animation_frame(a,0);if(!pixels)return;
+    if(!a->loaded||!a->frames)return;
     if(background_source!=a){
         if(a->tw!=512||a->th!=512)return;
+        uint16_t *pixels=animation_frame(a,0);if(!pixels)return;
         memcpy((void*)((uintptr_t)background_vram|0x40000000),pixels,a->stride);background_source=a;
     }
     // Narrow strips preserve texture-cache locality on the real PSP GE.
@@ -221,7 +315,12 @@ void render_anim_glow(const Animation *a,float x,float baseline,float seconds,fl
     render_anim(a,x,baseline,seconds,scale,RGBA(add,add,add,255),1);
     sceGuTexFunc(GU_TFX_MODULATE,GU_TCC_RGBA);
 }
-void render_clip(int x,int y,int w,int h){sceGuScissor(x,y,x+w,y+h);}
+void render_clip(int x,int y,int w,int h){
+    int right=x+w,bottom=y+h;
+    clip_left=x>0?x:0;clip_top=y>0?y:0;
+    clip_right=right<480?right:480;clip_bottom=bottom<272?bottom:272;
+    sceGuScissor(x,y,right,bottom);
+}
 void render_anim_rotated(const Animation *a,float x,float baseline,float seconds,float scale,uint32_t tint,float angle){
     if(!a->loaded||!a->frames)return;
     int frame=(int)fmaxf(0,seconds*a->fps)%a->frames;

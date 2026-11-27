@@ -66,3 +66,186 @@
     game_start_level(&g,50,813);g.status=WON;game_collect_reward(&g);CHECK("final boss completion ends Adventure without wrapping",!game_next_level(&g)&&g.level==50);
     game_start_level(&g,19,814);g.packets[0]=16;saved=legacy_fixture(&g,"selftest-legacy5.dat",5);
     CHECK("0.6 night save migrates into the six-row layout",saved&&game_load(&restored,"selftest-legacy5.dat")&&restored.level==19&&restored.sun==g.sun&&!memcmp(restored.plants,g.plants,5*COLS*sizeof(Plant)));remove("selftest-legacy5.dat");
+    {
+    game_start_level(&g,9,817);
+    int other_lane=game_spawn_zombie(&g,3,Z_NORMAL,208);
+    int first=game_spawn_zombie(&g,2,Z_NORMAL,208);
+    int second=game_spawn_zombie(&g,2,Z_NORMAL,208);
+    shoot(&g,2,200,0);shoot(&g,2,200,0);
+    g.shot_vx[0]=g.shot_vx[1]=0;g.shot_damage[0]=270;
+    chapter_shots(&g,1.0f/60);
+    CHECK("projectiles resolve tied targets in slot order and skip a fresh death",
+          g.zombies[first].death>0&&g.zombies[second].hp==250&&g.zombies[other_lane].hp==270);
+
+    game_start_level(&g,9,818);
+    int edge=game_spawn_zombie(&g,2,Z_NORMAL,221);
+    shoot(&g,2,200,0);g.shot_vx[0]=0;
+    chapter_shots(&g,1.0f/60);
+    int edge_misses=g.shots[0].used&&g.zombies[edge].hp==270;
+    g.zombies[edge].x=220.75f;
+    chapter_shots(&g,1.0f/60);
+    CHECK("projectiles retain the strict impact radius",edge_misses&&!g.shots[0].used&&g.zombies[edge].hp==250);
+
+    game_start_level(&g,9,819);
+    int cross_lane=game_spawn_zombie(&g,1,Z_NORMAL,208);
+    shoot(&g,2,200,8);g.shot_vx[0]=0;g.shot_y[0]=game_ground_y(&g,1)-17;
+    chapter_shots(&g,1.0f/60);
+    CHECK("Starfruit retains cross-lane contact",!g.shots[0].used&&g.zombies[cross_lane].hp==250);
+
+    shoot(&g,-1,200,0);
+    chapter_shots(&g,1.0f/60);
+    CHECK("an invalid projectile lane cannot index the board",!g.shots[0].used);
+    }
+
+    {
+    float torch=plant_x(4);
+    game_start_level(&g,9,823);
+    put_plant(&g,2,4,TORCHWOOD);
+    shoot(&g,2,torch-9,1);
+    chapter_shots(&g,.02f);
+    CHECK("a single Torchwood thaws an ice pea without increasing its damage",
+          g.shots[0].ice==0&&g.shot_damage[0]==20);
+    int recovered=game_save(&g,"selftest-torchwood.dat")&&game_load(&restored,"selftest-torchwood.dat");
+    if(recovered)chapter_shots(&restored,.1f);
+    CHECK("a saved thawed pea leaves the same Torchwood without turning into fire",
+          recovered&&restored.shots[0].used&&restored.shots[0].ice==0&&restored.shot_damage[0]==20);
+    remove("selftest-torchwood.dat");
+    remove("selftest-torchwood.dat.bak");
+    chapter_shots(&g,.02f);
+    CHECK("successive ticks inside one Torchwood do not ignite a thawed pea",
+          g.shots[0].ice==0&&g.shot_damage[0]==20);
+
+    game_start_level(&g,9,824);
+    put_plant(&g,2,4,TORCHWOOD);
+    put_plant(&g,2,3,TORCHWOOD);
+    shoot(&g,2,torch+13,1);g.shot_vx[0]=-680;
+    chapter_shots(&g,.1f);
+    CHECK("a leftward ice pea crosses two distinct Torchwoods in travel order",
+          g.shots[0].used&&g.shots[0].ice==10&&g.shot_damage[0]==40&&g.shot_target[0]==2*COLS+3);
+
+    game_start_level(&g,9,825);
+    put_plant(&g,2,4,TORCHWOOD);
+    int victim=game_spawn_zombie(&g,2,Z_NORMAL,torch-8);
+    shoot(&g,2,torch-32,0);g.shot_vx[0]=320;
+    chapter_shots(&g,.1f);
+    CHECK("a pea that hits before Torchwood deals normal damage",!g.shots[0].used&&
+          g.shots[0].ice==0&&g.zombies[victim].hp==250);
+    g.zombies[victim].x=torch+32;
+    shoot(&g,2,torch-32,0);g.shot_vx[0]=690;
+    chapter_shots(&g,.1f);
+    CHECK("a pea sweeping through Torchwood deals fire damage on impact beyond it",!g.shots[0].used&&
+          g.shots[0].ice==10&&g.zombies[victim].hp==210);
+    }
+
+    {
+    game_start_level(&g,9,820);
+    int front=game_spawn_zombie(&g,2,Z_NORMAL,230);
+    int digger=game_spawn_zombie(&g,2,Z_DIGGER,250);
+    game_spawn_zombie(&g,1,Z_NORMAL,235);
+    ZombieRows targets;
+    targets.count=-1;
+    g.zombies[digger].vaulted=0;
+    int began=target_in_lane(&g,2,200,&targets);
+    g.zombies[front].used=0;
+    int removed=!target_in_lane(&g,2,200,&targets);
+    g.zombies[digger].vaulted=1;
+    CHECK("plant targeting rechecks removals and eligibility within a tick",
+          began&&removed&&target_in_lane(&g,2,200,&targets));
+    shoot(&g,2,222,0);g.shot_vx[0]=0;
+    chapter_shots_step(&g,1.0f/60,&targets);
+    CHECK("projectiles ignore targets removed after the shared scan",g.shots[0].used);
+    }
+
+    {
+    game_start_level(&g,9,821);
+    float x=plant_x(3);
+    put_plant(&g,2,3,SPLIT);g.plants[2][3].attack=0;
+    game_spawn_zombie(&g,2,Z_NORMAL,x-50);
+    int other_lane=shoot(&g,1,x-12,0),same_lane=shoot(&g,2,x-18,0);
+    ZombieRows targets;
+    targets.count=-1;
+    chapter_plant(&g,2,3,1.0f/60,&targets);
+    CHECK("Split Pea reverses only its own new rear shots",
+          other_lane==0&&same_lane==1&&g.shot_vx[0]==150&&g.shot_vx[1]==150&&
+          g.shots[2].used&&g.shots[3].used&&g.shot_vx[2]==-150&&g.shot_vx[3]==-150);
+
+    game_start_level(&g,9,822);
+    for(int i=0;i<MAX_SHOTS;i++)g.shots[i].used=1;
+    int full=shoot(&g,2,x,0)==-1&&g.events[SFX_SHOOT]==0;
+    g.shots[6].used=0;g.shot_target[6]=9;g.polish024.shot_actor[6]=12;
+    g.extra.last_portal_shot[6]=20;g.mini.shot_portal[6]=1;
+    CHECK("a reused projectile slot clears previous target and portal state",
+          full&&shoot(&g,2,x,0)==6&&g.shot_target[6]==-1&&!g.polish024.shot_actor[6]&&
+          !g.extra.last_portal_shot[6]&&!g.mini.shot_portal[6]);
+
+    g.shots[6].used=0;g.shots[MAX_SHOTS-1].used=0;
+    put_plant(&g,2,3,STAR);g.plants[2][3].attack=0;
+    game_spawn_zombie(&g,2,Z_NORMAL,400);targets.count=-1;
+    chapter_plant(&g,2,3,1.0f/60,&targets);
+    CHECK("a crowded Starfruit volley fills available slots in direction order",
+          g.shots[6].ice==8&&g.shot_vx[6]==-150&&g.shot_vy[6]==0&&
+          g.shots[MAX_SHOTS-1].ice==8&&g.shot_vx[MAX_SHOTS-1]==0&&g.shot_vy[MAX_SHOTS-1]==-150);
+    }
+
+    {
+    game_start_level(&g,9,826);
+    float x=plant_x(4);
+    put_plant(&g,2,4,SPLIT);g.plants[2][4].attack=0;
+    int ally=game_spawn_zombie(&g,2,Z_NORMAL,x-50);
+    g.hypnotized[ally]=1;
+    int buried=game_spawn_zombie(&g,2,Z_DIGGER,x-60);
+    int flying=game_spawn_zombie(&g,2,Z_IMP,x+52);
+    g.polish.action[flying]=ACTION_IMP_FLIGHT;
+    ZombieRows targets={.count=-1};
+    chapter_plant(&g,2,4,1.0f/60,&targets);
+    g.extra.left_facing[2][4]=1;
+    CHECK("Split Pea and left-facing shooters ignore friendly, underground and airborne actors",
+          !g.shots[0].used&&g.plants[2][4].attack==0&&!extra_target(&g,2,4,x,&targets));
+    g.zombies[buried].vaulted=1;
+    g.polish.action[buried]=ACTION_DIGGER_RISE;
+    CHECK("a Digger is untargetable while it emerges",!extra_target(&g,2,4,x,&targets));
+    g.polish.action[buried]=ACTION_NONE;
+    CHECK("left-facing shooters can target a surfaced Digger",extra_target(&g,2,4,x,&targets));
+    for(int i=0;i<MAX_SHOTS;i++)g.shots[i].used=1;
+    chapter_plant(&g,2,4,1.0f/60,&targets);
+    CHECK("Split Pea stays ready when no projectile slot is available",g.plants[2][4].attack==0);
+    g.shots[7].used=0;
+    chapter_plant(&g,2,4,1.0f/60,&targets);
+    CHECK("Split Pea fires backwards as soon as one slot frees up",
+          g.shots[7].used&&g.shot_vx[7]==-150&&g.plants[2][4].attack>0);
+    }
+
+    {
+    game_start_level(&g,33,827);
+    float x=plant_x(4);
+    put_plant(&g,0,4,CACTUS);g.plants[0][4].attack=0;
+    int balloon=game_spawn_zombie(&g,0,Z_BALLOON,x+90);
+    int walker=game_spawn_zombie(&g,0,Z_NORMAL,x+45);
+    ZombieRows targets={.count=-1};
+    chapter_plant(&g,0,4,1.0f/60,&targets);
+    int high=g.shots[0].used&&g.shot_target[0]==SHOT_HITS_BALLOON&&
+             g.shot_y[0]==game_ground_y(&g,0)-17-BALLOON_LIFT;
+    g.shot_vx[0]=850;
+    int recovered=game_save(&g,"selftest-cactus.dat")&&game_load(&restored,"selftest-cactus.dat");
+    if(recovered)chapter_shots(&restored,.1f);
+    CHECK("a saved high Cactus spike passes a walker and pops the balloon behind it",
+          high&&recovered&&!restored.shots[0].used&&restored.zombies[walker].hp==270&&
+          restored.fidelity.equipment_lost[balloon]&&restored.polish.action[balloon]==ACTION_BALLOON_FALL);
+    remove("selftest-cactus.dat");
+    remove("selftest-cactus.dat.bak");
+
+    game_start_level(&g,33,828);
+    put_plant(&g,0,4,CACTUS);g.plants[0][4].attack=0;
+    balloon=game_spawn_zombie(&g,0,Z_BALLOON,x-45);
+    targets.count=-1;
+    chapter_plant(&g,0,4,1.0f/60,&targets);
+    CHECK("Cactus does not fire at a balloon behind it",!g.shots[0].used&&g.plants[0][4].attack==0);
+    walker=game_spawn_zombie(&g,0,Z_NORMAL,x+82);
+    targets.count=-1;
+    chapter_plant(&g,0,4,1.0f/60,&targets);
+    int low=g.shots[0].used&&g.shot_target[0]==SHOT_HITS_GROUND&&g.shot_y[0]==game_ground_y(&g,0)-17;
+    g.zombies[balloon].x=x+42;g.shot_vx[0]=850;
+    chapter_shots(&g,.1f);
+    CHECK("a low Cactus spike passes below a balloon and hits a walker",
+          low&&!g.shots[0].used&&!g.fidelity.equipment_lost[balloon]&&g.zombies[walker].hp==250);
+    }

@@ -18,6 +18,7 @@ extern const int shop_visible_items[SHOP_VISIBLE_COUNT];
 extern const char *shop_item_names[SHOP_ITEMS];
 void profile_init(Profile *p);
 void profile_apply(Profile *p,Game *g);
+void profile_apply_loadout(const Profile *p,Game *g);
 int profile_bank(Profile *p,const Game *g);
 int profile_item_cost(const Profile *p,int item);
 int profile_item_available(const Profile *p,int item);

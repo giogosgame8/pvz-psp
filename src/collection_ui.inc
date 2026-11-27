@@ -1,28 +1,107 @@
-/* Original disc text is read on selection, so the full book stays off the heap. */
-static char book_title[128],book_body[8192];static int book_loaded=-1;
-static int load_book_entry(int entry){
-    if(book_loaded==entry)return 1;book_loaded=-1;FILE *f=fopen("data/almanac.bin","rb");if(!f)return 0;
-    uint32_t h[2],offset,sizes[2];int ok=fread(h,sizeof(h),1,f)==1&&h[0]==0x31425650&&h[1]==75&&entry>=0&&entry<75;
-    if(ok)ok=!fseek(f,8+entry*4,SEEK_SET)&&fread(&offset,4,1,f)==1&&offset>=308&&offset<1024*1024;
-    if(ok)ok=!fseek(f,offset,SEEK_SET)&&fread(sizes,sizeof(sizes),1,f)==1&&sizes[0]<sizeof(book_title)&&sizes[1]<sizeof(book_body);
-    if(ok)ok=fread(book_title,sizes[0],1,f)==1&&fread(book_body,sizes[1],1,f)==1;
-    fclose(f);if(ok){book_title[sizes[0]]=0;book_body[sizes[1]]=0;book_loaded=entry;}return ok;
+enum {
+    BOOK_LINE_MAX=160, BOOK_LINE_WIDTH=42, BOOK_ENTRIES=ALL_SEEDS+Z_TYPES,
+    BOOK_INDEX_SIZE=8+4*BOOK_ENTRIES, BOOK_CACHE_LIMIT=64*1024,
+    BOOK_OFFSET_LIMIT=1024*1024, BOOK_TITLE_MAX=128, BOOK_BODY_MAX=8192
+};
+static char book_title[BOOK_TITLE_MAX],book_lines[BOOK_LINE_MAX][BOOK_LINE_WIDTH+1];
+static int book_loaded=-1,book_line_count;
+static unsigned char *book_image;
+static FILE *book_stream;
+static size_t book_size;
+static int book_attempted;
+
+static void book_close(void){
+    free(book_image);book_image=NULL;
+    if(book_stream)fclose(book_stream);
+    book_stream=NULL;book_size=0;book_attempted=0;
+    book_loaded=-1;book_line_count=0;
 }
-static int wrap_book(char lines[160][59]){
-    int row=0,col=0;memset(lines,0,160*59);const unsigned char *p=(const unsigned char*)book_body;
-    while(*p&&row<159){
+
+static int book_read_at(size_t offset,void *output,size_t length){
+    if(offset>book_size||length>book_size-offset)return 0;
+    if(book_image){memcpy(output,book_image+offset,length);return 1;}
+    return book_stream&&!fseek(book_stream,offset,SEEK_SET)&&
+           fread(output,1,length,book_stream)==length;
+}
+
+static int book_open(const char *path){
+    if(book_attempted)return book_image||book_stream;
+    book_attempted=1;
+    book_stream=fopen(path,"rb");
+    if(!book_stream)return 0;
+    long length=fseek(book_stream,0,SEEK_END)?-1:ftell(book_stream);
+    if(length<BOOK_INDEX_SIZE||length>BOOK_OFFSET_LIMIT+8+BOOK_TITLE_MAX+BOOK_BODY_MAX)goto failed;
+    book_size=length;
+    /* Fall back to indexed reads if an older prepared book is larger or the heap is tight. */
+    if(book_size<=BOOK_CACHE_LIMIT)book_image=malloc(book_size);
+    if(book_image){
+        if(fseek(book_stream,0,SEEK_SET)||fread(book_image,1,book_size,book_stream)!=book_size)goto failed;
+        fclose(book_stream);book_stream=NULL;
+    }
+    uint32_t header[2];
+    if(book_read_at(0,header,sizeof(header))&&header[0]==0x31425650&&header[1]==BOOK_ENTRIES)return 1;
+failed:
+    book_close();book_attempted=1;return 0;
+}
+
+static int wrap_book(const char *body){
+    int row=0,col=0;
+    memset(book_lines,0,sizeof(book_lines));
+    const unsigned char *p=(const unsigned char*)body;
+    while(*p&&row<BOOK_LINE_MAX-1){
         if(*p=='\n'){row++;col=0;p++;continue;}
-        if(*p==' '){if(col&&col<42)lines[row][col++]=' ';p++;continue;}
+        if(*p==' '){if(col&&col<BOOK_LINE_WIDTH)book_lines[row][col++]=' ';p++;continue;}
         const unsigned char *end=p;while(*end&&*end!=' '&&*end!='\n')end++;int length=end-p;
-        if(col&&col+length>42){row++;col=0;if(row>=159)break;}
-        while(p<end&&row<159){unsigned char ch=*p++;if(ch>=128)ch='?';if(col==42){row++;col=0;}lines[row][col++]=ch;}
-    }return row+1;
+        if(col&&col+length>BOOK_LINE_WIDTH){row++;col=0;if(row>=BOOK_LINE_MAX-1)break;}
+        while(p<end&&row<BOOK_LINE_MAX-1){
+            unsigned char ch=*p++;if(ch>=128)ch='?';
+            if(col==BOOK_LINE_WIDTH){row++;col=0;}
+            book_lines[row][col++]=ch;
+        }
+    }
+    return row+1;
+}
+
+static int load_book_entry(int entry){
+    if(entry<0||entry>=BOOK_ENTRIES)return 0;
+    if(book_loaded==entry)return book_line_count>0;
+    book_loaded=entry;book_line_count=0;
+    if(!book_open("data/almanac.bin"))return 0;
+    char body[BOOK_BODY_MAX];
+    uint32_t offset,sizes[2];
+    if(!book_read_at(8+entry*4,&offset,sizeof(offset))||offset<BOOK_INDEX_SIZE||offset>=BOOK_OFFSET_LIMIT||
+       !book_read_at(offset,sizes,sizeof(sizes))||sizes[0]>=sizeof(book_title)||sizes[1]>=sizeof(body))return 0;
+    offset+=sizeof(sizes);
+    if(!book_read_at(offset,book_title,sizes[0])||!book_read_at(offset+sizes[0],body,sizes[1]))return 0;
+    book_title[sizes[0]]=0;body[sizes[1]]=0;
+    book_line_count=wrap_book(body);
+    return 1;
 }
 static int book_known(void){return book_zombies?!!(player.seen_zombies&(1u<<book_cursor)):!!(player.seen_plants&(UINT64_C(1)<<book_cursor));}
+static const Animation *book_portrait(void){
+    static const int ground_zombies[]={A_ZOMBIE,A_CONE,A_BUCKET,A_POLE_WALK,A_FLAG_WALK,A_PAPER,A_DOOR,A_FOOTBALL,A_DANCER,A_BACKUP};
+    if(!book_zombies)return &assets[seed_icons[book_cursor]];
+    if(book_cursor==Z_BOSS)return &assets[A_BOSS_EAT];
+    if(book_cursor<Z_DUCK)return &assets[ground_zombies[book_cursor]];
+    return &assets[A_DUCK_WALK+(book_cursor-Z_DUCK)*3];
+}
+static void draw_book_portrait(void){
+    const Animation *portrait=book_portrait();
+    if(book_zombies&&book_cursor==Z_BOSS){
+        if(!portrait->loaded)return;
+        float scale=fminf(150.0f/portrait->width,136.0f/portrait->height);
+        float w=portrait->width*scale,h=portrait->height*scale;
+        render_image(portrait,93-w*.5f,152-h*.5f,w,h,0,WHITE);
+        return;
+    }
+    render_anim(portrait,91,189,game.time,1.1f,WHITE,1);
+}
 static void draw_book(void){
- render_image(&assets[A_BOOK_PAGES],0,0,480,272,book_zombies,WHITE);int known=book_known(),entry=book_cursor+(book_zombies?49:0);char label[128];ui_center(114,19,260,"Suburban Almanac",UI_GOLD,1.0f);
- if(known&&load_book_entry(entry)){ui_center(13,62,160,book_title,UI_INK,.85f);int icon=book_zombies?(book_cursor>=10?A_DUCK_WALK+(book_cursor-10)*3:book_cursor==0?A_ZOMBIE:book_cursor==1?A_CONE:book_cursor==2?A_BUCKET:book_cursor==3?A_POLE_WALK:book_cursor==4?A_FLAG_WALK:book_cursor==5?A_PAPER:book_cursor==6?A_DOOR:book_cursor==7?A_FOOTBALL:book_cursor==8?A_DANCER:A_BACKUP):seed_icons[book_cursor];render_anim(&assets[icon],91,189,game.time,book_cursor==Z_BOSS&&book_zombies?.7f:1.1f,WHITE,1);
-  char lines[160][59];int count=wrap_book(lines);if(book_scroll>count-1)book_scroll=count-1;for(int i=0;i<11&&book_scroll+i<count;i++)disc_text(186,72+i*14,279,lines[book_scroll+i],UI_INK,.64f);
+ render_image(&assets[A_BOOK_PAGES],0,0,480,272,book_zombies,WHITE);int known=book_known(),entry=book_cursor+(book_zombies?49:0);char label[128];ui_center(114,30,260,"Suburban Almanac",UI_GOLD,.84f);
+ if(known&&load_book_entry(entry)){ui_center(13,62,160,book_title,UI_INK,.85f);draw_book_portrait();
+  if(book_scroll>=book_line_count)book_scroll=book_line_count-1;
+  for(int i=0;i<11&&book_scroll+i<book_line_count;i++)
+   disc_text(186,72+i*14,279,book_lines[book_scroll+i],UI_INK,.64f);
  }else disc_text(186,105,260,known?"Almanac data missing":"You have not found this entry yet.",UI_INK,.75f);
  snprintf(label,sizeof(label),"%d/%d   L/R: Entry   Triangle: %s   Up/Down: Scroll   O: Back",book_cursor+1,book_zombies?Z_TYPES:ALL_SEEDS,book_zombies?"Plants":"Zombies");ui_hint(label);
 }

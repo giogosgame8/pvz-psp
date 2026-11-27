@@ -93,9 +93,42 @@ static void draw_gallery(float clock){
 }
 static float board_sunflower_glow(const Plant *p){return game.mode==MODE_IZOMBIE||game.extra.category==EXTRA_IZOMBIE?0:game_sunflower_glow(p);}
 static int credits_cursor,pause_cursor;
-static void draw_pause_menu(void){ui_dialog(104,59,272,162,"Paused");ui_button(129,97,222,"Continue",pause_cursor==0);ui_button(129,132,222,"Main menu",pause_cursor==1);ui_button(129,167,222,"How to play",pause_cursor==2);}
+static int pause_return_pending;
+static CheckpointResult pause_snapshot;
+static int pause_mini_id(void){return replaying?mini_session_index(&game):-1;}
+static CheckpointResult pause_save_result(void){
+ pause_snapshot=poll_board_checkpoint(pause_snapshot);
+ return pause_snapshot;
+}
+static void draw_pause_menu(void){
+ ui_dialog(104,59,272,162,"Paused");
+ ui_button(129,97,222,"Continue",pause_cursor==0);
+ const char *leave=pause_return_pending?"Saving...":pause_save_result()==CHECKPOINT_FAILED?"Retry save":pause_mini_id()>=0?"Save and return":"Main menu";
+ ui_button(129,132,222,leave,pause_cursor==1);
+ ui_button(129,167,222,"How to play",pause_cursor==2);
+}
+static void queue_pause(void){
+ pause_snapshot=queue_board_checkpoint();
+}
+static void pause_return_step(void){
+ if(pause_snapshot==CHECKPOINT_IDLE)queue_pause();
+ CheckpointResult result=pause_save_result();
+ if(result==CHECKPOINT_WRITING||result==CHECKPOINT_IDLE)return;
+ pause_return_pending=0;
+ if(result==CHECKPOINT_SAVED){
+  int id=pause_mini_id();
+  clear_save_warning();
+  if(id>=0)show_mini_menu(id,id);
+  else{screen=0;paused=0;}
+ }else notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");
+}
 static void pause_input(uint32_t pressed){
  if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT))pause_cursor=(pause_cursor+2)%3;if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT))pause_cursor=(pause_cursor+1)%3;
- if(pressed&PSP_CTRL_TRIANGLE){screen=0;paused=0;}if(pressed&PSP_CTRL_SQUARE)help=1;
- if(pressed&PSP_CTRL_CROSS){if(pause_cursor==0)paused=0;else if(pause_cursor==1){screen=0;paused=0;}else help=1;}
+ if((pressed&PSP_CTRL_TRIANGLE)||((pressed&PSP_CTRL_CROSS)&&pause_cursor==1)){
+  if(pause_save_result()==CHECKPOINT_FAILED)pause_snapshot=CHECKPOINT_IDLE;
+  pause_cursor=1;pause_return_pending=1;pause_return_step();
+  return;
+ }
+ if(pressed&PSP_CTRL_SQUARE)help=1;
+ if(pressed&PSP_CTRL_CROSS){if(pause_cursor==0)paused=0;else help=1;}
 }

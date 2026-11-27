@@ -14,7 +14,7 @@ static void wave_arrivals024(Game *g,float dt){
  if(terrain==2||terrain==3||terrain==4){
   int count=(g->level==21||g->level==22||g->level==31||g->level==32||g->level==41||g->level==42)?2:3;
   while(g->polish024.pool_arrivals<count){
-   int free=0;for(int i=0;i<MAX_ZOMBIES;i++)free+=!g->zombies[i].used;if(free<(terrain==4?2:1))return;
+   if(!zombie_slots_available(g,terrain==4?2:1))return;
    int slots[25],size=0;if(terrain==4){for(int c=4;c<9;c++)for(int r=0;r<5;r++)if(!(g->polish024.pool_used&(1u<<(r*5+c-4))))slots[size++]=r*COLS+c;}
    else for(int c=5;c<9;c++)for(int r=2;r<=3;r++)if(!(g->polish024.pool_used&(1u<<((c-5)*2+r-2))))slots[size++]=r*COLS+c;
    if(!size)break;int cell=slots[random_next(g)%size],r=cell/COLS,c=cell%COLS,kind=rise_kind024(g,1),id;
@@ -30,7 +30,7 @@ static void wave_arrivals024(Game *g,float dt){
  }
  if(terrain==1){
   while(g->polish024.rise_cell<ROWS*COLS){int cell=g->polish024.rise_cell,r=cell/COLS,c=cell%COLS;
-   if(g->graves[r][c]){int free=0;for(int i=0;i<MAX_ZOMBIES;i++)free+=!g->zombies[i].used;if(!free)return;int id=game_spawn_zombie(g,r,rise_kind024(g,0),plant_x(c));if(id<0)return;g->polish.action[id]=ACTION_POOL_RISE;g->polish.action_time[id]=0;g->polish024.altitude[id]=-36;cue(FOLEY_GRAVESTONE_RUMBLE);}
+   if(g->graves[r][c]){if(!zombie_slots_available(g,1))return;int id=game_spawn_zombie(g,r,rise_kind024(g,0),plant_x(c));if(id<0)return;g->polish.action[id]=ACTION_POOL_RISE;g->polish.action_time[id]=0;g->polish024.altitude[id]=-36;cue(FOLEY_GRAVESTONE_RUMBLE);}
    g->polish024.rise_cell++;
   }
  }

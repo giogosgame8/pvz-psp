@@ -15,11 +15,13 @@ import sys
 import tempfile
 import zlib
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageChops
-from affine_render import AffineLayerCache, composite_affine, render_frames
+from PIL import Image
+from affine_render import AffineLayerCache, CompactCanvas, composite_affine, frame_worker_session, render_frames
+from preparation_workers import can_overlap_music
 from prepared_data import DATA_VERSION,write_catalog,write_launcher_images,write_integrity
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -241,6 +243,24 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     source_manifest = json.loads((imported / "manifest.json").read_text())
     if source_manifest["disc_title_id"] != "BLUS30852":
         raise ValueError("Unsupported source build")
+    destination.mkdir(parents=True)
+    if previews:
+        previews.mkdir(parents=True, exist_ok=True)
+    convert_music = bool(not animations_only and shutil.which("ffmpeg"))
+    with frame_worker_session():
+        if convert_music and can_overlap_music():
+            from prepare_music import prepare_music
+            print("Preparing music alongside animation conversion.", flush=True)
+            with ThreadPoolExecutor(max_workers=1) as background:
+                soundtrack = background.submit(prepare_music, imported, destination)
+                return _prepare_data(imported, destination, previews, source_manifest, animations_only,
+                                     credits_timing, reference_elf, convert_music, soundtrack)
+        return _prepare_data(imported, destination, previews, source_manifest, animations_only,
+                             credits_timing, reference_elf, convert_music)
+
+
+def _prepare_data(imported, destination, previews, source_manifest, animations_only,
+                  credits_timing, reference_elf, convert_music, soundtrack=None):
     # Case-insensitive source resource lookup, with the locale archive taking priority.
     files = {}
     for name in ("main", "compressed", "en"):
@@ -258,13 +278,12 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         with Image.open(files[filename]) as image:
             return image.convert("RGBA")
 
-    destination.mkdir(parents=True)
-    if previews:
-        previews.mkdir(parents=True, exist_ok=True)
     assets = []
     geometry={};layer_cache=AffineLayerCache()
+    # Gear and damage variants share immutable source tracks with their base clip.
+    parse_animation = lru_cache(maxsize=6)(frames_from_xml)
     print('Stage: garden animations' if animations_only else 'Stage: plant and zombie animations', flush=True)
-    flag_fps,flag_tracks=frames_from_xml(files['reanim/zombie_flagpole.reanim'])
+    flag_fps,flag_tracks=parse_animation(files['reanim/zombie_flagpole.reanim'])
     def matrix(frame):
         kx,ky=math.radians(frame['kx']),math.radians(frame['ky'])
         return (math.cos(kx)*frame['sx'],-math.sin(ky)*frame['sy'],math.sin(kx)*frame['sx'],math.cos(ky)*frame['sy'],frame['x'],frame['y'])
@@ -282,16 +301,17 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         damage=equipment if isinstance(equipment,dict) else {}
         gear=damage.get("gear",equipment)
         source = files["reanim/" + animation.lower() + ".reanim"]
-        fps, tracks = frames_from_xml(source)
+        fps, tracks = parse_animation(source)
         start, stop = clip_range(tracks, marker)
         swimming=animation=="Zombie" and isinstance(gear,str) and gear.startswith("duck")
         swim_start,swim_stop=clip_range(tracks,"anim_swim") if swimming else (0,0)
-        driver=BossDriver(files,tracks,frames_from_xml,clip_range,multiply,invert,texture,marker,start,stop) if animation=="Zombie_boss" else None
-        attachment=DaveProp(damage['prop'],files,tracks,frames_from_xml,clip_range,texture,multiply,invert) if damage.get('prop') else None
+        driver=BossDriver(files,tracks,parse_animation,clip_range,multiply,invert,texture,marker,start,stop) if animation=="Zombie_boss" else None
+        attachment=DaveProp(damage['prop'],files,tracks,parse_animation,clip_range,texture,multiply,invert) if damage.get('prop') else None
         # A generous source canvas handles rotation and negative source coordinates.
+        canvas_size, (origin_x, origin_y) = source_canvas(animation)
+        compact = animation == 'Zombie_boss'
         def render_frame(index):
-            canvas_size,(origin_x,origin_y)=source_canvas(animation)
-            canvas = Image.new("RGBA", canvas_size)
+            canvas = CompactCanvas(canvas_size) if compact else Image.new("RGBA", canvas_size)
             for name, frames in tracks:
                 if damage.get('only_track') and name not in damage['only_track']:continue
                 if name in damage.get('omit_track',()):continue
@@ -354,25 +374,30 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
                         if body and child_name=='Zombie_flag':identifier='IMAGE_REANIM_ZOMBIE_FLAG3'
                         draw_matrix(canvas,texture(identifier),multiply(overlay,matrix(child)),child['a'])
             if attachment:attachment.draw(canvas,index,(index-start)/fps,draw_matrix)
-            return canvas
+            return canvas.finish() if compact else (canvas, 0, 0)
         factor=damage.get("samples",1)
         rendered = render_frames(render_frame,[start+n/factor for n in range((stop-start)*factor)] if factor>1 else range(start,stop))
-        union = Image.new("L", rendered[0].size)
-        for frame in rendered:
-            union = ImageChops.lighter(union, frame.getchannel("A"))
-        box = union.getbbox()
-        if box is None:
+        bounds = []
+        for frame, x, y in rendered:
+            if box := frame.getbbox():
+                bounds.append((box[0] + x, box[1] + y, box[2] + x, box[3] + y))
+        if not bounds:
             raise ValueError(f"Empty animation {output_name}")
-        if animation in ("Crow","Zombie_boss") and (box[0]<=0 or box[1]<=0 or box[2]>=rendered[0].width or box[3]>=rendered[0].height):
+        left, top, right, bottom = zip(*bounds)
+        box = min(left), min(top), max(right), max(bottom)
+        if animation in ("Crow","Zombie_boss") and (box[0]<=0 or box[1]<=0 or box[2]>=canvas_size[0] or box[3]>=canvas_size[1]):
             raise ValueError(f"Source canvas would crop {output_name}")
-        box = (max(0, box[0] - 2), max(0, box[1] - 2), min(rendered[0].width, box[2] + 2), min(rendered[0].height, box[3] + 2))
+        box = (max(0, box[0] - 2), max(0, box[1] - 2), min(canvas_size[0], box[2] + 2), min(canvas_size[1], box[3] + 2))
         size = (max(1, round((box[2] - box[0]) * scale)), max(1, round((box[3] - box[1]) * scale)))
         if 'base' in damage:
             box,size=geometry[damage["base"]]
             if damage.get("padding"):
                 left,top,right,bottom=damage["padding"];box=(box[0]-left,box[1]-top,box[2]+right,box[3]+bottom);size=(round((box[2]-box[0])*scale),round((box[3]-box[1])*scale))
         geometry[output_name]=(box,size)
-        baked = [frame.crop(box).resize(size, Image.Resampling.LANCZOS) for frame in rendered]
+        def bake_frame(index):
+            frame, x, y = rendered[index]
+            return frame.crop((box[0] - x, box[1] - y, box[2] - x, box[3] - y)).resize(size, Image.Resampling.LANCZOS)
+        baked = render_frames(bake_frame, range(len(rendered)))
         anchor=None
         parent=damage.get('anchor_parent') or {'puff_shoot':'puff','fume_shoot':'fume','scaredy_shoot':'scaredy','scaredy_hide':'scaredy','sunshroom_big':'sunshroom'}.get(output_name)
         if '_death' in output_name:
@@ -394,6 +419,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         print(f"Prepared {output_name}: {len(baked)} frames, {size[0]}x{size[1]}", flush=True)
     print(f'Layer reuse: {layer_cache.hits} hits, {layer_cache.misses} renders',flush=True)
     layer_cache.clear()
+    parse_animation.cache_clear()
     if animations_only:
         (destination/'animations.json').write_text(json.dumps(assets,indent=2))
         return assets
@@ -432,11 +458,15 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
             row = seeds[seed]
             output.write(struct.pack("<II", int(row["cost"]), int(row["refresh"])))
     audio = []
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg:
+    if convert_music:
         from prepare_music import prepare_music
-        print('Stage: music', flush=True)
-        audio.extend(prepare_music(imported,destination))
+        if soundtrack is None:
+            print('Stage: music', flush=True)
+            audio.extend(prepare_music(imported,destination))
+        else:
+            if not soundtrack.done():
+                print('Stage: finishing music', flush=True)
+            audio.extend(soundtrack.result())
         print("Prepared original soundtrack sections", flush=True)
     else:
         print("FFmpeg not found: preparing a silent build; install FFmpeg for audio", flush=True)
@@ -482,7 +512,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
     if reference_elf:credits_timing=extract_timing(reference_elf,destination)
     manifest['ending']=prepare_ending(imported,destination,previews,24,credits_timing)
     manifest['texture_bytes']=sum(a.get('decoded_bytes',a['bytes']-a.get('header_bytes',32)) for a in assets)
-    if ffmpeg:
+    if convert_music:
         songs=json.loads((destination/'music-index.json').read_text())
         layers=[s for song in songs for s in [song,*song.get('layers',[])]]
         manifest['music']={'codec':'IMA ADPCM','sample_rate':22050,'files':songs,'total_bytes':sum(s['bytes'] for s in layers),'old_pcm_bytes':sum(s['pcm_bytes'] for s in layers)}
@@ -496,7 +526,7 @@ def prepare(imported, destination, previews=None, animations_only=False, credits
         garden_assets=prepare_garden018(imported,garden_dir,previews)
         for file in garden_dir.glob('*.pva'):shutil.copy2(file,destination/file.name)
         assets.extend(garden_assets)
-    if ffmpeg:
+    if convert_music:
         from prepare_audio018 import prepare as prepare_foley
         print('Stage: sound effects', flush=True)
         bank=prepare_foley(imported,destination,reference_elf)

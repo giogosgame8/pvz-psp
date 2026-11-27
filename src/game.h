@@ -21,6 +21,7 @@ void game_sound_listener(void (*listener)(int event));
 #define MAX_COINS 32
 #define MAX_ZOMBIES 96
 #define MAX_SHOTS 256
+#define SHOT_KIND_COUNT 15
 #define MAX_SUNS 64
 #define GRID_X 62
 #define GRID_Y 58
@@ -29,6 +30,7 @@ void game_sound_listener(void (*listener)(int event));
 #define MINE_ARM_SECONDS 15.0f
 #define ZOMBIE_BITE_FRONT 23.0f
 #define ZOMBIE_BITE_BACK 9.0f
+#define BALLOON_LIFT 21.0f
 #define OPENING_WAVES 4
 #define CAMPAIGN_LEVELS 50
 #define MAX_WAVES 40
@@ -109,7 +111,7 @@ float game_ground_y(const Game *g,int row);
 float game_roof_offset(const Game *g,float x);
 int game_water_row(const Game *g,int row);
 int game_zombie_allowed(int level,int kind);
-void game_add_coin(Game *g,float x,float y,int value);
+int game_add_coin(Game *g,float x,float y,int value);
 int game_collect_coins(Game *g);
 int game_cob_select(Game *g,int row,int col);
 int game_cob_fire(Game *g,int row,int col);
@@ -130,6 +132,14 @@ void game_start_minigame(Game *g,int kind,uint32_t seed);
 void game_start_mini(Game *g,int id,uint32_t seed);
 int game_mini_action(Game *g,int action);
 int game_mini_total(const Game *g);
+unsigned game_column_plantable(const Game *g,int col,int kind);
+unsigned game_mini_star_targets(int row);
+int game_mini_star_count(const Game *g);
+enum { SLOT_SYMBOLS=6, SLOT_SUN=50, SLOT_DIAMOND };
+enum { SLOT_READY, SLOT_ROLLING, SLOT_PAYING, SLOT_TRAY_BLOCKED, SLOT_NEEDS_SUN, SLOT_GOAL, SLOT_INACTIVE };
+int game_slot_spin_status(const Game *g);
+int game_slot_reel_rolling(const Game *g,int reel);
+int game_slot_symbol(unsigned index);
 void game_heavy_control(Game *g,float move,float aim,int fire,float dt);
 int game_heavy_upgrade_open(const Game *g,int tool);
 int game_heavy_upgrade_cost(int tool);
@@ -181,5 +191,7 @@ int game_audio018_selftest(FILE*);
 int game_campaign_selftest(FILE *out);
 int game_save(const Game *g, const char *filename);
 int game_load(Game *g, const char *filename);
+/* Reads into private staging storage, which may be modified on failure. */
+int game_read_staged(Game *g, const char *filename, int *recovered);
 int game_load_backup_used(void);
 #endif

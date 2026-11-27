@@ -6,7 +6,7 @@
 static const char *const names[SAVE_COUNT]={
     "save.dat", "profile.dat", "progress.dat", "mode-save.dat", "adventure-backup.dat",
     "audio-settings.dat", "ui-settings.dat", "performance.dat", "player-name.dat",
-    "custom-zombie.dat", "challenge-view.dat"
+    "custom-zombie.dat", "challenge-view.dat", "mini-save.dat"
 };
 static char paths[SAVE_COUNT][64];
 static int active;

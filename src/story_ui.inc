@@ -1,7 +1,10 @@
 /* Dialogue text and Dave animation come from the player's imported resources. */
 static int story_id,story_return,story_phase,story_library,story_index,story_limit;
 static float story_time,story_line_time;static char story_key[64],story_raw[2048],story_text[2048];
-static int ending_return,ending_paused;static float ending_clock,ending_wait,ending_tail;
+enum { ENDING_OPENING, ENDING_WAITING_FOR_MUSIC, ENDING_WITH_MUSIC, ENDING_AFTER_MUSIC, ENDING_WITHOUT_MUSIC };
+static const float ending_music_timeout=3.0f;
+static int ending_return,ending_paused,ending_phase,ending_music_leaving;
+static float ending_clock,ending_wait,ending_tail;
 static int story_offset,story_end,story_prop;static char story_page[2048];
 static float story_token_time(const char *prefix,float fallback){const char *s=strstr(story_raw,prefix);return s?fminf(30,fmaxf(0,atoi(s+strlen(prefix))/100.0f)):fallback;}
 static void story_layout(void){
@@ -34,7 +37,7 @@ static void story_step(float dt){
  int enter=story_prop>=0?A_DAVE_WALLNUT_ENTER+story_prop*3:A_DAVE_ENTER;
  if(story_phase==0&&story_time>=story_duration(enter,24)){story_phase=1;story_time=story_line_time=0;story_speak();}
  int grab=story_return==1&&game.level==50;
- if(story_phase==2&&story_time>=story_duration(grab?A_DAVE_GRAB:A_DAVE_LEAVE,grab?18:24)){screen=story_return;if(screen==1){game.level_flags|=LEVEL_READY;warm_level();}story_phase=0;}
+ if(story_phase==2&&story_time>=story_duration(grab?A_DAVE_GRAB:A_DAVE_LEAVE,grab?18:24)){screen=story_return;if(screen==1)game.level_flags|=LEVEL_READY;story_phase=0;}
 }
 static int story_level_id(void){
  if(game.extra.category==EXTRA_IZOMBIE)return game.extra.selection==0?2200:0;
@@ -53,18 +56,63 @@ static void draw_story(void){
  float rate=story_phase==1?12:story_phase==2&&game.level==50&&story_return==1?18:24;
  render_anim(&assets[anim],91,263,(story_phase==1?story_line_time:story_time)*rate/fmaxf(1,assets[anim].fps),1,WHITE,story_phase==1&&(story_prop>=0||!talking));
  if(story_phase==1){render_image(&assets[A_SHOP_BUBBLE],158,43,312,181,0,WHITE);story_layout();disc_text(169,54,290,story_page,RGBA(42,33,22,255),.8f);}
- ui_hint(story_library?"L/R: Passage   X: Next   O: Back":story_id==1503||story_id==1553?"X: Buy seed slot   Square: Decline":"X: Continue   O: Skip scene");
+ ui_context_hint(story_library?"L/R: Passage   X: Next   O: Back":story_id==1503||story_id==1553?"X: Buy seed slot   Square: Decline":"X: Continue   O: Skip scene");
 }
-static void ending_finish(void){movie_close();player.garden.credits_seen=1;persist_profile();screen=ending_return;ending_paused=0;}
-static int ending_begin(int destination){animation_cache_suspend();if(!movie_open("data/ending.pvj")){notify("ENDING DATA COULD NOT BE OPENED");return 0;}ending_return=destination;ending_paused=0;ending_clock=ending_wait=ending_tail=0;screen=19;audio_restart_music(MUSIC_CREDITS);return 1;}
+static void ending_finish(void){
+ audio_music(0);
+ if(!movie_error()){player.garden.credits_seen=1;persist_profile();}
+ movie_close();screen=ending_return;ending_paused=0;ending_music_leaving=1;
+}
+static int ending_begin(int destination){
+ animation_cache_suspend();
+ if(!movie_open("data/ending.pvj")){notify("ENDING DATA COULD NOT BE OPENED");return 0;}
+ audio_music(0);
+ ending_return=destination;ending_paused=0;ending_phase=ENDING_OPENING;
+ ending_clock=ending_wait=ending_tail=0;screen=19;return 1;
+}
+static int ending_allows_music(int track){
+ if(screen==19)return !ending_paused&&ending_phase==ENDING_WITH_MUSIC;
+ if(ending_music_leaving){
+  if(track<0||audio_music_seconds(track)<0||audio_music_unavailable(track))return 0;
+  ending_music_leaving=0;
+ }
+ return 1;
+}
 static void ending_step(float dt){
  if(ending_paused)return;
+ if(ending_phase==ENDING_OPENING){
+  movie_update(0);
+  if(movie_error()){ending_finish();notify("ENDING FRAME COULD NOT BE READ");}
+  else if(movie_frame()==0){ending_phase=ENDING_WAITING_FOR_MUSIC;audio_restart_music_once(MUSIC_CREDITS);}
+  return;
+ }
  float audio=audio_music_seconds(MUSIC_CREDITS);
- ending_wait+=dt;
- if(audio>=0)ending_clock=fmaxf(ending_clock,audio);else if(ending_wait>.35f)ending_clock+=dt;
+ int unavailable=audio_music_unavailable(MUSIC_CREDITS);
+ if(ending_phase==ENDING_WAITING_FOR_MUSIC){
+  ending_wait+=dt;
+  if(unavailable)ending_phase=ENDING_WITHOUT_MUSIC;
+  else if(audio>=0)ending_phase=ENDING_WITH_MUSIC;
+  else if(ending_wait>=ending_music_timeout)ending_phase=ENDING_WITHOUT_MUSIC;
+  else return;
+ }
+ if(ending_phase==ENDING_WITH_MUSIC){
+  if(audio>=0)ending_clock=fmaxf(ending_clock,audio);
+  if(audio_music_finished(MUSIC_CREDITS)){
+   ending_clock=fmaxf(ending_clock,audio_music_seconds(MUSIC_CREDITS));
+   ending_phase=ENDING_AFTER_MUSIC;
+  }
+  else if(unavailable)ending_phase=ENDING_WITHOUT_MUSIC;
+ }
+ float duration=movie_duration();
+ int video_drives_clock=ending_phase==ENDING_AFTER_MUSIC||ending_phase==ENDING_WITHOUT_MUSIC;
+ if(video_drives_clock&&ending_clock<duration)ending_clock=fminf(duration,ending_clock+dt);
+ int final_frame_was_displayed=movie_at_end();
  movie_update(ending_clock);
  if(movie_error()){ending_finish();notify("ENDING FRAME COULD NOT BE READ");}
- else if(ending_clock>=movie_duration()){ending_tail+=dt;if((ending_tail>.5f&&movie_at_end())||ending_tail>1.5f)ending_finish();}
+ else if(video_drives_clock&&ending_clock>=duration){
+  ending_tail+=dt;
+  if(final_frame_was_displayed||ending_tail>1.5f)ending_finish();
+ }
 }
 static int story_input(uint32_t pressed){
  if(screen==19){if(pressed&PSP_CTRL_START)ending_paused=!ending_paused;if(pressed&PSP_CTRL_CIRCLE)ending_finish();return 1;}
@@ -72,6 +120,13 @@ static int story_input(uint32_t pressed){
  if(pressed&PSP_CTRL_CIRCLE){story_leave();return 1;}if(story_phase!=1||story_line_time<fmaxf(.25f,story_token_time("{DELAY_",.25f)))return 1;
  if(pressed&PSP_CTRL_CROSS){story_layout();if(story_text[story_end]){story_offset=story_end;return 1;}}
  if(story_library&&(pressed&(PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER|PSP_CTRL_CROSS))){story_index=(story_index+STORY_LINES+((pressed&PSP_CTRL_LTRIGGER)?-1:1))%STORY_LINES;story_load();return 1;}
- if(story_id==1503||story_id==1553){if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_SQUARE)){int yes=(pressed&PSP_CTRL_CROSS)&&profile_purchase(&player,SHOP_SLOTS);story_id=(story_id==1503?1500:1550)+(yes?10:20);profile_apply(&player,&game);persist_profile();story_load();}return 1;}
+ if(story_id==1503||story_id==1553){
+  if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_SQUARE)){
+   PurchaseResult result=(pressed&PSP_CTRL_CROSS)?purchase_item(SHOP_SLOTS):PURCHASE_REJECTED;
+   if(result==PURCHASE_SAVE_FAILED)return 1;
+   story_id=(story_id==1503?1500:1550)+(result==PURCHASE_SAVED?10:20);story_load();
+  }
+  return 1;
+ }
  if(pressed&PSP_CTRL_CROSS){if(story_limit&&story_id>=story_limit){story_leave();return 1;}story_id++;char key[64],text[8];snprintf(key,sizeof(key),"CRAZY_DAVE_%d",story_id);if(!textdb_get(key,text,sizeof(text)))story_leave();else story_load();}return 1;
 }

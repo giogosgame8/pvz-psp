@@ -1,4 +1,13 @@
 """Lossless PSP GE texture tiling (16-byte by 8-row blocks)."""
+from functools import lru_cache
+from operator import itemgetter
+from struct import Struct
+
+
+PACK_LOW = tuple(value >> 4 for value in range(256))
+PACK_HIGH = tuple(value & 240 for value in range(256))
+UNPACK_LOW = tuple((value & 15) * 17 for value in range(256))
+UNPACK_HIGH = tuple((value >> 4) * 17 for value in range(256))
 
 def pack_rgba4444(image):
  """Pack little-endian RGBA4444 using compiled channel operations.
@@ -9,30 +18,45 @@ def pack_rgba4444(image):
  """
  from PIL import Image,ImageChops
  red,green,blue,alpha=image.split()
- low=[v>>4 for v in range(256)];high=[v&240 for v in range(256)]
- lower=ImageChops.add(red.point(low),green.point(high))
- upper=ImageChops.add(blue.point(low),alpha.point(high))
+ lower=ImageChops.add(red.point(PACK_LOW),green.point(PACK_HIGH))
+ upper=ImageChops.add(blue.point(PACK_LOW),alpha.point(PACK_HIGH))
  return Image.merge('LA',(lower,upper)).tobytes()
-def tile_rgba4444(raw,width,height):
- row=width*2
- if width<8 or height<8 or width%8 or height%8 or len(raw)!=row*height:raise ValueError('Invalid padded texture')
- source=memoryview(raw);out=bytearray(len(raw));dest=memoryview(out);at=0
- for y in range(0,height,8):
-  for x in range(0,row,16):
-   for dy in range(8):
-    start=(y+dy)*row+x;dest[at:at+16]=source[start:start+16];at+=16
- return bytes(out)
+
+
+@lru_cache(maxsize=32)
+def _block_layout(width, height, tiled_to_linear):
+    """Cache the order so splitting, gathering and joining run in C per frame."""
+    chunks_per_row = width // 8
+    total_chunks = chunks_per_row * height
+    if tiled_to_linear:
+        indices = (((y // 8) * chunks_per_row + x) * 8 + y % 8
+                   for y in range(height) for x in range(chunks_per_row))
+    else:
+        indices = ((y + offset) * chunks_per_row + x
+                   for y in range(0, height, 8) for x in range(chunks_per_row)
+                   for offset in range(8))
+    return Struct('16s' * total_chunks), itemgetter(*indices)
+
+
+def _reorder_blocks(raw, width, height, tiled_to_linear):
+    if width < 8 or height < 8 or width % 8 or height % 8 or len(raw) != width * height * 2:
+        raise ValueError('Invalid padded texture')
+    if width == 8:
+        return bytes(raw)
+    unpack, reorder = _block_layout(width, height, tiled_to_linear)
+    return b''.join(reorder(unpack.unpack(raw)))
+
+
+def tile_rgba4444(raw, width, height):
+    return _reorder_blocks(raw, width, height, False)
 
 def unpack_rgba4444(raw,width,height):
  """Decode both interleaved bytes with compiled, exact nibble lookup tables."""
  from PIL import Image
  if width<1 or height<1 or len(raw)!=width*height*2:raise ValueError('Invalid linear texture')
  lower,upper=Image.frombytes('LA',(width,height),raw).split()
- low=[(v&15)*17 for v in range(256)];high=[(v>>4)*17 for v in range(256)]
- return Image.merge('RGBA',(lower.point(low),lower.point(high),upper.point(low),upper.point(high)))
-def untile_rgba4444(raw,width,height):
- row=width*2;blocks=width//8;out=bytearray(len(raw));dest=memoryview(out);source=memoryview(raw)
- for y in range(height):
-  for bx in range(blocks):
-   address=((y//8)*blocks+bx)*128+(y%8)*16;start=y*row+bx*16;dest[start:start+16]=source[address:address+16]
- return bytes(out)
+ return Image.merge('RGBA',(lower.point(UNPACK_LOW),lower.point(UNPACK_HIGH),upper.point(UNPACK_LOW),upper.point(UNPACK_HIGH)))
+
+
+def untile_rgba4444(raw, width, height):
+    return _reorder_blocks(raw, width, height, True)

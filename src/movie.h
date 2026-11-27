@@ -10,6 +10,7 @@ float movie_duration(void);
 int movie_at_end(void);
 int movie_active(void);
 int movie_frame(void);
+float movie_frame_lag(float audio_seconds);
 int movie_error(void);
 int movie_selftest(FILE *out);
 #endif

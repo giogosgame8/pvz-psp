@@ -1,5 +1,6 @@
 """Installer integrity tests without original resources or dependency downloads."""
 import contextlib
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -8,14 +9,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from setup_assets import acquire_setup_lock, install_prepared, prepare_game, validate_prepared
+from setup_assets import acquire_setup_lock, install_prepared, main, prepare_game, restore_prepared_backup, validate_prepared
 from prepared_data import DATA_VERSION,write_integrity
 
 
-def fixture(folder):
+def fixture(folder, source_sha='test-iso'):
     folder.mkdir(parents=True)
     (folder / 'manifest.json').write_text(json.dumps({
-        'version': DATA_VERSION, 'disc_title_id': 'BLUS30852', 'source_iso_sha256': 'test-iso',
+        'version': DATA_VERSION, 'disc_title_id': 'BLUS30852', 'source_iso_sha256': source_sha,
         'assets': [{'file': 'plant.pva'}]}), encoding='utf-8')
     for name in ('music-dynamics.bin','music-layer-checks.bin','menu-motion.bin','menu-motion.json','plant.pva', 'foley.pvf', 'ending.pvj', 'ending.json', 'music0.wav', 'assets.idx', 'XMB_ICON0.PNG', 'XMB_PIC1.PNG', 'zombie_motion.bin', 'seeds.bin', 'disc_font.bin', 'strings.bin', 'almanac.bin', 'story-index.json', 'music-checks.bin'):
         (folder / name).write_bytes(b'test fixture')
@@ -26,6 +27,26 @@ def fixture(folder):
 
 
 class SetupTests(unittest.TestCase):
+    def test_fresh_setup_probes_then_leaves_full_verification_to_the_worker(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / 'disc.iso'
+            game = root / 'PSP/GAME/PVZPSP'
+            game.mkdir(parents=True)
+            (game / 'EBOOT.PBP').touch()
+            with patch('setup_assets.ROOT', root), \
+                 patch.object(sys, 'argv', ['Setup.exe', '--iso', str(source), '--no-install']), \
+                 patch('setup_assets.probe_disc') as probe, \
+                 patch('setup_assets.inspect_or_import', side_effect=AssertionError('duplicate import')), \
+                 patch('setup_assets.sha256_file', side_effect=AssertionError('duplicate ISO scan')), \
+                 patch('setup_assets.ensure_dependencies', return_value=Path(sys.executable)), \
+                 patch('setup_assets.prepare_game', return_value=None) as prepare, \
+                 patch('setup_assets.repack_images'), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(main(), 0)
+            probe.assert_called_once_with(source)
+            prepare.assert_called_once()
+            self.assertEqual(prepare.call_args.args[:2], (source, game / 'data'))
+
     def test_reuse_rejects_an_older_install_without_crow_routes(self):
         with tempfile.TemporaryDirectory() as temp:
             folder=Path(temp)/'data';fixture(folder)
@@ -116,6 +137,37 @@ class SetupTests(unittest.TestCase):
                 with self.assertRaisesRegex(OSError, 'locked destination'):
                     install_prepared(staging, old)
             self.assertEqual((old / 'keep.txt').read_text(), 'existing data')
+
+    def test_interrupted_swap_recovers_a_verified_matching_backup(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            destination = root / 'data'
+            backup = root / 'data-backup-20261121-120100'
+            corrupt = root / 'data-backup-20261121-120200'
+            source = root / 'disc.iso'
+            contents = b'known disc bytes'
+            source_hash = hashlib.sha256(contents).hexdigest()
+            fixture(backup, source_hash)
+            fixture(corrupt, source_hash)
+            (corrupt / 'music0.wav').write_bytes(b'bad data')
+            source.write_bytes(b'different disc')
+            self.assertFalse(restore_prepared_backup(destination, source))
+            self.assertFalse(destination.exists())
+            source.write_bytes(contents)
+            self.assertTrue(restore_prepared_backup(destination, source))
+            self.assertFalse(backup.exists())
+            self.assertTrue(corrupt.exists())
+            validate_prepared(destination, source_hash)
+
+    def test_recovery_keeps_existing_installation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            destination = root / 'data'
+            backup = root / 'data-backup-20261121-120100'
+            fixture(destination)
+            fixture(backup)
+            self.assertFalse(restore_prepared_backup(destination, root / 'disc.iso'))
+            self.assertTrue(backup.exists())
 
     def test_missing_song_and_escaping_paths_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp:

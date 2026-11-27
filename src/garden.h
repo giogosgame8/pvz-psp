@@ -1,10 +1,13 @@
 #ifndef PVZ_GARDEN_H
 #define PVZ_GARDEN_H
 #include "profile.h"
+enum { GARDEN_MAX_SLOTS=32 };
 void garden_initialize(Profile*,int64_t now);
 int garden_add(Profile*,int kind,int64_t now);
 int garden_count(const Profile*,int garden);
 int garden_find(const Profile*,int garden,int slot);
+int garden_slot_count(int garden);
+int garden_index_slots(const Profile*,int garden,int slots[GARDEN_MAX_SLOTS]);
 int garden_need(const Profile*,int index,int64_t now);
 int garden_use(Profile*,int index,int tool,int64_t now);
 int garden_move(Profile*,int index,int garden,int slot);

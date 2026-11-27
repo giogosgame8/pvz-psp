@@ -1,10 +1,19 @@
 """Worker limits must adapt to small CPUs and constrained available memory."""
 import unittest
 from unittest.mock import patch
-from preparation_workers import worker_count
+from preparation_workers import can_overlap_music, worker_count
 
 
 class PreparationWorkerTests(unittest.TestCase):
+    def test_music_only_overlaps_with_sufficient_cpu_and_known_memory(self):
+        cases = [(8, 3 * 1024**3, True), (7, 8 * 1024**3, False),
+                 (20, 3 * 1024**3 - 1, False), (20, None, False)]
+        for cpus, memory, allowed in cases:
+            with self.subTest(cpus=cpus, memory=memory):
+                with patch('preparation_workers.os.cpu_count', return_value=cpus), \
+                     patch('preparation_workers.available_memory', return_value=memory):
+                    self.assertEqual(can_overlap_music(), allowed)
+
     def count(self, kind, logical, megabytes, jobs=None):
         with patch('preparation_workers.os.cpu_count', return_value=logical), \
              patch('preparation_workers.available_memory', return_value=None if megabytes is None else megabytes*1048576), \

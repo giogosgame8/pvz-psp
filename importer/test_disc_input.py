@@ -42,6 +42,23 @@ class DiscInputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'archives or music files are missing'):
             self.inspect(entries, {'TITLE_ID': 'BLUS30852', 'APP_VER': '01.00'})
 
+    def test_quick_disc_probe_reads_metadata_only(self):
+        metadata = {'TITLE_ID': 'BLUS30852', 'APP_VER': '01.00'}
+        paths = ['/PS3_GAME/PARAM.SFO']
+        paths.extend(pvz_import.GAME_ROOT + 'DATA/' + name for name in pvz_import.ARCHIVES)
+        paths.extend(pvz_import.GAME_ROOT + 'SOUNDS/' + name for name in pvz_import.MUSIC)
+        iso = Mock()
+        iso.walk.return_value = [
+            {'path': path, 'directory': False, 'size': 64, 'lba': 20 + index}
+            for index, path in enumerate(paths)
+        ]
+        with patch.object(pvz_import, 'ISO', return_value=iso), \
+             patch.object(pvz_import, 'parse_sfo', return_value=metadata), \
+             patch.object(pvz_import, 'sha256_file', side_effect=AssertionError('unexpected ISO scan')):
+            pvz_import.probe_disc(Path('owned-copy.iso'))
+        iso.read.assert_called_once_with(20 * pvz_import.SECTOR, 64)
+        iso.file.close.assert_called_once()
+
     def test_existing_output_remains_untouched(self):
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp)

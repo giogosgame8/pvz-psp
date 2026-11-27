@@ -9,14 +9,17 @@ static PerformanceProfile performance;
 static const char *performance_path="performance.dat";
 static FILE *performance_log;
 static uint32_t performance_check(const uint32_t *data){uint32_t value=2166136261u;for(int i=0;i<3;i++)for(int b=0;b<4;b++)value=(value^((data[i]>>(b*8))&255))*16777619u;return value;}
-static int performance_load(void){
- uint32_t data[4];FILE *f=fopen(performance_path,"rb");if(!f)return 0;
- int ok=fread(data,sizeof(data),1,f)==1&&data[0]==0x46505650&&data[1]==1&&(data[2]==30||data[2]==60)&&data[3]==performance_check(data)&&fgetc(f)==EOF;fclose(f);
- if(ok)psp1000_fps=data[2];return ok;
+static int performance_read(FILE *f,void *buffer){
+ uint32_t *data=buffer;
+ int ok=fread(data,4*sizeof(*data),1,f)==1&&data[0]==0x46505650&&data[1]==1&&(data[2]==30||data[2]==60)&&data[3]==performance_check(data)&&fgetc(f)==EOF;
+ return ok;
 }
+static int performance_valid(const char *path){uint32_t data[4];return record_inspect(path,data,performance_read);}
+static int performance_load(void){uint32_t data[4];if(!record_load(performance_path,data,performance_read))return 0;psp1000_fps=data[2];return 1;}
 static int performance_save(void){
- uint32_t data[4]={0x46505650,1,psp1000_fps,0};data[3]=performance_check(data);char temporary[256];snprintf(temporary,sizeof(temporary),"%s.tmp",performance_path);
- FILE *f=fopen(temporary,"wb");if(!f)return 0;int ok=fwrite(data,sizeof(data),1,f)==1;if(fclose(f))ok=0;if(ok){remove(performance_path);ok=rename(temporary,performance_path)==0;}if(ok)performance_dirty=0;return ok;
+ uint32_t data[4]={0x46505650,1,psp1000_fps,0};data[3]=performance_check(data);
+ if(!record_replace(performance_path,data,sizeof(data),performance_valid))return 0;
+ performance_dirty=0;return 1;
 }
 static int performance_option(void){
  #ifdef LOW_MEMORY
@@ -30,6 +33,6 @@ static int options_back(void){return options_count()-1;}
 static void performance_apply(void){performance=platform_frame_preference(&hardware,psp1000_fps);render_set_fps(performance.target_fps);}
 static void performance_select(int fps){
  if(!performance_option()||(fps!=30&&fps!=60)||psp1000_fps==fps)return;
- psp1000_fps=fps;performance_dirty=1;performance_apply();performance_save();
+ psp1000_fps=fps;performance_dirty=1;performance_apply();if(!performance_save())notify("COULD NOT SAVE FRAME RATE");
  if(performance_log){fprintf(performance_log,"Frame rate changed: %d FPS; smaller PSP-1000 caches retained\n",performance.target_fps);fflush(performance_log);}
 }

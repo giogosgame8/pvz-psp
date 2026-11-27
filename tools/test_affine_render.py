@@ -2,13 +2,40 @@
 import math
 import random
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from unittest.mock import patch
 
-from affine_render import AffineLayerCache,affine_layer,composite_affine,render_frames
+from affine_render import AffineLayerCache,CompactCanvas,affine_layer,composite_affine,frame_worker_session,render_frames
 
 
 class AffineRenderTests(unittest.TestCase):
+    def test_compact_canvas_preserves_layer_order_and_transparent_padding(self):
+        size = (200, 180)
+        full = Image.new('RGBA', size)
+        compact = CompactCanvas(size)
+        layers = ((Image.new('RGBA', (22, 19), (220, 30, 60, 161)), (120, 105)),
+                  (Image.new('RGBA', (20, 22), (30, 200, 150, 188)), (132, 99)))
+        for layer, position in layers:
+            full.alpha_composite(layer, position)
+            compact.alpha_composite(layer, position)
+        image, x, y = compact.finish()
+        self.assertEqual((image.size, x, y), ((32, 25), 120, 99))
+        global_crop = (109, 90, 160, 128)
+        local_crop = (global_crop[0] - x, global_crop[1] - y, global_crop[2] - x, global_crop[3] - y)
+        self.assertEqual(image.crop(local_crop).tobytes(), full.crop(global_crop).tobytes())
+
+    def test_parallel_batches_share_workers_until_the_preparation_exits(self):
+        with (patch('affine_render.worker_count', return_value=3),
+              patch('affine_render.ThreadPoolExecutor', wraps=ThreadPoolExecutor) as pool):
+            with frame_worker_session():
+                self.assertEqual(render_frames(abs, [-2, -1, -3]), [2, 1, 3])
+                with frame_worker_session():
+                    self.assertEqual(render_frames(str, [3, 1]), ['3', '1'])
+                self.assertEqual(pool.call_count, 1)
+            self.assertEqual(render_frames(abs, [-1, -2]), [1, 2])
+            self.assertEqual(pool.call_count, 2)
+
     def test_reused_layers_preserve_each_destination_background(self):
         image=Image.new('RGBA',(11,9),(40,160,70,127));matrix=(1,0,0,1,4,6);inverse=(1,0,-4,0,1,-6)
         cache=AffineLayerCache()

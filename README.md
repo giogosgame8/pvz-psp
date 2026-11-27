@@ -2,7 +2,7 @@
 
 An unfinished, unofficial PSP reimplementation. Original game files are not included.
 
-**[Download the game ZIP](https://github.com/giogosgame8/pvz-psp/releases/download/v0.24.5/PvZ-PSP-0.24.5.zip)**
+**[Download the 0.24.6 single-player preview](https://github.com/giogosgame8/pvz-psp/releases/download/v0.24.6/PvZ-PSP-0.24.6.zip)**
 
 ## What you need
 
@@ -34,7 +34,7 @@ to `PSP/SAVEDATA/PVZPSP`; copy that folder to back up saves from then on.
 - Choose **Disco / Michael Jackson** under **Options > Dancing zombie**.
 - Open **Player → Zombie customizer** to create a saved flag-zombie appearance using PS3 artwork.
 - PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
-- [What's new in 0.24.5](docs/changelog/CHANGES-0.24.5.md).
+- [What's new in 0.24.6](docs/changelog/CHANGES-0.24.6.md).
 
 **[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**
 

@@ -13,6 +13,20 @@ static int fidelity_presentation_selftest(FILE *out){
  game.zombies[id].kind=Z_JACK;game.zombies[id].hp=150;FP("a disarmed Jack keeps its damaged bare-body bank",zombie_visible_clip(&game.zombies[id],id,0)==&damaged[A_JACK_BARE_WALK][1]);
  int bodies=1;const int body_assets[]={A_DUCK_WALK,A_SNORKEL_EAT,A_DOLPHIN_WALK,A_JACK_WALK,A_BALLOON_GROUND,A_DIGGER_GROUND,A_POGO_GROUND,A_LADDER_BARE_WALK,A_IMP_WALK,A_YETI_WALK};for(int i=0;i<10;i++)bodies&=damaged[body_assets[i]][0].loaded&&damaged[body_assets[i]][1].loaded;
  FP("advanced bodies have both progressive damage banks",bodies);
+ game_start_mini(&game,MINI_ZOMBOTANY2,2407);
+ int squash=game_spawn_zombie(&game,4,Z_NORMAL,330);
+ Zombie *plant_zombie=&game.zombies[squash];
+ game.mini.zombie_heads[squash]=5;plant_zombie->armor=0;
+ FP("an intact plant-headed zombie uses the Squash overlay",
+    zombotany_head_asset(plant_zombie,squash,game_zombie_body_stage_for(&game,plant_zombie))==A_SQUASH);
+ render_begin();draw_board();render_end();
+ int drawn=render_debug_frame("review-zombotany-ground.ppm");
+ game.extra.zombotany_jump[squash]=.475f;
+ render_begin();draw_board();render_end();
+ FP("the Zombotany render captures the grounded and airborne poses",drawn&&render_debug_frame("review-zombotany-jump.ppm"));
+ plant_zombie->hp=60;
+ FP("a headless plant-headed zombie no longer draws its plant overlay",
+    zombotany_head_asset(plant_zombie,squash,game_zombie_body_stage_for(&game,plant_zombie))<0);
  for(int i=0;i<5;i++){int start=A_DAVE_WALLNUT_ENTER+i*3;ready&=assets[start].frames==18&&assets[start+1].frames==21&&assets[start+2].frames==9;}FP("all five held props retain enter, idle and talk poses",ready);
  memset(story_text,0,sizeof(story_text));for(int n=0;n<60;n++)strcat(story_text,"This is a long dialogue passage. ");story_offset=0;story_layout();FP("long dialogue splits at a word boundary inside its original speech bubble",story_end>0&&story_text[story_end]&&disc_text_height(story_page,290,.8f)<=130);
  int end=story_end;story_offset=end;story_layout();FP("the next dialogue page continues without dropping text",story_end>end&&!strncmp(story_page,story_text+end,strlen(story_page)));

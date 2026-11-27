@@ -11,19 +11,17 @@ static const char *avatar_names[AV_COUNT]={"avatar_body_walk","avatar_body_eat",
  "avatar_bucket_walk","avatar_bucket_eat","avatar_helmet_walk","avatar_helmet_eat","avatar_mustache_walk","avatar_mustache_eat","avatar_face_dance","avatar_mustache_dance"};
 static uint32_t avatar_checksum(const uint32_t *words){uint32_t value=2166136261u;const unsigned char *bytes=(const unsigned char*)words;for(int i=0;i<28;i++)value=(value^bytes[i])*16777619u;return value;}
 static int avatar_valid(const Avatar *a){return a->face<5&&a->hat<5&&a->wear<3&&a->mustache<4&&a->enabled<2;}
-static int avatar_load(void){
- uint32_t record[8]={0};FILE *f=fopen(avatar_path,"rb");if(!f)return 0;
- int ok=fread(record,sizeof(record),1,f)==1&&fgetc(f)==EOF;fclose(f);
+static int avatar_read(FILE *f,void *buffer){
+ uint32_t record[8]={0};
+ int ok=fread(record,sizeof(record),1,f)==1&&fgetc(f)==EOF;
  Avatar value={record[2],record[3],record[4],record[5],record[6]};
- if(!ok||record[0]!=0x435a5650||record[1]!=1||record[7]!=avatar_checksum(record)||!avatar_valid(&value))return 0;avatar=value;return 1;
+ if(!ok||record[0]!=0x435a5650||record[1]!=1||record[7]!=avatar_checksum(record)||!avatar_valid(&value))return 0;*(Avatar *)buffer=value;return 1;
 }
+static int avatar_file_valid(const char *path){Avatar record;return record_inspect(path,&record,avatar_read);}
+static int avatar_load(void){Avatar record;if(!record_load(avatar_path,&record,avatar_read))return 0;avatar=record;return 1;}
 static int avatar_save(const Avatar *value){
  if(!avatar_valid(value))return 0;uint32_t record[8]={0x435a5650,1,value->face,value->hat,value->wear,value->mustache,value->enabled,0};record[7]=avatar_checksum(record);
- char temporary[160],backup[160];snprintf(temporary,sizeof(temporary),"%s.tmp",avatar_path);snprintf(backup,sizeof(backup),"%s.bak",avatar_path);
- FILE *f=fopen(temporary,"wb");if(!f)return 0;int ok=fwrite(record,sizeof(record),1,f)==1;if(fclose(f))ok=0;if(!ok)return 0;
- FILE *old=fopen(avatar_path,"rb");int existed=old!=0;if(old)fclose(old);
- if(existed){remove(backup);if(rename(avatar_path,backup))return 0;}
- if(rename(temporary,avatar_path)){if(existed)rename(backup,avatar_path);return 0;}
+ if(!record_replace(avatar_path,record,sizeof(record),avatar_file_valid))return 0;
  avatar=*value;return 1;
 }
 static int avatar_assets(void){
@@ -72,14 +70,18 @@ static int avatar_input(uint32_t pressed){
 static int customizer_selftest(FILE *out){
  Avatar old=avatar,draft=avatar_draft;int old_screen=screen,old_row=avatar_row;const char *old_path=avatar_path;avatar_path="selftest-custom-zombie.dat";int pass=0,total=0;
  #define AV_CHECK(label,test) do{int ok=(test);pass+=ok;total++;fprintf(out,"customizer %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
+ const char *backup="selftest-custom-zombie.dat.bak";remove(avatar_path);remove(backup);
  AV_CHECK("all PS3 layer banks have matching animation lengths",avatar_assets());
  avatar_begin();avatar_row=0;avatar_draft.face=0;avatar_input(PSP_CTRL_LEFT);AV_CHECK("face choices wrap left",avatar_draft.face==4);
  avatar_row=1;avatar_draft.hat=4;avatar_input(PSP_CTRL_RIGHT);AV_CHECK("headwear choices wrap right",avatar_draft.hat==0);
  avatar_draft=(Avatar){4,3,2,3,1};avatar_row=5;avatar_input(PSP_CTRL_CROSS);AV_CHECK("Save commits the preset and returns to Player",screen==25&&avatar.face==4&&avatar.hat==3&&avatar.wear==2&&avatar.mustache==3&&avatar.enabled);
  avatar=(Avatar){0,0,0,0,0};AV_CHECK("custom appearance survives reopening",avatar_load()&&avatar.face==4&&avatar.mustache==3);
- FILE *bad=fopen(avatar_path,"wb");if(bad){fputs("truncated",bad);fclose(bad);}AV_CHECK("damaged presets preserve the last valid appearance",!avatar_load()&&avatar.face==4);
- avatar_begin();avatar_draft.face=1;avatar_input(PSP_CTRL_CIRCLE);AV_CHECK("Cancel preserves the saved appearance",screen==25&&avatar.face==4);
- remove(avatar_path);char backup[160];snprintf(backup,sizeof(backup),"%s.bak",avatar_path);remove(backup);snprintf(backup,sizeof(backup),"%s.tmp",avatar_path);remove(backup);
+ Avatar replacement=avatar;replacement.face=2;int saved=avatar_save(&replacement);
+ FILE *bad=fopen(avatar_path,"wb");if(bad){fputs("truncated",bad);fclose(bad);}
+ AV_CHECK("damaged presets restore the last valid appearance",saved&&bad!=NULL&&avatar_load()&&avatar.face==4);
+ AV_CHECK("resaving after recovery preserves the valid backup",avatar_save(&replacement)&&record_inspect(backup,&replacement,avatar_read)>0&&replacement.face==4);
+ avatar_begin();avatar_draft.face=1;avatar_input(PSP_CTRL_CIRCLE);AV_CHECK("Cancel preserves the saved appearance",screen==25&&avatar.face==2);
+ remove(avatar_path);remove(backup);
  avatar=old;avatar_draft=draft;avatar_path=old_path;screen=old_screen;avatar_row=old_row;
  fprintf(out,"CUSTOMIZER RESULT %d/%d\n",pass,total);return pass==total;
  #undef AV_CHECK

@@ -2,18 +2,68 @@
 import math
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
+from contextlib import contextmanager
+from threading import Lock, local
 from PIL import Image
 from preparation_workers import worker_count
 
 
+_frame_workers = local()
+
+
+@contextmanager
+def frame_worker_session():
+    """Reuse graphics workers for the calling thread's preparation run."""
+    if getattr(_frame_workers, 'session', None) is not None:
+        yield
+        return
+    workers = worker_count('graphics')
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        _frame_workers.session = workers, executor
+        try:
+            yield
+        finally:
+            del _frame_workers.session
+
+
 def render_frames(function, indices):
     indices = list(indices)
+    if len(indices) <= 1:
+        return [function(index) for index in indices]
+    session = getattr(_frame_workers, 'session', None)
+    if session is not None:
+        workers, executor = session
+        if workers == 1:
+            return [function(index) for index in indices]
+        return list(executor.map(function, indices))
     workers = min(worker_count('graphics'), len(indices))
     if workers <= 1:
         return [function(index) for index in indices]
     with ThreadPoolExecutor(max_workers=workers) as pool:
         return list(pool.map(function, indices))
+
+
+class CompactCanvas:
+    """Collect clipped layers in source coordinates and composite their occupied rectangle."""
+
+    def __init__(self, size):
+        self.size = size
+        self.layers = []
+
+    def alpha_composite(self, image, position):
+        self.layers.append((image, *position))
+
+    def finish(self):
+        if not self.layers:
+            return Image.new('RGBA', (1, 1)), 0, 0
+        left = min(x for _, x, _ in self.layers)
+        top = min(y for _, _, y in self.layers)
+        right = max(x + image.width for image, x, _ in self.layers)
+        bottom = max(y + image.height for image, _, y in self.layers)
+        canvas = Image.new('RGBA', (right - left, bottom - top))
+        for image, x, y in self.layers:
+            canvas.alpha_composite(image, (x - left, y - top))
+        return canvas, left, top
 
 
 class AffineLayerCache:
@@ -63,9 +113,14 @@ def affine_layer(size, image, matrix, inverse, alpha=1):
         return
     # Keep output origin (0, 0) and the original inverse coefficients: translating
     # the matrix for a tight crop can change bicubic rounding at some pixels.
-    layer = image.transform((right, bottom), Image.Transform.AFFINE, inverse,
+    source = image.convert('RGBa') if image.mode == 'RGBA' else image
+    layer = source.transform((right, bottom), Image.Transform.AFFINE, inverse,
                             resample=Image.Resampling.BICUBIC)
     layer = layer.crop((left, top, right, bottom))
+    if source is not image:
+        # Pillow's RGBA transform follows the same path. Converting after the crop
+        # avoids unpremultiplying the transparent space before the layer.
+        layer = layer.convert('RGBA')
     if alpha < 1:
         layer.putalpha(layer.getchannel('A').point(lambda value: round(value * alpha)))
     return layer,left,top

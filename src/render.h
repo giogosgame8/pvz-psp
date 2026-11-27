@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include <stdio.h>
 typedef struct Animation { uint32_t width,height,tw,th,frames,stride;float fps;uint16_t *pixels;float anchor_x,anchor_y;
-    int16_t *cached_slots;uint32_t *index,packed_bytes,payload_offset;unsigned char *packed;uint32_t touched;
+    int16_t *cached_slots;uint32_t *index,packed_bytes,payload_offset;unsigned char *packed;
+    struct Animation *bank_older,*bank_newer;
     char path[128];struct Animation *next;int compressed,loaded,grayscale,gpu_ready; } Animation;
 typedef struct { float cpu_ms,gpu_wait_ms,vblank_wait_ms;uint32_t draw_calls,texture_binds; } RenderStats;
 void render_init(void);
@@ -26,6 +27,8 @@ void render_movie(const uint16_t *pixels);
 void render_image(const Animation *a,float x,float y,float w,float h,int frame,uint32_t tint);
 void render_image_affine(const Animation *a,const float matrix[6],uint32_t tint);
 void render_part(const Animation *a,int frame,float sx,float sy,float sw,float sh,float x,float y,float w,float h,uint32_t tint);
+typedef struct { float sx,sy,sw,sh,x,y,w,h; } TexturePart;
+void render_parts(const Animation *a,int frame,const TexturePart *parts,unsigned count,uint32_t tint);
 int animation_load(Animation *animation,const char *filename);
 int animation_catalog_load(const char *filename);
 int animation_catalog_selftest(FILE *out);
@@ -33,9 +36,12 @@ void animation_catalog_close(void);
 void animation_free(Animation *animation);
 RenderStats render_stats(void);
 int render_selftest(void);
+int render_focus_selftest(void);
 int render_debug_frame(const char *filename);
 uint16_t *animation_frame(const Animation *animation,int frame);
 int animation_warm(const Animation *animation);
+int animation_check_bank_file(const Animation *animation);
+int animation_require_bank(const Animation *animation);
 int animation_retain_frame(const Animation *animation,int frame);
 int animation_frame_retained(const Animation *animation,int frame);
 int animation_bank_ready(const Animation *animation);
@@ -48,6 +54,8 @@ void animation_cache_report(FILE *out);
 void animation_cache_next_frame(void);
 void animation_cache_suspend(void);
 int animation_cache_ok(void);
+typedef enum { ANIMATION_FAULT_NONE, ANIMATION_FAULT_DATA, ANIMATION_FAULT_MEMORY } AnimationFault;
+AnimationFault animation_cache_fault(const char **path);
 void animation_cache_configure(int low_memory);
 int animation_cache_layout_selftest(FILE*);
 #define RGBA(r,g,b,a) ((uint32_t)(r)|((uint32_t)(g)<<8)|((uint32_t)(b)<<16)|((uint32_t)(a)<<24))

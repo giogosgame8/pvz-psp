@@ -1,4 +1,6 @@
-# Known limitations — 0.24.5 development
+# Known limitations — 0.24.6 single-player preview
+
+See the [0.24.6 changes and validation](changelog/CHANGES-0.24.6.md).
 
 This is an unfinished native PSP reimplementation, not an exact PS3 reproduction.
 It imports resources from the original BLUS30852 version 01.00 PS3 ISO. It does
@@ -6,7 +8,6 @@ not run the PS3 executable on PSP.
 
 ## Missing or unfinished
 
-- **Multiplayer:** playable co-op, versus and PSP ad-hoc transport are not implemented.
 - **PS3-specific challenge details:** Heavy Weapon's primary upgrade and firing
   rules now use the PS3 values. Exact controller feel and additional effects,
   along with Bobsled movement and some Zombotany and portal edge cases, remain open.
@@ -20,26 +21,21 @@ not run the PS3 executable on PSP.
 - **Zombatar:** the customizer uses available PS3 zombie artwork. The supported
   disc does not contain the complete original GOTY creator resources.
 
-PSN leaderboards and PlayStation system trophies are outside the offline scope.
-Local collectible trophies are separate from PlayStation system trophies.
+Multiplayer, PSN leaderboards and PlayStation system trophies are outside the
+single-player scope. Local collectible trophies are available.
 
 ## Testing and compatibility
 
-The 0.24.3 scene/regression executable passed 1,408 checks on each of the
-Street and PSP-1000 emulator profiles. Normal Street startup verified
-save migration and backup restoration. The 0.24.2 live-combat and full
-ending/audio results are linked separately.
-Emulator results are not physical-console certification or complete PS3 parity.
+Emulation covers single-player gameplay and presentation checks. Physical-console frame
+pacing, suspend/resume and extended play still need testing.
 
 PSP-1000 support is experimental. It defaults to 30 FPS and smaller caches;
 the optional 60 FPS target is not a physical-hardware performance guarantee.
 Suspend/resume, battery interruption and extended hardware play still need testing.
 
-0.24.3 uses the same prepared data as 0.24.1 and 0.24.2. Replace only
-EBOOT.PBP when updating from either of those builds. Player data now lives
-in `PSP/SAVEDATA/PVZPSP`; legacy files are copied from the installation
-on the first successful launch. Game saves remain version 14 and profiles
-remain version 5. Back up both folders if reverting.
+Player data lives in `PSP/SAVEDATA/PVZPSP`. The game copies legacy files from
+the installation on the first successful launch. Game saves remain version
+14 and profiles remain version 5.
 
 [0.24.3 migration and validation](reference/SAVEDATA-0.24.3.md) ·
 [0.24.4 polish and Bonus Endless](reference/POLISH-0.24.4.md) ·

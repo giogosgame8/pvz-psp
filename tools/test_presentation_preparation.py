@@ -9,10 +9,23 @@ from PIL import Image
 from prepare_assets import write_pva
 from prepare_features09 import first_prepared_frame
 from reanim_scene import Scene
-from texture_layout import pack_rgba4444,unpack_rgba4444
+from texture_layout import pack_rgba4444, tile_rgba4444, unpack_rgba4444, untile_rgba4444
 
 
 class PresentationPreparationTests(unittest.TestCase):
+    def test_texture_blocks_keep_psp_byte_order_in_both_directions(self):
+        for width, height in [(8, 16), (16, 8), (32, 16), (64, 128)]:
+            with self.subTest(width=width, height=height):
+                row = width * 2
+                raw = random.Random(24).randbytes(row * height)
+                expected = b''.join(raw[start:start + 16]
+                                    for top in range(0, height, 8)
+                                    for left in range(0, row, 16)
+                                    for y in range(top, top + 8)
+                                    for start in (y * row + left,))
+                self.assertEqual(tile_rgba4444(raw, width, height), expected)
+                self.assertEqual(untile_rgba4444(expected, width, height), raw)
+
     def test_compiled_decoding_roundtrips_every_16_bit_pixel_value(self):
         raw=b''.join(struct.pack('<H',value) for value in range(65536))
         image=unpack_rgba4444(raw,256,256)

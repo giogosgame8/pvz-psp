@@ -6,6 +6,7 @@
 #include "profile.h"
 #include "checkpoint.h"
 #include "save_storage.h"
+#include "record_file.h"
 #include "garden.h"
 #include "textdb.h"
 #include "disc_font.h"
@@ -14,6 +15,7 @@
 #include "platform.h"
 #include <pspkernel.h>
 #include <pspctrl.h>
+#include <pspiofilemgr.h>
 #include <psppower.h>
 #include <psprtc.h>
 #include <pspsysmem.h>
@@ -33,7 +35,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.24.5 development - Heavy Weapon and crow"
+#define BUILD018_LABEL "PvZ PSP 0.24.6 development - gameplay, presentation and recovery"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -52,6 +54,10 @@ static const char *asset_names[A_COUNT]={"pea_idle","pea_shoot","sunflower","wal
        "paper_angry_walk","door_walk","paper_angry_eat","door_eat","background_night","note1","note2","note3","note4","note5","gravestone","crater","projectile_spore","lily","squash","threepeater","kelp","jalapeno","spikeweed","torchwood","tallnut","sea","plantern","cactus","blover","split","star","pumpkin","magnet","cabbage","pot","kernel","coffee","garlic","umbrella","marigold","melon","duck_walk","duck_eat","duck_death","snorkel_walk","snorkel_eat","snorkel_death","zamboni_walk","zamboni_eat","zamboni_death","bobsled_walk","bobsled_eat","bobsled_death","dolphin_walk","dolphin_eat","dolphin_death","jack_walk","jack_eat","jack_death","balloon_walk","balloon_eat","balloon_death","digger_walk","digger_eat","digger_death","pogo_walk","pogo_eat","pogo_death","yeti_walk","yeti_eat","yeti_death","bungee_walk","bungee_eat","bungee_death","ladder_walk","ladder_eat","ladder_death","catapult_walk","catapult_eat","catapult_death","garg_walk","garg_eat","garg_death","imp_walk","imp_eat","imp_death","boss_walk","boss_eat","boss_death","background_pool","background_fog","background_roof","background_boss","projectile_cabbage","projectile_kernel","projectile_butter","projectile_melon","projectile_star","projectile_cactus","vase","pool_cleaner","roof_cleaner","fog_cloud","boss_fireball","boss_iceball","reward_trophy","reward_silver_sunflower","reward_shovel","reward_almanac","reward_keys","reward_taco","reward_watering_can","reward_note","gatling","gatling_shoot","twin","gloom","gloom_shoot","cattail","cattail_shoot","winter","winter_shoot","goldmagnet","spikerock","cob","cob_unarmed","cob_shoot","imitater","imitater_morph","coin_silver","coin_gold","coin_diamond","projectile_winter","projectile_cob","projectile_cattail","store_background","almanac_background","rake","seed_cards","plant_awards","award_rays","mini_background","aquarium_background","slot_overlay","pea_body","pea_head","pea_fire","repeater_body","repeater_head","repeater_fire","snow_body","snow_head","snow_fire","portal_circle","portal_square","aquarium_swim","brain","bot_walk","bot_eat","heavy_tank","heavy_turret","garden_background","mushroom_garden","garden_needs","dialogue_cards","wisdom_cards","dave_idle","dave_talk","dave_enter","dave_leave","garden_sprout","snail_walk","tree_stages","disc_font","dave_grab","heavy_cattail","bobsled_seated","bobsled_onfoot","boss_head_enter","boss_head_leave","boss_rv","boss_bungee","boss_stomp1","boss_stomp2","boss_stomp3","boss_stomp4","boss_spawn1","boss_spawn2","boss_spawn3","boss_spawn4","boss_spawn5","boss_spit1","boss_spit2","boss_spit3","boss_spit4","boss_spit5","present","chocolate","sled","menu_main","menu_modes","menu_collection","ui_dialog","ui_button","ui_slider","ui_knob","challenge_frames","challenge_thumbs","book_pages","seed_chooser","shop_scene","shop_bubble","shop_icons","impact_dust","note_paper","squash_left","squash_right","squash_up","squash_down","award_glow","award_arrow","award_background","challenge_lock","challenge_open","garden_barrow","garden_fertilizer","garden_glove","garden_goldwater","garden_kelpaqua","garden_marigold_body","garden_marigold_full","garden_marigold_petals","garden_music","garden_pot","garden_seaaqua","garden_sleep_doomshroom","garden_sleep_fumeshroom","garden_sleep_gloomshroom","garden_sleep_hypnoshroom","garden_sleep_iceshroom","garden_sleep_magnetshroom","garden_sleep_puffshroom","garden_sleep_scaredyshroom","garden_sleep_seashroom","garden_sleep_sunshroom","garden_spray","garden_sprout_plain","garden_sunbig","garden_sunbigsleep","garden_water","garden_waterpot","garden_z","snail_idle","snail_in","snail_out","snail_turn","garg_throw","imp_thrown","imp_land","jack_pop","paper_gasp","dolphin_jump","zombie_charred","zombie_waterdeath","garg_walk_noimp","garg_eat_noimp","garg_death_noimp","garg_throw_noimp","classic_dancer_walk","classic_dancer_eat","classic_dancer_death","head_classic_dancer","menu_crow_idle","menu_crow_idle2","menu_crow_idle3","menu_crow_talk","menu_crow_fly","menu_crow_land","giga_walk","giga_walk_noimp","giga_eat","giga_eat_noimp","giga_death","giga_death_noimp","giga_throw","giga_throw_noimp","mower_tricked","reward_gold_sunflower","reward_moneybag","house_previews","secret_future","secret_mustache","secret_daisy","secret_pinata","zombie_dance","cone_dance","bucket_dance","pumpkin_back","pumpkin_front","chomper_swallow","cabbage_shoot","melon_shoot","kernel_shoot","kernel_butter","sunshroom_grow","kelp_grab","magnet_shoot","magnet_recharge","ladder_place","ladder_bare_walk","ladder_bare_eat","balloon_pop","balloon_ground","digger_drill","digger_land","digger_ground","pogo_ground","snorkel_rise","bungee_hold","jack_bare_walk","football_bare_walk","jack_bare_eat","football_bare_eat","projectile_basketball","dave_smalltalk","dave_blahblah","dave_crazy","dave_wallnut_enter","dave_wallnut_idle","dave_wallnut_talk","dave_hammer_enter","dave_hammer_idle","dave_hammer_talk","dave_fertilizer_enter","dave_fertilizer_idle","dave_fertilizer_talk","dave_treefood_enter","dave_treefood_idle","dave_treefood_talk","dave_moneybag_enter","dave_moneybag_idle","dave_moneybag_talk","boss_bungee_leave","dancer_moonwalk","dancer_point","dancer_armraise","backup_armraise","classic_dancer_armraise","duck_cone_walk","duck_cone_eat","duck_bucket_walk","duck_bucket_eat"};
 static Animation assets[A_COUNT],damaged[A_COUNT][2],imitated_assets[A_COUNT][3];static Game game;static volatile int running=1;
 static int screen,paused,help,gallery,ready,can_resume,debug_info;static char message[128];static float message_time;
+static int board_exit_screen=-1;
+static CheckpointResult board_exit_snapshot;
+static char asset_problem[128];
+static AnimationFault asset_fault;
 static int review_ui_only;static const char *review_label;
 static float shoot_alignment[3][80][2];
 static float support_offsets[ALL_SEEDS+1][2];
@@ -83,7 +89,7 @@ static int live_benchmark,live_phase;
 static int test_ok;static uint32_t previous_buttons;static float repeat_timer;static size_t texture_memory;
 static RenderStats last_render;
 static int menu_volume_row,volume_dirty;static float volume_repeat;
-static int more_cursor,mini_cursor,note_cursor;
+static int more_cursor,mini_cursor,note_cursor,mini_resume_id=-1;
 static Platform hardware;static uint32_t menu_modes=APP_BUILT_MODES;
 static const int more_modes[]={APP_MINIGAMES,APP_PUZZLES,APP_SURVIVAL,APP_COOP,APP_VERSUS,-1};
 static const int more_ids[]={1,8,7,5,6,12};
@@ -98,10 +104,11 @@ static void more_horizontal(int direction){
 static int house_cursor;
 static Profile player;static int store_cursor,book_cursor,book_zombies,book_scroll,imit_cursor;static const char *profile_path="profile.dat";
 static Progress progress;static Game adventure_backup;static int replaying,menu_selected,replay_cursor;
-static const char *adventure_path="save.dat",*progress_path="progress.dat";
+static const char *adventure_path="save.dat",*progress_path="progress.dat",*mini_save_path="mini-save.dat",*challenge_path="mode-save.dat";
 static float reward_elapsed,reward_delay,reward_collect_time,reward_x,reward_ground;static int reward_row,reward_col;
 static float packet_x[MAX_PACKETS],meter_progress,sun_glow,meter_start_health,meter_start_timer;static int meter_wave=-1;
 #include "presentation_settings.inc"
+static void notify(const char *text);
 #include "performance_settings.inc"
 static int squash_audio_phase[ROWS][COLS];static int packet_ui_count,last_sun;
 static double profile_seconds,profile_cpu,profile_gpu;static unsigned int profile_frames;
@@ -129,7 +136,6 @@ static const char *level_advice[CAMPAIGN_LEVELS]={
     "DOOM-SHROOM BLASTS A LARGE AREA.\nITS CRATER TEMPORARILY BLOCKS PLANTING.",
     "THE NIGHTTIME CONVEYOR FINALE.\nUSE DELIVERED MUSHROOMS TO CLEAR THE LAWN.\nGRAVE BUSTERS REMOVE THE TOMBSTONES."};
 #include "menu_widgets.inc"
-static void notify(const char *text);
 static int persist_profile(void);
 #include "player_name.inc"
 #include "customizer.inc"
@@ -154,6 +160,24 @@ static float potted_offset(int row,int col,int kind,int axis){
 }
 static void notify(const char *text){snprintf(message,sizeof(message),"%s",text);message_time=2;}
 static int persist_profile(void){checkpoint_flush();int ok=profile_save(&player,profile_path);if(!ok)notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");return ok;}
+static int commit_profile_change(const Profile *next,const char *error){
+    checkpoint_flush();
+    if(!profile_save(next,profile_path)){notify(error);return 0;}
+    player=*next;
+    if(can_resume||replaying)profile_apply_loadout(&player,&game);
+    if(can_resume)profile_apply_loadout(&player,&adventure_backup);
+    if(!strcmp(message,error))message_time=0;
+    return 1;
+}
+typedef enum { PURCHASE_REJECTED, PURCHASE_SAVED, PURCHASE_SAVE_FAILED } PurchaseResult;
+static PurchaseResult purchase_item(int item){
+    Profile next=player;
+    if(!profile_purchase(&next,item))return PURCHASE_REJECTED;
+    return commit_profile_change(&next,"COULD NOT SAVE YOUR PURCHASE")?PURCHASE_SAVED:PURCHASE_SAVE_FAILED;
+}
+static int pea_body_asset(int seed){
+    return seed==PEA?A_PEA_BODY:seed==SNOW?A_SNOW_BODY:seed==REPEATER?A_REPEATER_BODY:-1;
+}
 static int plant_asset(const Plant *p){
     switch(p->kind){
         case GATLING:return p->flash>0?A_GATLING_SHOOT:A_GATLING;case TWIN:return A_TWIN;
@@ -184,30 +208,156 @@ static void fidelity_plant_view(int row,int col,int *asset,float *time,int *loop
  else if(p->kind==SUNSHROOM&&p->age>=120&&p->age<120+11/12.0f){*asset=A_SUNSHROOM_GROW;*time=p->age-120;*loop=0;}
 }
 
-static void read_costs(void){
-    profile_apply(&player,&game);persist_profile();
-    FILE *f=fopen("data/seeds.bin","rb");if(!f)return;char magic[4];uint32_t values[SEEDS*2];
-    int ok=fread(magic,4,1,f)==1&&!memcmp(magic,"PVS1",4)&&fread(values,sizeof(values),1,f)==1;fclose(f);
-    if(ok)for(int i=0;i<SEEDS;i++)if(values[i*2]<=1000&&values[i*2+1]<=10000){game.seed_cost[i]=values[i*2];game.seed_refresh[i]=values[i*2+1];}
+static uint32_t imported_seed_costs[SEEDS*2];
+static int imported_seed_costs_ready;
+static void load_seed_costs(const char *path){
+    imported_seed_costs_ready=0;
+    FILE *file=fopen(path,"rb");
+    if(!file)return;
+    char magic[4];
+    imported_seed_costs_ready=fread(magic,sizeof(magic),1,file)==1&&
+        !memcmp(magic,"PVS1",sizeof(magic))&&
+        fread(imported_seed_costs,sizeof(imported_seed_costs),1,file)==1;
+    fclose(file);
 }
-static void reset_level_ui(void){reward_elapsed=0;reward_delay=-1;reward_collect_time=-1;packet_ui_count=game.packet_count;for(int i=0;i<MAX_PACKETS;i++)packet_x[i]=44+i*37;meter_progress=game.spawned&&game.num_waves>0?(game.wave-1)/(float)game.num_waves:0;meter_wave=-1;memset(squash_audio_phase,0,sizeof(squash_audio_phase));last_sun=game.sun;sun_glow=0;}
-static int save_current(void){
+static void apply_level_profile(void){
+    profile_apply(&player,&game);
+    if(!imported_seed_costs_ready)return;
+    for(int i=0;i<SEEDS;i++){
+        uint32_t cost=imported_seed_costs[i*2],refresh=imported_seed_costs[i*2+1];
+        if(cost<=1000&&refresh<=10000){game.seed_cost[i]=cost;game.seed_refresh[i]=refresh;}
+    }
+}
+static uint8_t level_art_attempted[A_COUNT];
+static uint32_t level_art_bytes;
+static void reset_level_ui(void){board_exit_screen=-1;reward_elapsed=0;reward_delay=-1;reward_collect_time=-1;packet_ui_count=game.packet_count;for(int i=0;i<MAX_PACKETS;i++)packet_x[i]=44+i*37;meter_progress=game.spawned&&game.num_waves>0?(game.wave-1)/(float)game.num_waves:0;meter_wave=-1;memset(squash_audio_phase,0,sizeof(squash_audio_phase));memset(level_art_attempted,0,sizeof(level_art_attempted));level_art_bytes=0;last_sun=game.sun;sun_glow=0;}
+static int mini_session_index(const Game *board){
+    unsigned index=(unsigned)board->mini.id-1u;
+    if(board->extra.category||index>=MINI_COUNT)return -1;
+    int id=index;
+    int challenge=id==MINI_BOWLING?1:id==MINI_WHACK?2:id+3;
+    return board->challenge==challenge?id:-1;
+}
+static const char *current_board_path(void){
+    if(!replaying)return can_resume?adventure_path:NULL;
+    if(game.extra.category)return challenge_path;
+    return mini_session_index(&game)>=0&&(game.level_flags&LEVEL_READY)?mini_save_path:NULL;
+}
+static void open_mini_menu(int cursor);
+static void show_mini_menu(int cursor,int resume);
+static int save_current_with_progress(int include_progress){
     checkpoint_flush();
     if(can_resume||replaying){profile_apply(&player,&game);profile_bank(&player,&game);}
-    if(!persist_profile())return 0;int ok=1;
-    if(replaying&&game.extra.category)ok=game_save(&game,save_storage_path(SAVE_CHALLENGE));
-    if(!replaying&&can_resume){ok=game_save(&game,adventure_path);adventure_backup=game;}
+    if(!persist_profile())return 0;
+    if(include_progress&&!progress_save(&progress,progress_path)){
+        notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");
+        return 0;
+    }
+    const char *path=current_board_path();
+    int ok=!path||game_save(&game,path);
+    if(!replaying&&can_resume)adventure_backup=game;
     if(!ok)notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");return ok;
 }
+static int save_current(void){return save_current_with_progress(0);}
 /* Snapshot first; the worker never touches the live game/profile. */
-static int queue_current(void){
+static int queue_current_snapshot(int observed,int include_progress){
  if(can_resume||replaying){profile_apply(&player,&game);profile_bank(&player,&game);}
- const char *path=replaying?(game.extra.category?save_storage_path(SAVE_CHALLENGE):0):can_resume?adventure_path:0;
+ const char *path=current_board_path();
  if(!replaying&&can_resume)adventure_backup=game;
- if(checkpoint_queue(&player,profile_path,path?&game:0,path,&progress,progress_path))return 1;
- return save_current();
+ const char *history_path=include_progress?progress_path:NULL;
+ if(observed)return checkpoint_queue_observed(&player,profile_path,path?&game:NULL,path,&progress,history_path);
+ return checkpoint_queue(&player,profile_path,path?&game:NULL,path,&progress,history_path);
 }
-static void visit_current(void){checkpoint_flush();progress_visit(&progress,game.level,0);progress_save(&progress,progress_path);}
+static int queue_current(void){return queue_current_snapshot(0,1)||save_current_with_progress(1);}
+static int queue_current_without_history(void){return queue_current_snapshot(0,0)||save_current();}
+static CheckpointResult queue_board_checkpoint(void){
+    int include_progress=!replaying||mini_session_index(&game)<0;
+    int queued=queue_current_snapshot(1,include_progress);
+    if(queued>0)return CHECKPOINT_WRITING;
+    if(queued==0)return CHECKPOINT_IDLE;
+    return save_current_with_progress(include_progress)?CHECKPOINT_SAVED:CHECKPOINT_FAILED;
+}
+static CheckpointResult poll_board_checkpoint(CheckpointResult snapshot){
+    return snapshot==CHECKPOINT_WRITING?checkpoint_observed_result():snapshot;
+}
+static void clear_save_warning(void){
+    if(!strcmp(message,"COULD NOT SAVE. CHECK YOUR MEMORY CARD."))message_time=0;
+}
+typedef enum { LAUNCH_NONE, LAUNCH_REPLAY, LAUNCH_MINI, LAUNCH_SURVIVAL, LAUNCH_VASE, LAUNCH_IZOMBIE, LAUNCH_RESUME } LaunchMode;
+typedef struct {
+    LaunchMode mode;
+    int selection,difficulty;
+    CheckpointResult snapshot;
+} MenuLaunch;
+static MenuLaunch menu_launch;
+static void resume_extra(void);
+
+static void enter_saved_round(const Game *saved,int mini,int recovered){
+    replaying=1;game=*saved;
+    if(mini>=0)mini_cursor=mini;
+    apply_level_profile();
+    reset_level_ui();
+    screen=(game.level_flags&LEVEL_READY)?1:2;paused=help=0;
+    clear_save_warning();
+    if(recovered)notify("RECOVERED YOUR LAST BACKUP SAVE");
+}
+
+static void menu_launch_start(void){
+    MenuLaunch launch=menu_launch;
+    menu_launch.mode=LAUNCH_NONE;
+    if(launch.mode==LAUNCH_RESUME){
+        int pending,recovered;
+        const Game *saved=checkpoint_loaded_game(&pending,&recovered);
+        if(saved)enter_saved_round(saved,launch.selection,recovered);
+        checkpoint_release_load();
+        if(saved&&!checkpoint_queue(&player,profile_path,NULL,NULL,NULL,NULL))persist_profile();
+        return;
+    }
+    replaying=1;
+    if(launch.mode==LAUNCH_REPLAY)game_start_level(&game,launch.selection,0x500000u+launch.selection);
+    else if(launch.mode==LAUNCH_MINI)game_start_mini(&game,launch.selection,0x600+launch.selection);
+    else if(launch.mode==LAUNCH_SURVIVAL)
+        game_start_survival(&game,launch.selection,launch.difficulty,0x7100+launch.selection+launch.difficulty*17);
+    else game_start_puzzle(&game,launch.mode==LAUNCH_IZOMBIE,launch.selection,0x7200+launch.selection);
+    apply_level_profile();
+    reset_level_ui();
+    screen=2;paused=help=0;
+    clear_save_warning();
+    queue_current_without_history();
+}
+
+static void menu_launch_step(void){
+    if(menu_launch.snapshot==CHECKPOINT_IDLE)menu_launch.snapshot=queue_board_checkpoint();
+    menu_launch.snapshot=poll_board_checkpoint(menu_launch.snapshot);
+    if(menu_launch.snapshot==CHECKPOINT_SAVED)menu_launch_start();
+}
+
+static void menu_launch_request(LaunchMode mode,int selection,int difficulty){
+    menu_launch=(MenuLaunch){.mode=mode,.selection=selection,.difficulty=difficulty,.snapshot=CHECKPOINT_IDLE};
+    if(replaying||!can_resume)menu_launch_start();
+    else menu_launch_step();
+}
+
+static int menu_launch_input(uint32_t pressed){
+    if(menu_launch.mode==LAUNCH_NONE)return 0;
+    if(pressed&PSP_CTRL_CIRCLE){
+        if(menu_launch.mode==LAUNCH_RESUME)checkpoint_release_load();
+        menu_launch.mode=LAUNCH_NONE;
+        clear_save_warning();
+    }else{
+        if(menu_launch.snapshot==CHECKPOINT_FAILED&&(pressed&PSP_CTRL_CROSS))
+            menu_launch.snapshot=CHECKPOINT_IDLE;
+        menu_launch_step();
+    }
+    return 1;
+}
+static int enter_adventure_intro(int first_visit){
+    apply_level_profile();
+    if(first_visit)progress_visit(&progress,game.level,0);
+    reset_level_ui();
+    screen=2;paused=help=0;
+    return queue_current();
+}
 static void open_adventure(void){
     if(!can_resume)return;
     if(replaying){game=adventure_backup;replaying=0;reset_level_ui();}
@@ -215,23 +365,23 @@ static void open_adventure(void){
 }
 static void start_replay(int level){
     if(!progress_played(&progress,level))return;
-    if(!replaying)save_current();replaying=1;game_start_level(&game,level,0x500000u+level);read_costs();reset_level_ui();screen=2;paused=0;help=0;
+    menu_launch_request(LAUNCH_REPLAY,level,0);
 }
 static void new_game(void){
     checkpoint_flush();
     if(can_resume){const Game *old=replaying?&adventure_backup:&game;game_save(old,save_storage_path(SAVE_ADVENTURE_BACKUP));}
     replaying=0;
-    game_start_adventure(&game,1,0x51a7c0de,player.completion.adventure_runs);read_costs();screen=2;paused=0;help=0;can_resume=1;
-    visit_current();reset_level_ui();int saved=save_current();
+    game_start_adventure(&game,1,0x51a7c0de,player.completion.adventure_runs);can_resume=1;
+    int saved=enter_adventure_intro(1);
     profile_seconds=profile_cpu=profile_gpu=0;profile_frames=0;
     if(saved)notify("ADVENTURE 1-1");
 }
 static int level_background(int level){if(level==50)return A_BACKGROUND_BOSS;if(level==35)return A_NIGHT;static const int backgrounds[5]={A_BACKGROUND,A_NIGHT,A_BACKGROUND_POOL,A_BACKGROUND_FOG,A_BACKGROUND_ROOF};return backgrounds[(level-1)/10];}
 static int board_background(void){if(game.completion.adventure_run)return level_background(game.level);return game.level==1?A_BACKGROUND_ONE:game.level<=3?A_BACKGROUND_THREE:level_background(game.level);}
-static void warm_level(void){
-    animation_warm(&assets[board_background()]);
-    for(int k=0;k<ALL_SEEDS;k++)if(game.unlocked_mask&(UINT64_C(1)<<k))animation_warm(&assets[seed_icons[k]]);
-    for(int k=10;k<Z_TYPES;k++)if(game_zombie_allowed(game.level,k))for(int p=0;p<3;p++)animation_warm(&assets[A_DUCK_WALK+(k-10)*3+p]);
+static int board_cleaner_asset(int row){
+    if(game_world(&game)==4)return A_ROOF_CLEANER;
+    if(game_water_row(&game,row)&&(game.store_flags&STORE_POOL))return A_POOL_CLEANER;
+    return game.completion.cosmetics&COS_TRICKED?A_MOWER_TRICKED:A_MOWER;
 }
 static int damage_mask(int asset){
     switch(asset){
@@ -262,20 +412,76 @@ static int draw_extra_hud(float);
 static void draw_extra_overlay(void);
 static int draw_mini_custom_board(void);
 static void draw_mini_overlay(void);
+static void draw_star_targets(void);
+static void lantern_coverage(const Game *g,int source_rows,unsigned lit[ROWS]){
+    memset(lit,0,ROWS*sizeof(*lit));
+    for(int row=0;row<source_rows;row++){
+        unsigned sources=0;
+        for(int col=0;col<COLS;col++)
+            if(g->plants[row][col].kind==PLANTERN)sources|=1u<<col;
+        if(!sources)continue;
+        unsigned covered=(sources|(sources<<1)|(sources>>1))&((1u<<COLS)-1);
+        lit[row]|=covered;
+        if(row>0)lit[row-1]|=covered;
+        if(row+1<ROWS)lit[row+1]|=covered;
+    }
+}
+
+typedef struct {
+    int16_t zombie_head[ROWS],shot_head[ROWS];
+    int16_t zombie_next[MAX_ZOMBIES],shot_next[MAX_SHOTS];
+} BoardActorRows;
+
+static void board_actor_rows(const Game *g,int row_count,int invisible,BoardActorRows *actors){
+    for(int row=0;row<row_count;row++){
+        actors->zombie_head[row]=-1;
+        actors->shot_head[row]=-1;
+    }
+    // Prepend in reverse so each row keeps its original slot order for blending.
+    if(!invisible)for(int i=MAX_ZOMBIES-1;i>=0;i--){
+        const Zombie *z=&g->zombies[i];
+        if(!z->used||(unsigned)z->row>=(unsigned)row_count)continue;
+        actors->zombie_next[i]=actors->zombie_head[z->row];
+        actors->zombie_head[z->row]=i;
+    }
+    for(int i=MAX_SHOTS-1;i>=0;i--){
+        const Shot *shot=&g->shots[i];
+        if(!shot->used||(unsigned)shot->row>=(unsigned)row_count)continue;
+        actors->shot_next[i]=actors->shot_head[shot->row];
+        actors->shot_head[shot->row]=i;
+    }
+}
+
 static void draw_board(void){
     if(draw_mini_custom_board())return;
     render_background(&assets[board_background()]);
+    if(game_mini_active(&game,MINI_STARS))draw_star_targets();
     if(game.mode==MODE_BOWLING)render_rect(GRID_X+CELL_W*3-2,GRID_Y,2,CELL_H*ROWS,RGBA(210,38,26,255));
     if(game.rake_state==1||game.rake_state==2)render_anim(&assets[A_RAKE],center(game.rake_col),plant_base(game.rake_row,game.rake_col),game.rake_state==1?0:game.rake_timer,.68f,WHITE,0);
-    for(int row=0;row<game_rows(&game);row++){
-        if(game_cleaner_active(&game,row)&&game.mower_x[row]<510)render_anim(&assets[game_world(&game)==4?A_ROOF_CLEANER:game_water_row(&game,row)&&(game.store_flags&STORE_POOL)?A_POOL_CLEANER:(game.completion.cosmetics&COS_TRICKED)?A_MOWER_TRICKED:A_MOWER],game.mower_x[row],baseline(game.extra.mower_row[row]?game.extra.mower_row[row]-1:row)+game_roof_offset(&game,game.mower_x[row]),game.time,.68f,WHITE,1);
+    unsigned vase_lit[ROWS];
+    int vase_lights_ready=0;
+    int row_count=game_rows(&game),invisible=game_mini_active(&game,MINI_INVIS);
+    float zombie_scale=(game.level==25||game_mini_active(&game,MINI_LITTLE))?.465f:.93f;
+    BoardActorRows actors;
+    board_actor_rows(&game,row_count,invisible,&actors);
+    for(int row=0;row<row_count;row++){
+        if(game_cleaner_active(&game,row)&&game.mower_x[row]<510)render_anim(&assets[board_cleaner_asset(row)],game.mower_x[row],baseline(game.extra.mower_row[row]?game.extra.mower_row[row]-1:row)+game_roof_offset(&game,game.mower_x[row]),game.time,.68f,WHITE,1);
         for(int col=0;col<COLS;col++){
             if(game.graves[row][col])render_anim(&assets[A_GRAVE],center(col),baseline(row),0,1,WHITE,0);
             if(game.craters[row][col]>0)render_anim(&assets[A_CRATER],center(col),baseline(row),0,1,WHITE,0);
             float foot=plant_base(row,col)+game.mini.match_fall[row][col];
             if(game.support[row][col]){int kind=game.support[row][col]-1,id=seed_icons[kind];render_anim(game.imitated[row][col]&2?gray_asset(id,0):&assets[id],center(col)+potted_offset(row,col,kind,0),foot+potted_offset(row,col,kind,1),kind==POT&&game.plants[row][col].kind>=0?0:game.time,.68f,WHITE,1);}
             if(game.ice_tiles[row][col]>0)render_rect(center(col)-18,foot-6,36,7,RGBA(160,220,250,180));
-            if(game.vases[row][col]){int reveal=game.extra.vase_green[row][col];for(int r=0;r<5;r++)for(int c=0;c<9;c++)if(game.plants[r][c].kind==PLANTERN&&abs(r-row)<=1&&abs(c-col)<=1)reveal=1;render_anim(&assets[A_VASE],center(col),foot,0,1,game.extra.vase_green[row][col]?RGBA(110,255,130,255):WHITE,0);if(reveal){int content=game.extra.vase_content[row][col],id=content==1000?A_SUN:content<0?A_ZOMBIE:seed_icons[content==LEFT_PACKET?REPEATER:content];render_anim(&assets[id],center(col),foot-7,0,.36f,RGBA(255,255,255,200),1);}}
+            if(game.vases[row][col]){
+                int green=game.extra.vase_green[row][col];
+                if(!green&&!vase_lights_ready){lantern_coverage(&game,5,vase_lit);vase_lights_ready=1;}
+                render_anim(&assets[A_VASE],center(col),foot,0,1,green?RGBA(110,255,130,255):WHITE,0);
+                if(green||(vase_lit[row]&(1u<<col))){
+                    int content=game.extra.vase_content[row][col];
+                    int id=content==1000?A_SUN:content<0?A_ZOMBIE:seed_icons[content==LEFT_PACKET?REPEATER:content];
+                    render_anim(&assets[id],center(col),foot-7,0,.36f,RGBA(255,255,255,200),1);
+                }
+            }
             if(game.pumpkin_hp[row][col]>0)render_anim(game.imitated[row][col]&4?gray_asset(A_PUMPKIN_BACK,0):&assets[A_PUMPKIN_BACK],center(col)+potted_offset(row,col,PUMPKIN,0),foot+potted_offset(row,col,PUMPKIN,1),game.time,.68f,WHITE,1);
             if(game.morph_timer[row][col]>0)render_anim(&assets[game.morph_timer[row][col]>30.0f/26?A_IMITATER:A_IMITATER_MORPH],center(col)+potted_offset(row,col,IMITATER,0),foot+potted_offset(row,col,IMITATER,1),2+30.0f/26-game.morph_timer[row][col],.68f,WHITE,0);
             Plant *p=&game.plants[row][col];if(p->kind<0)continue;float plant_x=center(col)+potted_offset(row,col,p->kind,0);foot+=potted_offset(row,col,p->kind,1);
@@ -286,8 +492,9 @@ static void draw_board(void){
                 float plant_time=game.extra.category==EXTRA_IZOMBIE?0:p->age;int plant_loop=1,asset=plant_asset(p);fidelity_plant_view(row,col,&asset,&plant_time,&plant_loop);int stage=p->kind==WALLNUT?defender_stage(p->hp,4000):p->kind==TALLNUT?defender_stage(p->hp,8000):0;
                 const Animation *a=stage?&damaged[asset][stage-1]:&assets[asset];
                 if(game.imitated[row][col]&1)a=gray_asset(asset,stage);
-                if((p->kind==PEA||p->kind==SNOW||p->kind==REPEATER)&&!(game.imitated[row][col]&1)&&game.extra.category!=EXTRA_IZOMBIE){
-                    int body=p->kind==SNOW?A_SNOW_BODY:p->kind==REPEATER?A_REPEATER_BODY:A_PEA_BODY;float action=game.pea_shoot_time[row][col];float idle=p->age*(.84f+((row*7+col*13)%11)*.026f);
+                int body=pea_body_asset(p->kind);
+                if(body>=0&&!(game.imitated[row][col]&1)&&game.extra.category!=EXTRA_IZOMBIE){
+                    float action=game.pea_shoot_time[row][col];float idle=p->age*(.84f+((row*7+col*13)%11)*.026f);
                     (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body],plant_x,foot,idle,.68f,WHITE,1);
                     float end=24.0f/(p->kind==REPEATER?45:35),blend=action>0?fminf(1,fminf(action/.12f,(end+.12f-action)/.12f)):0;
                     if(blend<1)(game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+1],plant_x,foot,idle,.68f,RGBA(255,255,255,(int)(255*(1-blend))),1);
@@ -306,18 +513,20 @@ static void draw_board(void){
             int stage=defender_stage(game.pumpkin_hp[row][col],4000);const Animation *front=stage?&damaged[A_PUMPKIN_FRONT][stage-1]:&assets[A_PUMPKIN_FRONT];if(game.imitated[row][col]&4)front=gray_asset(A_PUMPKIN_FRONT,stage);
             render_anim(front,center(col)+potted_offset(row,col,PUMPKIN,0),plant_base(row,col)+game.mini.match_fall[row][col]+potted_offset(row,col,PUMPKIN,1),game.time,.68f,WHITE,1);
         }
-        for(int i=0;i<MAX_ZOMBIES;i++){
-            Zombie *z=&game.zombies[i];if(!z->used||z->row!=row||game_mini_active(&game,MINI_INVIS))continue;
+        for(int i=actors.zombie_head[row];i>=0;i=actors.zombie_next[i]){
+            Zombie *z=&game.zombies[i];
             int body;const Animation *animation=zombie_visible_clip(z,i,&body);
             uint32_t tint=game.hypnotized[i]?RGBA(240,150,255,255):z->slow>0||game.frozen[i]>0?RGBA(150,215,255,255):WHITE;
-            float foot=baseline(row)+game_roof_offset(&game,z->x),scale=(game.level==25||game_mini_active(&game,MINI_LITTLE))?.465f:.93f;
+            float foot=baseline(row)+game_roof_offset(&game,z->x),scale=zombie_scale;
             if(z->kind==Z_DANCER||z->kind==Z_BACKUP)scale*=.8f;
             int action=game.polish.action[i];
             if(action==ACTION_KELP&&game.polish.action_time[i]>=.5f)foot+=47.5f*(game.polish.action_time[i]-.5f);
             if(action==ACTION_GARLIC&&game.polish.action_time[i]>=1.7f){float t=fminf(1,game.polish.action_time[i]-1.7f);int oldrow=game.polish.target[i]/ROWS;foot+=(baseline(oldrow)-baseline(z->row))*(1-t);}
             if(action==ACTION_IMP_FLIGHT||action==ACTION_POOL_RISE||action==ACTION_SKY_DROP||game.polish024.dancer_state[i]==DANCE_RISE)foot-=game.polish024.altitude[i];
-            int head=game.mini.zombie_heads[i];
-            if(z->kind==Z_BALLOON&&!game.fidelity.equipment_lost[i])foot-=21;else if(action==ACTION_BALLOON_FALL)foot-=21*(1-fminf(1,game.polish.action_time[i]/(27/24.0f)));
+            int plant_head=zombotany_head_asset(z,i,body);
+            if(z->death<=0&&game.mini.zombie_heads[i]==5&&game.extra.zombotany_jump[i]>0)
+                foot-=sinf((.95f-game.extra.zombotany_jump[i])/.95f*3.14159f)*45;
+            if(z->kind==Z_BALLOON&&!game.fidelity.equipment_lost[i])foot-=BALLOON_LIFT;else if(action==ACTION_BALLOON_FALL)foot-=BALLOON_LIFT*(1-fminf(1,game.polish.action_time[i]/(27/24.0f)));
             if(game.mode==MODE_BUNGEE&&game.special[i]<0){foot+=game.special[i]*40;render_anim(&assets[A_BUNGEE_EAT],z->x,foot-35,game.time,.85f,WHITE,1);render_rect(z->x,43,1,fmaxf(0,foot-65),RGBA(170,150,100,255));}
             if(z->kind==Z_BUNGEE){int phase=game.fidelity.bungee_phase[i];foot-=phase==0?fmaxf(0,game.fidelity.actor_aux[i]-game.special[i])*380:phase>=3?game.special[i]*380:0;render_rect(z->x,0,1,fmaxf(0,foot-35),RGBA(170,150,100,255));if(phase==3&&game.fidelity.carried_kind[i]){Plant carried={.kind=game.fidelity.carried_kind[i]-1,.age=game.fidelity.carried_age[i]};render_anim(&assets[plant_asset(&carried)],z->x,foot+10,carried.age,.7f,WHITE,1);}}
             float anim=zombie_visible_time(z,animation);
@@ -336,16 +545,22 @@ static void draw_board(void){
             }
             if(!custom&&z->death<=0&&game.extra.hit_flash[i]>0)render_anim_glow(animation,z->x,foot,anim,scale,.5f);
             if(z->kind==Z_BOBSLED&&game.extra.bobsled_team[i]==i+1&&game.extra.bobsled_phase[i]>=0)render_anim(&assets[A_SLED],z->x+22,foot+4,0,1,WHITE,0);
-            if(head&&z->death<=0){if(game.extra.zombotany_jump[i]>0)foot-=sinf((.95f-game.extra.zombotany_jump[i])/.95f*3.14159f)*45;int icon=head==1?A_PEA_HEAD:head==2?A_WALLNUT:head==3?A_JALAPENO:head==4?A_GATLING:head==5?A_SQUASH:A_TALLNUT;render_anim_mirrored(&assets[icon],z->x-3,foot-(head==1?9:22),game.time,head==1?.78f:.52f,tint,1);}
+            if(plant_head>=0){
+                int pea=plant_head==A_PEA_HEAD;
+                if(game.hypnotized[i])render_anim(&assets[plant_head],z->x+3,foot-(pea?9:22),game.time,pea?.78f:.52f,tint,1);
+                else render_anim_mirrored(&assets[plant_head],z->x-3,foot-(pea?9:22),game.time,pea?.78f:.52f,tint,1);
+            }
         }
         for(int c=0;c<COLS;c++)if(game.plants[row][c].kind==SQUASH&&game.burst_left[row][c]>=3)draw_squash_flight(row,c);
-        for(int i=0;i<MAX_SHOTS;i++)if(game.shots[i].used&&game.shots[i].row==row){
+        for(int i=actors.shot_head[row];i>=0;i=actors.shot_next[i]){
             Shot *shot=&game.shots[i];static const int projectile[]={A_PROJECTILE_PEA,A_PROJECTILE_SNOW,A_SPORE,A_SPORE,A_PROJECTILE_CABBAGE,A_PROJECTILE_KERNEL,A_PROJECTILE_BUTTER,A_PROJECTILE_MELON,A_PROJECTILE_STAR,A_PROJECTILE_CACTUS,A_PROJECTILE_PEA,A_PROJECTILE_CATTAIL,A_PROJECTILE_WINTER,A_PROJECTILE_COB,A_PROJECTILE_BASKETBALL};
+            _Static_assert(sizeof(projectile)/sizeof(*projectile)==SHOT_KIND_COUNT,"Projectile artwork count");
             render_anim(&assets[projectile[shot->ice]],shot->x,game.shot_y[i],0,1,shot->ice==10?RGBA(255,170,60,255):WHITE,0);
         }
     }
     // Keep damage indicators visible when the next lane's tall sprites overlap.
-    for(int i=0;i<MAX_ZOMBIES;i++)if((health_bars&2)&&game.zombies[i].used&&!game_mini_active(&game,MINI_INVIS))zombie_health(&game.zombies[i],game.zombies[i].row);
+    if((health_bars&2)&&!invisible)for(int i=0;i<MAX_ZOMBIES;i++)
+        if(game.zombies[i].used)zombie_health(&game.zombies[i],game.zombies[i].row);
     for(int i=0;i<MAX_NUTS;i++)if(game.nuts[i].used){BowlingNut *n=&game.nuts[i];render_anim_rotated(&assets[A_WALLNUT],n->x,n->y,n->age,n->explosive==2?1.45f:.68f,n->explosive==1?RGBA(255,100,90,255):WHITE,n->age*7);}
     for(int i=0;i<MAX_SUNS;i++)if(game.suns[i].used){Sun *s=&game.suns[i];float scale=s->used==2?.60f*(1-.5f*fminf(1,s->age/s->flight)):s->from_plant?fminf(.60f,.24f+s->flight*1.2f):.60f;render_anim(&assets[A_SUN],s->x,s->y,game.time,scale,WHITE,1);}
     for(int i=0;i<MAX_COINS;i++)if(game.money[i].used){Coin *c=&game.money[i];render_anim(&assets[c->value==-100?A_CHOCOLATE:c->value<0?A_PRESENT:c->value>=100?A_COIN_DIAMOND:c->value>=5?A_COIN_GOLD:A_COIN_SILVER],c->x,c->y,game.time,.75f,WHITE,1);}
@@ -360,13 +575,29 @@ static void draw_board(void){
         if(game.boss_ball_kind){float y=baseline(game.boss_ball_row)+game_roof_offset(&game,game.boss_ball_x);render_anim(&assets[game.boss_ball_kind==1?A_BOSS_FIREBALL:A_BOSS_ICEBALL],game.boss_ball_x,y,fmaxf(0,game.polish024.boss_ball_age-15/16.0f)*2/12.0f,1,WHITE,1);}
     }
     if(game_world(&game)==3&&game.level!=40&&game.fog_clear<=0){
-        for(int col=4;col<COLS;col++)for(int row=0;row<6;row++){int lit=0;for(int r=0;r<6;r++)for(int c=0;c<COLS;c++)if(game.plants[r][c].kind==PLANTERN&&abs(r-row)<=1&&abs(c-col)<=1)lit=1;
-            if(!lit)render_anim(&assets[A_FOG_CLOUD],GRID_X+(col+.5f)*CELL_W+3*sinf(game.time*.4f+row),GRID_Y+(row+1)*31+12,game.time+row+col,.98f,RGBA(255,255,255,245),1);}
+        unsigned lit[ROWS];lantern_coverage(&game,ROWS,lit);
+        float drift[ROWS];
+        for(int row=0;row<ROWS;row++)drift[row]=3*sinf(game.time*.4f+row);
+        for(int col=4;col<COLS;col++)for(int row=0;row<ROWS;row++){
+            if(!(lit[row]&(1u<<col)))
+                render_anim(&assets[A_FOG_CLOUD],GRID_X+(col+.5f)*CELL_W+drift[row],GRID_Y+(row+1)*31+12,game.time+row+col,.98f,RGBA(255,255,255,245),1);
+        }
     }
     if(game.level==40){float lightning=fmodf(game.time,8);int darkness=lightning<.4f?40:lightning<1?120:205;render_rect(0,45,480,203,RGBA(0,0,20,darkness));for(int i=0;i<45;i++){float rx=fmodf(i*79-game.time*48+10000,480),ry=45+fmodf(i*41+game.time*170,200);render_rect(rx,ry,1,7,RGBA(165,185,220,130));}}
     float x=GRID_X+game.cursor_col*CELL_W,y=GRID_Y+game.cursor_row*game_row_height(&game)+game_roof_offset(&game,center(game.cursor_col));
     uint32_t cursor=game.shovel?FOCUS_ACTION:FOCUS_SAGE;
-    if((game.status==PLAYING&&!(game.extra.pending==2&&game.cursor_row==2&&game.cursor_col==4))||(game.status==WON&&!(game.level_flags&LEVEL_REWARD_COLLECTED)&&(game.cursor_row!=reward_row||game.cursor_col!=reward_col))){render_focus(x,y,CELL_W,game_row_height(&game),cursor);}
+    int pointing_at_reward=game.cursor_row==reward_row&&game.cursor_col==reward_col;
+    int choosing_reward=(game.status==WON&&!(game.level_flags&LEVEL_REWARD_COLLECTED))||game.extra.pending==2;
+    if(choosing_reward?!pointing_at_reward:game.status==PLAYING&&game.mode!=MODE_HEAVY){
+        float height=game_row_height(&game);
+        if(!choosing_reward&&game_mini_active(&game,MINI_COLUMN)&&!game.shovel&&!game.cob_aiming){
+            unsigned rows=game_column_plantable(&game,game.cursor_col,game_selected_kind(&game));
+            float top=y-game.cursor_row*height;
+            render_focus(x,top,CELL_W,height*row_count,rows?FOCUS_SAGE:FOCUS_ACTION);
+            for(;rows;rows&=rows-1)
+                render_rect(x+7,top+(__builtin_ctz(rows)+1)*height-5,CELL_W-14,2,RGBA(201,230,153,190));
+        }else render_focus(x,y,CELL_W,height,cursor);
+    }
     draw_mini_overlay();
     if(game.huge_wave_timer>0){float scale=1+.015f*sinf(game.time*5);render_anim(&assets[A_HUGE_WAVE],240,151,0,scale,WHITE,0);}
 }
@@ -377,10 +608,15 @@ static void update_level_ui(float dt){
     if(target>meter_progress)meter_progress=fminf(target,meter_progress+dt*.12f);
     for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){int phase=game.plants[r][c].kind==SQUASH?game.burst_left[r][c]:0;if(phase==1&&!squash_audio_phase[r][c])audio_play(CUE_SQUASH_HMM);if(phase==5&&squash_audio_phase[r][c]!=5)audio_play(CUE_SQUASH_THUMP);squash_audio_phase[r][c]=phase;}
     if(game.mode==MODE_VASE)layout_vase_packets();
-    else if(game.mode!=MODE_LAWN&&game.mode!=MODE_WHACK){
-        for(int i=packet_ui_count;i<game.packet_count;i++)packet_x[i]=398+(i-packet_ui_count)*37;
+    else if(game.mode==MODE_CONVEYOR||game.mode==MODE_BOWLING||game.mode==MODE_BUNGEE||game.mode==MODE_BOSS){
+        for(int i=packet_ui_count;i<game.packet_count;i++)packet_x[i]=398;
         packet_ui_count=game.packet_count;
-        for(int i=0;i<game.packet_count;i++){float goal=44+i*37;if(packet_x[i]>goal)packet_x[i]=fmaxf(goal,packet_x[i]-19*dt);if(i&&packet_x[i]<packet_x[i-1]+37)packet_x[i]=packet_x[i-1]+37;}
+        float space=398;
+        for(int i=game.packet_count-1;i>=0;i--){
+            float goal=44+i*37;
+            packet_x[i]=fmaxf(goal,fminf(space,packet_x[i]-19*dt));
+            space=packet_x[i]-37;
+        }
     }
 }
 static void remove_packet_ui(int index){for(int i=index;i<MAX_PACKETS-1;i++)packet_x[i]=packet_x[i+1];packet_ui_count=game.packet_count;}
@@ -396,6 +632,14 @@ static void draw_progress(void){
 }
 #include "challenge018.inc"
 #include "audio_scene018.inc"
+static void draw_seed_bank(int cards){
+    render_part(&assets[A_SEEDBANK],0,0,0,88,87,4,1,44,44,WHITE);
+    render_part(&assets[A_SEEDBANK],0,88,0,358,87,48,1,cards*(cards>=10?36:42)+7,44,WHITE);
+    // Fit the visible glyphs into the 26-by-9-pixel label.
+    char value[16];snprintf(value,sizeof(value),"%d",game.sun);
+    float width=strlen(value)*6-1,scale=fminf(1,26/width);
+    render_text(24.5f-width*scale*.5f,34+(7-7*scale)*.5f,value,sun_glow>0?RGBA(100,55,12,255):RGBA(40,33,15,255),scale);
+}
 #include "mini_ui.inc"
 static void draw_hud(float fps){
     if(draw_extra_hud(fps)){draw_extra_overlay();return;}
@@ -403,12 +647,7 @@ static void draw_hud(float fps){
     char text[120];int cards=game.packet_count;
     if(game.mode==MODE_LAWN||game.mode==MODE_WHACK){
         cards=0;for(int i=0;i<ALL_SEEDS;i++)cards+=!!game_seed_available(&game,i);
-        render_part(&assets[A_SEEDBANK],0,0,0,88,87,4,1,44,44,WHITE);
-        render_part(&assets[A_SEEDBANK],0,88,0,358,87,48,1,cards*(cards>=10?36:42)+7,44,WHITE);
-        // The label has only 26 by 9 usable pixels after scaling the bank.
-        // Fit the visible 5x7 glyphs inside it, including unusually large saves.
-        snprintf(text,sizeof(text),"%d",game.sun);float width=strlen(text)*6-1,scale=fminf(1,26/width);
-        render_text(24.5f-width*scale*.5f,34+(7-7*scale)*.5f,text,sun_glow>0?RGBA(100,55,12,255):RGBA(40,33,15,255),scale);
+        draw_seed_bank(cards);
     }else if(game.mode==MODE_VASE){render_part(&assets[A_SEEDBANK],0,88,0,358,87,4,1,430,44,WHITE);disc_text(10,12,36,"Plants",UI_INK,.5f);
     }else{
         render_image(&assets[A_CONVEYOR_FRAME],38,1,398,43,0,WHITE);
@@ -427,8 +666,10 @@ static void draw_hud(float fps){
         if(((game.mode==MODE_LAWN||game.mode==MODE_WHACK)?kind==game.selected:index==game.selected)&&visible==26){render_focus(x+1,3,30,39,FOCUS_SAGE);}
     }
     if(game.level>=5||game.completion.adventure_run){render_rect(438,2,34,39,RGBA(102,56,27,220));render_image(&assets[A_SHOVEL],441,4,28,32,0,game.shovel?RGBA(255,240,140,255):WHITE);}
-    const char *controls=game.status==WON?"":game.shovel_tutorial?"Triangle, then X: Dig up the three nuts":message_time>0?message:game.level==2&&!game.total_spawned&&!(game.level_flags&LEVEL_TUTORIAL_COMPLETE)?"Plant three sunflowers to prepare":game.mode==MODE_WHACK?"X: Whack   L/R: Tool   Square: Use   Start: Pause":"L/R: Seed   X: Plant   Square: Sun   Start: Pause";
-    if(game.challenge&&!game.extra.category)snprintf(text,sizeof(text),"%s",mini_names[game.mini.id-1]);else snprintf(text,sizeof(text),"%s %d-%d",replaying?"Replay":"Level",(game.level-1)/10+1,(game.level-1)%10+1);
+    const char *controls=game.status==WON?"":game.shovel_tutorial?"Triangle, then X: Dig up the three nuts":game.level==2&&!game.total_spawned&&!(game.level_flags&LEVEL_TUTORIAL_COMPLETE)?"Plant three sunflowers to prepare":game.mode==MODE_WHACK?"X: Whack   L/R: Tool   Square: Use   Start: Pause":"L/R: Seed   X: Plant   Square: Sun   Start: Pause";
+    if(game_mini_active(&game,MINI_STARS))
+        snprintf(text,sizeof(text),"Seeing Stars   %d/%d Starfruit",game_mini_star_count(&game),game_mini_total(&game));
+    else if(game.challenge&&!game.extra.category)snprintf(text,sizeof(text),"%s",mini_names[game.mini.id-1]);else snprintf(text,sizeof(text),"%s %d-%d",replaying?"Replay":"Level",(game.level-1)/10+1,(game.level-1)%10+1);
     ui_hud_footer(text,game_mini_active(&game,MINI_LASTSTAND)&&!game.mini.phase?"Start: Begin onslaught":controls,game.extra.category!=EXTRA_VASE&&game.extra.category!=EXTRA_IZOMBIE);
     if(game.extra.category!=EXTRA_VASE&&game.extra.category!=EXTRA_IZOMBIE)draw_progress();
     if(game.extra.category)draw_extra_overlay();
@@ -436,7 +677,39 @@ static void draw_hud(float fps){
 }
 
 static void menu_background(int page,int frame);
-static void panel(const char *title){ui_dialog(36,49,408,183,title);}
+static void game_data_fault(FILE *log,AnimationFault fault,const char *path){
+    ready=0;
+    if(asset_fault)return;
+    asset_fault=fault;
+    snprintf(asset_problem,sizeof(asset_problem),"%s",path);
+    if(log){
+        fprintf(log,"Game data fault: %s; %s\n",fault==ANIMATION_FAULT_MEMORY?"graphics memory":"missing or damaged data",path);
+        fflush(log);
+    }
+}
+static void game_cache_fault(FILE *log){
+    const char *path;
+    AnimationFault fault=animation_cache_fault(&path);
+    if(fault)game_data_fault(log,fault,path);
+}
+static void draw_game_data_fault(void){
+    int memory=asset_fault==ANIMATION_FAULT_MEMORY;
+    render_clip(0,0,480,272);
+    render_rect(29,35,422,202,RGBA(24,33,30,255));
+    render_outline(29,35,422,202,RGBA(117,140,118,255));
+    render_text(46,53,memory?"GRAPHICS MEMORY LIMIT":"GAME DATA MISSING OR DAMAGED",UI_GOLD,1.55f);
+    if(asset_problem[0]){
+        float scale=fminf(1,388.0f/(6*strlen(asset_problem)));
+        render_text(46,85,asset_problem,WHITE,scale);
+    }
+    if(memory){
+        render_text(46,119,"RESTART THE GAME. IF THIS RETURNS,\nCHECK RUNTIME.LOG IN THE GAME FOLDER.",WHITE,1);
+    }else{
+        render_text(46,119,"RUN SETUP.EXE ON YOUR COMPUTER.\nCOPY THE PREPARED PVZPSP FOLDER INTO PSP/GAME.",WHITE,1);
+        render_text(46,158,"SAVES ARE IN PSP/SAVEDATA/PVZPSP.",WHITE,1);
+    }
+    render_text(46,208,"PRESS CIRCLE TO EXIT",UI_FOCUS_TEXT,1);
+}
 static void draw_menu(void){menu_background(0,(can_resume?0:5)+menu_selected);char label[48];snprintf(label,sizeof(label),"Player: %s",player_name);render_image(&assets[A_UI_BUTTON],348,8,123,25,menu_selected==4,menu_selected==4?UI_ACTIVE_TINT:WHITE);ui_center(354,12,111,label,menu_selected==4?UI_FOCUS_TEXT:WHITE,.63f);if(menu_selected==3)ui_center(232,226,68,"Options",UI_GOLD,.65f);}
 static void draw_options(void){
  render_image(&assets[A_MENU_MAIN],0,0,480,272,(can_resume?0:5)+3,WHITE);ui_dialog(66,24,348,220,"Options");static const char *bars[]={"Off","Plants","Zombies","Both"};
@@ -486,11 +759,11 @@ static void draw_result(void){
     if(game.status==WON&&game_reward_type(&game)==REWARD_TROPHY){draw_trophy_award(game.challenge?mini_names[game.mini.id-1]:"Challenge complete");return;}
     if(game.extra.category){ui_dialog(96,65,288,145,game.status==WON?"Challenge complete":"Try again");ui_button(122,109,236,"X: Mode selection",1);ui_button(122,148,236,"O: Main menu",0);return;}
     if(game.status==WON&&game_reward_type(&game)==REWARD_SEED&&game_reward_seed(&game)>=0){draw_plant_award(game_reward_seed(&game));return;}
-    if(replaying&&game.level!=50){ui_dialog(80,56,320,170,game.status==WON?(game.challenge?"Mini-game complete":"Replay complete"):"The zombies got through!");ui_center(98,97,284,"Your Adventure save is preserved.",WHITE,.7f);ui_button(105,130,270,game.challenge?"X: Mini-games":"X: Choose another level",1);ui_button(105,170,270,"O: Main menu",0);return;}
+    if(replaying&&(game.level!=50||game.challenge)){ui_dialog(80,56,320,170,game.status==WON?(game.challenge?"Mini-game complete":"Replay complete"):"The zombies got through!");ui_center(98,97,284,"Your Adventure save is preserved.",WHITE,.7f);ui_button(105,130,270,game.challenge?"X: Mini-games":"X: Choose another level",1);ui_button(105,170,270,"O: Main menu",0);return;}
     if(game.status==LOST){ui_dialog(89,65,302,145,"The zombies got through!");ui_button(114,109,252,"X: Retry this level",1);ui_button(114,148,252,"O: Main menu",0);return;}
     if(game.level%10==9){
         ui_note(game.level/10);
-        char next[48];snprintf(next,sizeof(next),"X: ADVENTURE %d-10",(game.level-1)/10+1);ui_hint(next);return;
+        char next[48];snprintf(next,sizeof(next),"X: Continue to Adventure %d-10",(game.level-1)/10+1);ui_context_hint(next);return;
     }
     ui_dialog(74,54,332,174,game.level==CAMPAIGN_LEVELS?"Adventure complete!":"Level complete!");
     char result[180],found[80];ui_title_case(found,sizeof(found),reward_name());
@@ -499,15 +772,20 @@ static void draw_result(void){
 }
 
 static void move_cursor(SceCtrlData *pad,float dt){
+    int match=game.mode==MODE_MATCH&&game.status==PLAYING;
+    int twist=match&&game_mini_active(&game,MINI_TWIST);
+    int columns=match?8-twist:COLS,rows=twist?4:ROWS;
+    if(game.cursor_col>=columns)game.cursor_col=columns-1;
+    if(game.cursor_row>=rows)game.cursor_row=rows-1;
     uint32_t direction=pad->Buttons&(PSP_CTRL_UP|PSP_CTRL_DOWN|PSP_CTRL_LEFT|PSP_CTRL_RIGHT);
     if(pad->Lx<65)direction|=PSP_CTRL_LEFT;if(pad->Lx>190)direction|=PSP_CTRL_RIGHT;
     if(pad->Ly<65)direction|=PSP_CTRL_UP;if(pad->Ly>190)direction|=PSP_CTRL_DOWN;
     if(!direction)repeat_timer=0;
     else {repeat_timer-=dt;if(repeat_timer<=0){
-        if(direction&PSP_CTRL_LEFT)game.cursor_col=(game.cursor_col+COLS-1)%COLS;
-        if(direction&PSP_CTRL_RIGHT)game.cursor_col=(game.cursor_col+1)%COLS;
-        if(direction&PSP_CTRL_UP)do{game.cursor_row=(game.cursor_row+ROWS-1)%ROWS;}while(!game_row_active(&game,game.cursor_row));
-        if(direction&PSP_CTRL_DOWN)do{game.cursor_row=(game.cursor_row+1)%ROWS;}while(!game_row_active(&game,game.cursor_row));
+        if(direction&PSP_CTRL_LEFT)game.cursor_col=(game.cursor_col+columns-1)%columns;
+        if(direction&PSP_CTRL_RIGHT)game.cursor_col=(game.cursor_col+1)%columns;
+        if(direction&PSP_CTRL_UP)do{game.cursor_row=(game.cursor_row+rows-1)%rows;}while(!game_row_active(&game,game.cursor_row));
+        if(direction&PSP_CTRL_DOWN)do{game.cursor_row=(game.cursor_row+1)%rows;}while(!game_row_active(&game,game.cursor_row));
         repeat_timer=.16f;
     }}
 }
@@ -518,14 +796,191 @@ static void move_cursor(SceCtrlData *pad,float dt){
 #include "menu_hubs.inc"
 #include "menu_motion020.inc"
 #include "completion_ui.inc"
+static int prefetch_level_asset(int id,uint32_t budget){
+    if(level_art_attempted[id])return 0;
+    level_art_attempted[id]=1;
+    Animation *asset=&assets[id];
+    if(!asset->loaded||animation_bank_ready(asset)||asset->packed_bytes>budget-level_art_bytes)return 0;
+    level_art_bytes+=asset->packed_bytes;
+    animation_prefetch(asset);
+    return 1;
+}
+static void prefetch_level_art(void){
+    int story_on_lawn=screen==18&&(story_return==1||story_return==3);
+    int opening_lawn=screen==1&&!paused&&!help&&game.status==PLAYING&&game.time<3;
+    if(screen!=2&&screen!=3&&!story_on_lawn&&!opening_lawn)return;
+    animation_prefetch_poll();
+    AnimationIOStats io=animation_io_stats();
+    /* Leave most bank memory available to the current scene and live actors. */
+    uint32_t budget=io.limit/4;
+    if(io.pending||level_art_bytes>=budget)return;
+    if(game.mode==MODE_AQUARIUM){
+        if(prefetch_level_asset(A_AQUARIUM_BACKGROUND,budget))return;
+        prefetch_level_asset(A_AQUARIUM_SWIM,budget);
+        return;
+    }
+    for(int row=0;row<game_rows(&game);row++)
+        if(game_cleaner_active(&game,row)&&prefetch_level_asset(board_cleaner_asset(row),budget))return;
+    int seed_bank=game.mode==MODE_LAWN||game.mode==MODE_WHACK||game.mode==MODE_VASE||game.mode==MODE_HEAVY;
+    if(prefetch_level_asset(seed_bank?A_SEEDBANK:A_CONVEYOR_FRAME,budget))return;
+    if(!seed_bank&&prefetch_level_asset(A_CONVEYOR_STRIP,budget))return;
+    if(game.level>=5&&prefetch_level_asset(A_SHOVEL,budget))return;
+    if(game.mode==MODE_VASE&&prefetch_level_asset(A_VASE,budget))return;
+    if(game.mode==MODE_BOWLING&&prefetch_level_asset(A_WALLNUT,budget))return;
+    uint64_t selected=game.mode==MODE_LAWN?game.seed_mask&game.unlocked_mask:0;
+    if(selected){
+        for(int seed=0;seed<ALL_SEEDS;seed++){
+            if(!(selected&(UINT64_C(1)<<seed)))continue;
+            int body=pea_body_asset(seed);
+            if(body>=0){
+                if(prefetch_level_asset(body,budget)||prefetch_level_asset(body+1,budget))return;
+            }else if(prefetch_level_asset(seed==MINE?A_MINE_UNARMED:seed_icons[seed],budget))return;
+        }
+    }
+    int first=game.wave>0?game.wave-1:0;
+    for(int w=first;w<game.num_waves&&w<first+2;w++)
+        for(int n=0;n<game.wave_count[w];n++){
+            int kind=game.wave_types[w][n];
+            if(kind>=Z_TYPES)continue;
+            if(prefetch_level_asset(gallery_zombie(kind,0)-assets,budget))return;
+        }
+    /* Walking and idle art take priority on smaller caches. Stage the first
+       firing pose and projectile for peas from the chosen lineup afterward. */
+    static const int shooters[]={PEA,SNOW,REPEATER};
+    for(unsigned n=0;selected&&n<sizeof(shooters)/sizeof(*shooters);n++){
+        int seed=shooters[n];
+        if(!(selected&(UINT64_C(1)<<seed)))continue;
+        if(prefetch_level_asset(pea_body_asset(seed)+2,budget)||
+           prefetch_level_asset(seed==SNOW?A_PROJECTILE_SNOW:A_PROJECTILE_PEA,budget))return;
+    }
+}
 static int adventure_ending_pending(void){return game.level==50&&!game.challenge&&!game.extra.category&&game.status==WON&&(game.level_flags&LEVEL_REWARD_COLLECTED)&&!(game.level_flags&32);}
-static void start_adventure_ending(void){if(ending_begin(5)){game.level_flags|=32;save_current();}}
+static void start_adventure_ending(void){if(ending_begin(5)){game.level_flags|=32;queue_current_without_history();}}
+static int mini_checkpoint_resume_id(const Game *saved){
+    if(!(saved->level_flags&LEVEL_READY))return -1;
+    if(saved->status!=PLAYING&&(saved->status!=WON||(saved->level_flags&LEVEL_REWARD_COLLECTED)))return -1;
+    int id=mini_session_index(saved);
+    return challenge_available(0,id)?id:-1;
+}
+typedef enum { READ_NONE, READ_MINI_HINT, READ_MINI_ROUND, READ_EXTRA_ROUND } MenuRead;
+static MenuRead menu_read;
+static int menu_read_queued,mini_hint_focus;
+
+static void cancel_menu_read(void){
+    if(menu_read_queued)checkpoint_release_load();
+    menu_read=READ_NONE;menu_read_queued=0;
+}
+
+static void finish_menu_read(const Game *saved,int recovered,int queued){
+    MenuRead kind=menu_read;
+    menu_read=READ_NONE;menu_read_queued=0;
+    int mini=kind!=READ_EXTRA_ROUND;
+    int id=mini&&saved?mini_checkpoint_resume_id(saved):-1;
+    if(mini)mini_resume_id=id;
+    if(kind==READ_MINI_HINT){
+        if(mini_hint_focus&&id>=0)mini_cursor=id;
+        if(queued)checkpoint_release_load();
+        return;
+    }
+    if(!saved||(mini?id<0:!saved->extra.category)){
+        if(queued)checkpoint_release_load();
+        notify(mini?"NO SAVED MINI-GAME ROUND":"NO SAVED SURVIVAL OR PUZZLE SESSION");
+        return;
+    }
+    if(queued)menu_launch_request(LAUNCH_RESUME,id,0);
+    else if(replaying||!can_resume||save_current_with_progress(1)){
+        enter_saved_round(saved,id,recovered);
+        persist_profile();
+    }
+}
+
+static void menu_read_step(void){
+    if(!menu_read_queued){
+        const char *path=menu_read==READ_EXTRA_ROUND?challenge_path:mini_save_path;
+        int queued=checkpoint_queue_load(path);
+        if(!queued)return;
+        if(queued<0){
+            Game saved;int recovered;
+            int ok=game_read_staged(&saved,path,&recovered);
+            finish_menu_read(ok?&saved:NULL,recovered,0);
+            return;
+        }
+        menu_read_queued=1;
+    }
+    int pending,recovered;
+    const Game *saved=checkpoint_loaded_game(&pending,&recovered);
+    if(!pending)finish_menu_read(saved,recovered,1);
+}
+
+static void request_menu_read(MenuRead kind){
+    if(!(menu_read==READ_MINI_HINT&&kind==READ_MINI_ROUND))cancel_menu_read();
+    menu_read=kind;
+    menu_read_step();
+}
+
+static int menu_read_input(uint32_t pressed){
+    if(menu_read==READ_NONE)return 0;
+    if(menu_read==READ_MINI_HINT){
+        if(pressed&(PSP_CTRL_LEFT|PSP_CTRL_RIGHT|PSP_CTRL_UP|PSP_CTRL_DOWN|PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER))
+            mini_hint_focus=0;
+        if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_CIRCLE|PSP_CTRL_TRIANGLE))return 0;
+        menu_read_step();
+        return 0;
+    }
+    if(pressed&PSP_CTRL_CIRCLE)cancel_menu_read();
+    else menu_read_step();
+    return 1;
+}
+
+static void show_mini_menu(int cursor,int resume){
+    cancel_menu_read();
+    mini_resume_id=resume;
+    mini_cursor=cursor>=0?cursor:resume>=0?resume:0;
+    screen=7;paused=help=0;
+}
+static void open_mini_menu(int cursor){
+    show_mini_menu(cursor,-1);
+    mini_hint_focus=cursor<0;
+    request_menu_read(READ_MINI_HINT);
+}
+static void board_exit_step(void){
+    if(board_exit_snapshot==CHECKPOINT_IDLE)board_exit_snapshot=queue_board_checkpoint();
+    board_exit_snapshot=poll_board_checkpoint(board_exit_snapshot);
+    if(board_exit_snapshot!=CHECKPOINT_SAVED)return;
+    int target=board_exit_screen;
+    board_exit_screen=-1;
+    clear_save_warning();
+    if(target==7)show_mini_menu(mini_session_index(&game),mini_checkpoint_resume_id(&game));
+    else screen=target;
+}
+static void board_exit_begin(int target){
+    board_exit_screen=target;
+    board_exit_snapshot=CHECKPOINT_IDLE;
+    board_exit_step();
+}
+static void board_exit_input(uint32_t pressed){
+    if(pressed&PSP_CTRL_CIRCLE){board_exit_screen=-1;clear_save_warning();return;}
+    if(board_exit_snapshot==CHECKPOINT_FAILED){
+        if(!(pressed&PSP_CTRL_CROSS))return;
+        board_exit_snapshot=CHECKPOINT_IDLE;
+    }
+    board_exit_step();
+}
+static void draw_save_transition(CheckpointResult snapshot){
+    int failed=snapshot==CHECKPOINT_FAILED;
+    ui_dialog(97,81,286,110,failed?"Could not save":"Saving...");
+    if(failed)ui_center(110,119,260,"Check your Memory Stick.",WHITE,.70f);
+    ui_center(110,153,260,failed?"X: Retry    O: Go back":"O: Go back",UI_GOLD,.70f);
+}
+static void resume_extra(void){request_menu_read(READ_EXTRA_ROUND);}
 static void input(SceCtrlData *pad,float dt){
     uint32_t pressed=pad->Buttons&~previous_buttons;previous_buttons=pad->Buttons;if(screen!=1&&(pressed&PSP_CTRL_CROSS))foley_sample(FX_BUTTONCLICK);else if(screen!=1&&(pressed&(PSP_CTRL_UP|PSP_CTRL_DOWN|PSP_CTRL_LEFT|PSP_CTRL_RIGHT|PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER)))foley_play(FOLEY_BLEEP);
     if(pressed&PSP_CTRL_SELECT)debug_info=!debug_info;
     if(help){if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_START|PSP_CTRL_CROSS))help=0;return;}
     if(gallery){gallery_input(pressed);return;}
-    if(!ready)return;
+    if(!ready){if(pressed&PSP_CTRL_CIRCLE)running=0;return;}
+    if(menu_launch_input(pressed))return;
+    if(menu_read_input(pressed))return;
     if(screen==24){if(pressed&(PSP_CTRL_CROSS|PSP_CTRL_CIRCLE)){screen=1;challenge_notice=-1;}return;}
     if(completion_ui_input(pressed))return;
     if(avatar_input(pressed))return;
@@ -571,7 +1026,7 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_UP)more_cursor=(more_cursor+count-1)%count;
         if(pressed&PSP_CTRL_DOWN)more_cursor=(more_cursor+1)%count;
         if(pressed&PSP_CTRL_LEFT)more_horizontal(-1);if(pressed&PSP_CTRL_RIGHT)more_horizontal(1);
-        if(pressed&PSP_CTRL_CROSS){int id=more_id(more_cursor);if(id==1&&challenge_enter(0)){screen=7;mini_cursor=0;}else if(id==8&&challenge_enter(2)){screen=15;puzzle_cursor=puzzle_family=0;}else if(id==7&&challenge_enter(1)){screen=14;survival_cursor=survival_bonus=0;}else if(id==12)screen=0;}
+        if(pressed&PSP_CTRL_CROSS){int id=more_id(more_cursor);if(id==1&&challenge_enter(0))open_mini_menu(-1);else if(id==8&&challenge_enter(2)){screen=15;puzzle_cursor=puzzle_family=0;}else if(id==7&&challenge_enter(1)){screen=14;survival_cursor=survival_bonus=0;}else if(id==12)screen=0;}
 
         if(pressed&PSP_CTRL_CIRCLE)screen=0;return;
     }
@@ -581,7 +1036,12 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_SQUARE){static const int info[30]={2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2010,2010,2019,2020,2022,2021,2023,2032,2024,2025,2011,2026,2027,2028,2029,0,2030,2031,2033};int item=shop_visible_items[store_cursor],id=item<30?info[item]:item>=SHOP_HOUSE_NORMAL&&item<=SHOP_HOUSE_FUN?2036+item-SHOP_HOUSE_NORMAL:0;if(item==SHOP_SLOTS)id=2011+(player.purchases[item]<4?player.purchases[item]:3);if(id)story_begin(id,9,id,0);return;}
         if(pressed&PSP_CTRL_UP)store_cursor=(store_cursor+SHOP_VISIBLE_COUNT-4)%SHOP_VISIBLE_COUNT;
         if(pressed&PSP_CTRL_DOWN)store_cursor=(store_cursor+4)%SHOP_VISIBLE_COUNT;
-        if(pressed&PSP_CTRL_CROSS){int item=shop_visible_items[store_cursor];if(profile_purchase(&player,item)){if(can_resume){profile_apply(&player,&game);profile_apply(&player,&adventure_backup);}if(save_current()){foley_play(FOLEY_COIN);notify("PURCHASED");}}else notify(profile_item_available(&player,item)?"NOT ENOUGH MONEY":"ITEM NOT AVAILABLE");}
+        if(pressed&PSP_CTRL_CROSS){
+            int item=shop_visible_items[store_cursor];
+            PurchaseResult result=purchase_item(item);
+            if(result==PURCHASE_SAVED){foley_play(FOLEY_COIN);notify("PURCHASED");}
+            else if(result==PURCHASE_REJECTED)notify(profile_item_available(&player,item)?"NOT ENOUGH MONEY":"ITEM NOT AVAILABLE");
+        }
         if(pressed&PSP_CTRL_CIRCLE){screen=store_return;store_return=11;}return;
     }
     if(screen==10){
@@ -591,7 +1051,7 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_UP)book_scroll=book_scroll>0?book_scroll-1:0;
         if(pressed&PSP_CTRL_DOWN)book_scroll++;
         if(pressed&PSP_CTRL_TRIANGLE){book_zombies=!book_zombies;book_cursor=book_scroll=0;}
-        if(pressed&PSP_CTRL_CIRCLE)screen=11;return;
+        if(pressed&PSP_CTRL_CIRCLE){book_close();screen=11;}return;
     }
     if(screen==13){
         if(pressed&(PSP_CTRL_LEFT|PSP_CTRL_LTRIGGER))do{imit_cursor=(imit_cursor+BASE_SEEDS-1)%BASE_SEEDS;}while(!(game.unlocked_mask&(UINT64_C(1)<<imit_cursor)));
@@ -605,8 +1065,13 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_RIGHT)mini_cursor=(mini_cursor+1)%20;
         if(pressed&PSP_CTRL_UP)mini_cursor=(mini_cursor+16)%20;
         if(pressed&PSP_CTRL_DOWN)mini_cursor=(mini_cursor+4)%20;
-        if((pressed&PSP_CTRL_CROSS)&&challenge_launch(0,mini_cursor)){if(!replaying)save_current();replaying=1;game_start_mini(&game,mini_cursor,0x600+mini_cursor);read_costs();reset_level_ui();screen=2;}
-        if(pressed&PSP_CTRL_CIRCLE)screen=6;return;
+        if(pressed&PSP_CTRL_TRIANGLE){request_menu_read(READ_MINI_ROUND);return;}
+        if((pressed&PSP_CTRL_CROSS)&&challenge_launch(0,mini_cursor)){
+            cancel_menu_read();
+            menu_launch_request(LAUNCH_MINI,mini_cursor,0);
+            return;
+        }
+        if(pressed&PSP_CTRL_CIRCLE){cancel_menu_read();screen=6;}return;
     }
     if(screen==8){
         if(pressed&(PSP_CTRL_RIGHT|PSP_CTRL_RTRIGGER))note_cursor=(note_cursor+1)%5;
@@ -618,7 +1083,7 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_RIGHT)replay_cursor=(replay_cursor+1)%CAMPAIGN_LEVELS;
         if(pressed&PSP_CTRL_UP)replay_cursor=(replay_cursor+CAMPAIGN_LEVELS-5)%CAMPAIGN_LEVELS;
         if(pressed&PSP_CTRL_DOWN)replay_cursor=(replay_cursor+5)%CAMPAIGN_LEVELS;
-        if(pressed&PSP_CTRL_CROSS){if(progress_played(&progress,replay_cursor+1))start_replay(replay_cursor+1);else notify("PLAY THIS LEVEL IN ADVENTURE FIRST");}
+        if(pressed&PSP_CTRL_CROSS){if(progress_played(&progress,replay_cursor+1))start_replay(replay_cursor+1);else notify("PLAY THIS LEVEL IN ADVENTURE FIRST");return;}
         if(pressed&PSP_CTRL_CIRCLE)screen=21;return;
     }
     if(screen==20){
@@ -627,8 +1092,13 @@ static void input(SceCtrlData *pad,float dt){
         if(pressed&PSP_CTRL_CIRCLE)screen=4;return;
     }
     if(screen==2){
-        if(pressed&PSP_CTRL_CIRCLE){save_current();screen=0;}
-        if(pressed&PSP_CTRL_CROSS){screen=game.mode==MODE_LAWN&&seed_count(game.unlocked_mask)>game.seed_slots?3:1;game.selected=game.mode==MODE_WHACK?GRAVEBUSTER:0;if(screen==1){game.level_flags|=LEVEL_READY;warm_level();}if(!(game.level_flags&8)){int id=story_level_id();game.level_flags|=8;if(id)story_begin(id,screen,game.level==5?2406:0,0);}}
+        if(pressed&PSP_CTRL_CIRCLE){
+            int id=mini_session_index(&game);
+            if(replaying&&id>=0)open_mini_menu(id);
+            else{queue_current_without_history();screen=0;}
+            return;
+        }
+        if(pressed&PSP_CTRL_CROSS){screen=game.mode==MODE_LAWN&&seed_count(game.unlocked_mask)>game.seed_slots?3:1;game.selected=game.mode==MODE_WHACK?GRAVEBUSTER:0;if(screen==1)game.level_flags|=LEVEL_READY;if(!(game.level_flags&8)){int id=story_level_id();game.level_flags|=8;if(id)story_begin(id,screen,game.level==5?2406:0,0);}}
         return;
     }
     if(screen==3){
@@ -642,42 +1112,80 @@ static void input(SceCtrlData *pad,float dt){
         if((pressed&PSP_CTRL_CROSS)&&game_seed_locked(&game,game.selected)){notify("CRAZY DAVE WANTS YOU TO USE THIS PLANT");return;}
         if(pressed&PSP_CTRL_CROSS){if(game.seed_mask&(UINT64_C(1)<<game.selected))game.seed_mask&=~(UINT64_C(1)<<game.selected);else if(seed_count(game.seed_mask)<game.seed_slots)game.seed_mask|=UINT64_C(1)<<game.selected;else notify("REMOVE A PLANT BEFORE ADDING ANOTHER");}
         if((pressed&PSP_CTRL_START)&&game_mini_active(&game,MINI_STARS)&&!(game.seed_mask&(UINT64_C(1)<<STAR))){notify("STARFRUIT IS REQUIRED FOR THIS CHALLENGE");return;}
-        if(pressed&PSP_CTRL_START){if(seed_count(game.seed_mask)==game.seed_slots){screen=1;game.level_flags|=LEVEL_READY;warm_level();game.selected=0;if(!game_seed_available(&game,0))game_cycle_seed(&game,1);save_current();}else notify("FILL ALL AVAILABLE SEED SLOTS");}
+        if(pressed&PSP_CTRL_START){if(seed_count(game.seed_mask)==game.seed_slots){screen=1;game.level_flags|=LEVEL_READY;game.selected=0;if(!game_seed_available(&game,0))game_cycle_seed(&game,1);queue_current();}else notify("FILL ALL AVAILABLE SEED SLOTS");}
         if(pressed&PSP_CTRL_CIRCLE)screen=2;return;
     }
-    if(game.extra.pending&&game.status==PLAYING){move_cursor(pad,dt);if(pressed&PSP_CTRL_CROSS){if(game.extra.pending==2){if(!(game.level_flags&LEVEL_REWARD_COLLECTED)){if(game.cursor_row!=2||game.cursor_col!=4||reward_delay<0||reward_elapsed<reward_delay+.7f)return;game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=0;reward_pickup_audio(REWARD_TROPHY);queue_current();return;}if(reward_collect_time>=0&&reward_collect_time<REWARD_FLIGHT_DURATION)return;}int survival=game.extra.category==EXTRA_SURVIVAL;game_extra_continue(&game);reset_level_ui();if(survival){game.seed_mask=0;screen=3;}save_current();}if(pressed&PSP_CTRL_CIRCLE){save_current();screen=6;}return;}
+    if(board_exit_screen>=0){board_exit_input(pressed);return;}
+    if(game.extra.pending&&game.status==PLAYING){
+        if(pressed&PSP_CTRL_CIRCLE){board_exit_begin(6);return;}
+        move_cursor(pad,dt);
+        if(pressed&PSP_CTRL_CROSS){
+            if(game.extra.pending==2){
+                if(!(game.level_flags&LEVEL_REWARD_COLLECTED)){
+                    if(game.cursor_row!=2||game.cursor_col!=4||reward_delay<0||reward_elapsed<reward_delay+.7f)return;
+                    game.level_flags|=LEVEL_REWARD_COLLECTED;reward_collect_time=0;
+                    reward_pickup_audio(REWARD_TROPHY);queue_current();return;
+                }
+                if(reward_collect_time>=0&&reward_collect_time<REWARD_FLIGHT_DURATION)return;
+            }
+            int survival=game.extra.category==EXTRA_SURVIVAL;
+            game_extra_continue(&game);reset_level_ui();
+            if(survival){game.seed_mask=0;screen=3;}
+            queue_current_without_history();
+        }
+        return;
+    }
     if(game.status==WON&&!(game.level_flags&LEVEL_REWARD_COLLECTED)){
+        if(pressed&PSP_CTRL_CIRCLE){board_exit_begin(replaying&&mini_session_index(&game)>=0?7:0);return;}
         move_cursor(pad,dt);
         if((pressed&PSP_CTRL_CROSS)&&reward_delay>=0&&reward_elapsed>=reward_delay+.70f&&game.cursor_row==reward_row&&game.cursor_col==reward_col){
             if(game_collect_reward(&game)){reward_collect_time=0;reward_pickup_audio(game_reward_type(&game));queue_current();}
         }
-        if(pressed&PSP_CTRL_CIRCLE){screen=0;save_current();}return;
+        return;
     }
     if(game.status!=PLAYING){
         if(game.status==WON&&reward_collect_time>=0&&reward_collect_time<REWARD_FLIGHT_DURATION)return;
+        if(pressed&PSP_CTRL_CIRCLE){board_exit_begin(0);return;}
         if(pressed&PSP_CTRL_CROSS){
             if(adventure_ending_pending())start_adventure_ending();
-            else if(replaying){screen=game.extra.category==EXTRA_SURVIVAL?14:game.extra.category?15:game.challenge?7:5;replay_cursor=game.level-1;}
-            else if(game.status==LOST){game_restart_adventure(&game);read_costs();reset_level_ui();screen=2;save_current();}
-            else if(game_next_level(&game)){read_costs();reset_level_ui();visit_current();screen=2;save_current();}
+            else if(replaying){
+                int id=mini_session_index(&game);
+                if(id>=0)board_exit_begin(7);
+                else{replay_cursor=game.level-1;board_exit_begin(game.extra.category==EXTRA_SURVIVAL?14:game.extra.category?15:5);}
+            }
+            else if(game.status==LOST){game_restart_adventure(&game);enter_adventure_intro(0);}
+            else if(game_next_level(&game))enter_adventure_intro(1);
             else{screen=5;replay_cursor=game.level-1;}
         }
-        if(pressed&PSP_CTRL_CIRCLE)screen=0;return;
+        return;
     }
-    if((pressed&PSP_CTRL_START)&&game_mini_action(&game,4)>0)return;
-    if(pressed&PSP_CTRL_START){paused=!paused;foley_sample(FX_PAUSE);if(paused){pause_cursor=0;queue_current();}}
-    if(paused){pause_input(pressed);return;}
-    if(game.mode==MODE_HEAVY){
-        float move=(pad->Buttons&PSP_CTRL_LEFT)?-1:(pad->Buttons&PSP_CTRL_RIGHT)?1:0;
-        float aim_x=pad->Lx-128,aim_y=fmaxf(0,128-pad->Ly);
-        float angle=aim_x*aim_x+aim_y*aim_y>=400?atan2f(aim_x,aim_y):0;
-        game_heavy_control(&game,move,angle,!!(pad->Buttons&PSP_CTRL_CROSS),dt);
+    if(paused&&pause_return_pending){
+        if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_START))pause_return_pending=0;
+        else pause_return_step();
+        return;
+    }
+    if(pressed&PSP_CTRL_START){
+        if(!paused&&game_mini_action(&game,4)>0)return;
+        paused=!paused;foley_sample(FX_PAUSE);
+        if(paused){
+            pause_cursor=0;
+            pause_return_pending=0;pause_snapshot=CHECKPOINT_IDLE;
+            queue_pause();
+        }
+        return;
+    }
+    if(paused){
+        if(pause_snapshot==CHECKPOINT_IDLE)queue_pause();
+        pause_input(pressed);return;
     }
     if(game.mode==MODE_MATCH||game.mode==MODE_AQUARIUM||game.mode==MODE_HEAVY||game.mode==MODE_SLOT){
         if(pressed&PSP_CTRL_SQUARE)game_collect(&game);
         if((pressed&PSP_CTRL_LTRIGGER)&&game.mode!=MODE_SLOT)game_mini_action(&game,2);
         if((pressed&PSP_CTRL_RTRIGGER)&&game.mode!=MODE_SLOT)game_mini_action(&game,3);
-        if(pressed&PSP_CTRL_TRIANGLE){if(game_mini_action(&game,1)<0)notify("NOT ENOUGH SUN OR ITEM IS NOT READY");}
+        if((pressed&PSP_CTRL_TRIANGLE)&&game_mini_action(&game,1)<0){
+            if(game.mode==MODE_SLOT)foley_sample(FX_BUZZER);
+            else notify("NOT ENOUGH SUN OR ITEM IS NOT READY");
+        }
         if(game.mode==MODE_MATCH||game.mode==MODE_AQUARIUM){move_cursor(pad,dt);if(pressed&PSP_CTRL_CROSS)game_mini_action(&game,0);return;}
         if(game.mode==MODE_HEAVY)return;
     }
@@ -696,7 +1204,7 @@ static void input(SceCtrlData *pad,float dt){
         if(game.cob_aiming){game_cob_fire(&game,game.cursor_row,game.cursor_col);return;}
         if(!game.shovel&&game_cob_select(&game,game.cursor_row,game.cursor_col)){notify("SELECT THE TARGET TILE AND PRESS X");return;}
         if(game.shovel){game_shovel(&game,game.cursor_row,game.cursor_col);game.shovel=0;}
-        else {int kind=game_selected_kind(&game),packet_index=game.selected,result=game_place(&game,game.cursor_row,game.cursor_col,kind);if(result==0&&game.mode!=MODE_LAWN)remove_packet_ui(packet_index);if(result<0)foley_sample(FX_BUZZER);if(result==-3)notify("NOT ENOUGH SUN");if(result==-4)notify("SEED IS RECHARGING");if(result==-2)notify("TILE IS OCCUPIED");if(result==-6)notify("BOWL FROM BEHIND THE RED LINE");if(result==-12)notify("PLANT THIS ON ITS REQUIRED BASE PLANT");if(result==-13)notify("CHOOSE WHAT IMITATER WILL COPY");if(result==-11)notify("THIS PLANT NEEDS WATER, A LILY PAD OR A POT");if(result==-9)notify("TILE IS BLOCKED");if(result==-8)notify("DIG UP THE THREE WALL-NUTS FIRST");if(result==0&&kind==MINE)notify("MINE ARMING - 15 SECONDS");}
+        else {int kind=game_selected_kind(&game),packet_index=game.selected,result=game_place(&game,game.cursor_row,game.cursor_col,kind);if(result==0&&game.mode!=MODE_LAWN)remove_packet_ui(packet_index);if(result<0)foley_sample(FX_BUZZER);if(result==-3)notify("NOT ENOUGH SUN");if(result==-4)notify("SEED IS RECHARGING");if(result==-2)notify("TILE IS OCCUPIED");if(result==-6)notify("BOWL FROM BEHIND THE RED LINE");if(result==-12)notify("PLANT THIS ON ITS REQUIRED BASE PLANT");if(result==-13)notify("CHOOSE WHAT IMITATER WILL COPY");if(result==-11)notify("THIS PLANT NEEDS WATER, A LILY PAD OR A POT");if(result==-9)notify(game_mini_active(&game,MINI_COLUMN)?"NO VALID SPACE IN THIS COLUMN":"TILE IS BLOCKED");if(result==-8)notify("DIG UP THE THREE WALL-NUTS FIRST");if(result==0&&kind==MINE)notify("MINE ARMING - 15 SECONDS");}
     }
 }
 static int menu_volume_selftest(FILE *out){
@@ -718,18 +1226,23 @@ static int menu_volume_selftest(FILE *out){
     return passed==total;
 }
 static int replay_selftest(FILE *out){
-    Game original=game,backup=adventure_backup,disk;Progress old_progress=progress;
+    Game original=game,backup=adventure_backup,disk;Progress old_progress=progress;Profile old_player=player;
     int old_resume=can_resume,old_replaying=replaying,old_screen=screen,passed=0,total=0;
-    const char *old_path=adventure_path;adventure_path="selftest-adventure.dat";
+    const char *old_path=adventure_path,*old_history=progress_path,*old_profile=profile_path;
+    adventure_path="selftest-adventure.dat";progress_path="selftest-replay-history.dat";profile_path="selftest-replay-profile.dat";
     #define REPLAY_CHECK(label,test) do{int ok=(test);passed+=ok;total++;fprintf(out,"replay %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
     game_start_level(&game,9,501);game.level_flags|=LEVEL_READY;game.sun=725;can_resume=1;replaying=0;
     progress=(Progress){.played=511,.completed=255};save_current();Game expected=game;
-    start_replay(3);REPLAY_CHECK("played level starts an isolated session",replaying&&game.level==3&&screen==2&&adventure_backup.level==9);
+    start_replay(3);checkpoint_flush();menu_launch_input(0);
+    REPLAY_CHECK("played level starts an isolated session",replaying&&game.level==3&&screen==2&&adventure_backup.level==9);
     game.sun=999;game.status=WON;save_current();
     REPLAY_CHECK("replay autosave preserves Adventure on disk",game_load(&disk,adventure_path)&&!memcmp(&disk,&expected,sizeof(Game)));
     open_adventure();REPLAY_CHECK("Adventure restores exact level and board after replay",!replaying&&screen==1&&!memcmp(&game,&expected,sizeof(Game)));
     start_replay(10);REPLAY_CHECK("unvisited level cannot start a replay",!replaying&&game.level==9);
-    remove(adventure_path);adventure_path=old_path;game=original;adventure_backup=backup;progress=old_progress;
+    const char *files[]={adventure_path,progress_path,profile_path};
+    for(int i=0;i<3;i++){char backup_path[128];snprintf(backup_path,sizeof(backup_path),"%s.bak",files[i]);remove(files[i]);remove(backup_path);}
+    adventure_path=old_path;progress_path=old_history;profile_path=old_profile;
+    game=original;adventure_backup=backup;progress=old_progress;player=old_player;menu_launch.mode=LAUNCH_NONE;
     can_resume=old_resume;replaying=old_replaying;screen=old_screen;reset_level_ui();
     fprintf(out,"REPLAY RESULT %d/%d\n",passed,total);
     #undef REPLAY_CHECK
@@ -776,9 +1289,22 @@ static void review_win(int level,int mini,int claimed){
 }
 
 /* Display pacing is independent of the original fixed-step game clock. */
-static int advance_game_frame(Game *g,float elapsed,float *remainder){
+static int advance_game_frame(Game *g,float elapsed,float *remainder,const SceCtrlData *pad){
+    int heavy=pad&&g->mode==MODE_HEAVY,fire=0;
+    float move=0,angle=0;
+    if(heavy){
+        move=!!(pad->Buttons&PSP_CTRL_RIGHT)-!!(pad->Buttons&PSP_CTRL_LEFT);
+        float aim_x=pad->Lx-128,aim_y=fmaxf(0,128-pad->Ly);
+        if(aim_x*aim_x+aim_y*aim_y>=400)angle=atan2f(aim_x,aim_y);
+        fire=!!(pad->Buttons&PSP_CTRL_CROSS);
+    }
     int updates=0;*remainder+=elapsed;
-    while(*remainder>=1.0f/60){game_step(g,1.0f/60);*remainder-=1.0f/60;updates++;}
+    const float step=1.0f/60;
+    while(*remainder>=step){
+        if(heavy)game_heavy_control(g,move,angle,fire,step);
+        game_step(g,step);
+        *remainder-=step;updates++;
+    }
     return updates;
 }
 #include "performance_live0181.inc"
@@ -786,10 +1312,17 @@ static int performance_selftest(FILE *out){
     Game a,b;game_start_level(&a,9,4517);a.level_flags|=LEVEL_READY;a.spawn_timer=1;
     a.sun=1000;game_place(&a,2,0,PEA);game_spawn_zombie(&a,2,Z_NORMAL,320);b=a;
     float ra=0,rb=0;int na=0,nb=0;
-    for(int n=0;n<360;n++)na+=advance_game_frame(&a,1.0f/60,&ra);
-    for(int n=0;n<180;n++)nb+=advance_game_frame(&b,1.0f/30,&rb);
+    for(int n=0;n<360;n++)na+=advance_game_frame(&a,1.0f/60,&ra,0);
+    for(int n=0;n<180;n++)nb+=advance_game_frame(&b,1.0f/30,&rb,0);
     int ok=na==360&&nb==360&&a.time>5.99f&&a.time<6.01f&&a.total_spawned>1&&!memcmp(&a,&b,sizeof(a));
-    fprintf(out,"performance 30 and 60 FPS preserve identical six-second combat and spawn state: %s\nPERFORMANCE RESULT %d/1\n",ok?"PASS":"FAIL",ok);return ok;
+    fprintf(out,"performance 30 and 60 FPS preserve identical six-second combat and spawn state: %s\n",ok?"PASS":"FAIL");
+    game_start_mini(&a,MINI_HEAVY,4518);a.extra.heavy_fire_time=.15f;a.spawn_timer=10000;b=a;ra=rb=0;
+    SceCtrlData pad={.Buttons=PSP_CTRL_CROSS|PSP_CTRL_RIGHT,.Lx=160,.Ly=86};
+    for(int n=0;n<60;n++)advance_game_frame(&a,1.0f/60,&ra,&pad);
+    for(int n=0;n<30;n++)advance_game_frame(&b,1.0f/30,&rb,&pad);
+    int heavy_ok=a.mini.heavy_x>100&&a.mini.heavy_power>0&&!a.extra.heavy_fire_time&&!memcmp(&a,&b,sizeof(a));
+    fprintf(out,"performance Heavy Weapon movement and fire use identical gameplay ticks at 30 and 60 FPS: %s\nPERFORMANCE RESULT %d/2\n",heavy_ok?"PASS":"FAIL",ok+heavy_ok);
+    return ok&&heavy_ok;
 }
 
 #include "completion_presentation_tests.inc"
@@ -810,7 +1343,8 @@ int main(int argc,char *argv[]){
         if(!save_storage_init(device,&copied))notify("SAVEDATA UNAVAILABLE. USING GAME FOLDER.");
         if(log)fprintf(log,"Save path: %s; copied %d legacy files\n",save_storage_path(SAVE_ADVENTURE),copied);
     }
-    adventure_path=save_storage_path(SAVE_ADVENTURE);profile_path=save_storage_path(SAVE_PROFILE);progress_path=save_storage_path(SAVE_PROGRESS);
+    adventure_path=save_storage_path(SAVE_ADVENTURE);profile_path=save_storage_path(SAVE_PROFILE);progress_path=save_storage_path(SAVE_PROGRESS);mini_save_path=save_storage_path(SAVE_MINIGAME);challenge_path=save_storage_path(SAVE_CHALLENGE);
+    load_seed_costs("data/seeds.bin");
     performance_path=save_storage_path(SAVE_PERFORMANCE);ui_settings_path=save_storage_path(SAVE_PRESENTATION);
     player_name_path=save_storage_path(SAVE_NAME);avatar_path=save_storage_path(SAVE_AVATAR);
     performance_load();performance_apply();animation_cache_configure(performance.low_memory);ui_settings_load();player_name_load();avatar_load();
@@ -821,32 +1355,46 @@ int main(int argc,char *argv[]){
     if(tests){test_ok&=game_mini_selftest(tests);test_ok&=game_extra_selftest(tests);test_ok&=garden_selftest(tests);test_ok&=platform_selftest(tests);test_ok&=performance_selftest(tests);test_ok&=audio_selftest(tests);test_ok&=foley_selftest(tests);test_ok&=game_audio018_selftest(tests);test_ok&=music_selftest(tests);test_ok&=checkpoint_selftest(tests);test_ok&=progress_selftest(tests);test_ok&=profile_selftest(tests);int ok=render_selftest();test_ok&=ok;fprintf(tests,"texture swizzle pixel integrity: %s\n",ok?"PASS":"FAIL");fclose(tests);}
     }
     profile_init(&player);int profile_ok=profile_load(&player,profile_path);challenge_initialize();
-    game_init(&game,1);can_resume=game_load(&game,adventure_path);if(profile_load_backup_used()||game_load_backup_used())notify("RECOVERED YOUR LAST BACKUP SAVE");ready=motion_ok&&load_shoot_alignment()&&load_support_offsets();
+    game_init(&game,1);can_resume=game_load(&game,adventure_path);if(profile_load_backup_used()||game_load_backup_used())notify("RECOVERED YOUR LAST BACKUP SAVE");
+    ready=1;
+    if(!motion_ok)game_data_fault(log,ANIMATION_FAULT_DATA,"data/zombie_motion.bin");
+    else if(!load_shoot_alignment())game_data_fault(log,ANIMATION_FAULT_DATA,"data/shoot-alignment.bin");
+    else if(!load_support_offsets())game_data_fault(log,ANIMATION_FAULT_DATA,"data/plant_support.bin");
     int progress_ok=progress_load(&progress,progress_path);if(can_resume){progress_import(&progress,&game);profile_apply(&player,&game);adventure_backup=game;}for(int l=1;l<=50;l++)if(progress_played(&progress,l)&&(uint32_t)l>player.highest)player.highest=l;reset_level_ui();
     if(log)fprintf(log,"Saved data loaded: Adventure %d, profile %d, replay history %d\n",can_resume?game.level:0,profile_ok,progress_ok);
-    int catalog_ok=animation_catalog_load("data/assets.idx");if(log)fprintf(log,"Animation metadata index: %s\n",catalog_ok?"loaded":"individual-file fallback");
-    for(int i=0;i<A_COUNT;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",asset_names[i]);
-        if(!animation_load(&assets[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}
+    int catalog_ok=ready&&animation_catalog_load("data/assets.idx");
+    if(log&&ready)fprintf(log,"Animation metadata index: %s\n",catalog_ok?"loaded":"individual-file fallback");
+    for(int i=0;ready&&i<A_COUNT;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",asset_names[i]);
+        if(!animation_load(&assets[i],path)){game_data_fault(log,ANIMATION_FAULT_DATA,path);break;}
         else texture_memory+=(size_t)assets[i].frames*assets[i].stride;
         for(int stage=1;stage<=2;stage++)if(damage_mask(i)&(1<<(stage-1))){
             snprintf(path,sizeof(path),"data/%s_damage%d.pva",asset_names[i],stage);
-            if(!animation_load(&damaged[i][stage-1],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}
+            if(!animation_load(&damaged[i][stage-1],path)){game_data_fault(log,ANIMATION_FAULT_DATA,path);break;}
             else texture_memory+=(size_t)damaged[i][stage-1].frames*damaged[i][stage-1].stride;
         }
     }
     boss_layout();
-    if(!menu_motion_load("data/menu-motion.bin")){ready=0;if(log)fprintf(log,"Menu motion metadata: FAILED\n");}
-    int crow_source=menu_crow_load_routes("data/crow-paths.bin");
-    if(log)fprintf(log,"Crow motion: %s\n",crow_source?"disc keyframes":"built-in fallback");
-    for(int i=0;i<13;i++){char path[128];snprintf(path,sizeof(path),"data/%s.pva",head_particle_names[i]);if(!animation_load(&head_particles[i],path)){ready=0;if(log)fprintf(log,"FAILED %s\n",path);}}
+    if(ready&&!menu_motion_load("data/menu-motion.bin"))game_data_fault(log,ANIMATION_FAULT_DATA,"data/menu-motion.bin");
+    if(ready){
+        int crow_source=menu_crow_load_routes("data/crow-paths.bin");
+        if(log)fprintf(log,"Crow motion: %s\n",crow_source?"disc keyframes":"built-in fallback");
+    }
+    for(int i=0;ready&&i<13;i++){
+        char path[128];snprintf(path,sizeof(path),"data/%s.pva",head_particle_names[i]);
+        if(!animation_load(&head_particles[i],path))game_data_fault(log,ANIMATION_FAULT_DATA,path);
+    }
+    /* The animated menu uses individual layers. Check the fallback file without reading its bank. */
+    if(ready&&(!animation_check_bank_file(&assets[A_MENU_MAIN])||!animation_require_bank(&assets[A_DISC_FONT])))
+        game_cache_fault(log);
     if(log){fprintf(log,"Assets: %s\nTexture bytes: %lu\nSelf tests: %s\nGame struct: %lu bytes\nUser partition free: %u bytes\n",ready?"OK":"MISSING",(unsigned long)texture_memory,benchmark?(test_ok?"PASS":"FAIL"):"skipped (normal startup)",(unsigned long)sizeof(Game),(unsigned)sceKernelTotalFreeMemSize());
         fprintf(log,"Memory configuration: automatic heap, 1 MiB system reserve / %d MiB frame cache / %d MiB banks / %d MiB static cap\nRender target: %d FPS; simulation: 60 updates/s\n",performance.low_memory?12:24,performance.low_memory?2:8,performance.low_memory?0:6,performance.target_fps);
         fflush(log);}
-    ready=ready&&animation_warm(&assets[A_MENU_MAIN])&&animation_warm(&assets[A_DISC_FONT]);
     disc_font_init(&assets[A_DISC_FONT]);
     render_init();audio_init();if(audio_preferred_track()>=0){audio_set_preferred_track(-1);audio_queue_settings();}audio_write_status(log);
     if(benchmark&&ready){
         FILE *ui_tests=fopen("selftest.txt","a");if(ui_tests){test_ok&=animation_cache_layout_selftest(ui_tests);test_ok&=animation_catalog_selftest(ui_tests);test_ok&=foley_data_selftest(ui_tests);test_ok&=foley_runtime_selftest(ui_tests);test_ok&=features018_selftest(ui_tests);test_ok&=movie_selftest(ui_tests);test_ok&=performance_settings_selftest(ui_tests);test_ok&=game_campaign_selftest(ui_tests);test_ok&=award_ui_selftest(ui_tests);test_ok&=death_asset_selftest(ui_tests);test_ok&=menu_volume_selftest(ui_tests);test_ok&=audio_stream_data_selftest(ui_tests);test_ok&=replay_selftest(ui_tests);test_ok&=collection_ui_selftest(ui_tests);test_ok&=extra_ui_selftest(ui_tests);test_ok&=compact_ui_selftest(ui_tests);test_ok&=presentation_selftest(ui_tests);test_ok&=menu013_selftest(ui_tests);test_ok&=menu014_selftest(ui_tests);test_ok&=customizer_selftest(ui_tests);test_ok&=gallery_io_selftest(ui_tests);test_ok&=chewing_selftest(ui_tests);test_ok&=polish_presentation_selftest(ui_tests);test_ok&=menu020_selftest(ui_tests);test_ok&=completion_presentation_selftest(ui_tests);test_ok&=fidelity_presentation_selftest(ui_tests);test_ok&=polish_ui024_selftest(ui_tests);test_ok&=scene0241_selftest(ui_tests);test_ok&=hitch0242_selftest(ui_tests);fclose(ui_tests);}
+        ui_tests=fopen("selftest.txt","a");
+        if(ui_tests){test_ok&=mini_checkpoint_ui_selftest(ui_tests);test_ok&=pause_checkpoint_ui_selftest(ui_tests);test_ok&=menu_launch_selftest(ui_tests);test_ok&=ending_controls_selftest(ui_tests);fclose(ui_tests);}
         new_game();game_start_level(&game,9,123);screen=1;debug_info=1;game.sun=100000;game.spawn_timer=100000;game.seed_mask=255;
         for(int r=0;r<ROWS;r++)for(int c=0;c<COLS;c++){int kind=(r+c)%SEEDS;*game_seed_cooldown(&game,kind)=0;game_place(&game,r,c,kind);}
         for(int i=0;i<30;i++){
@@ -871,6 +1419,7 @@ int main(int argc,char *argv[]){
     const float review_start=live_benchmark?133:7;
     #endif
     int review_phase=0,music_test=0,mini_review=-1,extra_review=-1,completion_review=-1;FILE *stream_tests=0;
+    uint64_t mini_review_story_seen=0;
     uint64_t previous; sceRtcGetCurrentTick(&previous);float clock=0,accumulator=0,fps=60,fps_seconds=0;unsigned int fps_frames=0;
     while(running){
         uint64_t now;sceRtcGetCurrentTick(&now);float dt=(now-previous)/(float)sceRtcGetTickResolution();previous=now;
@@ -879,12 +1428,14 @@ int main(int argc,char *argv[]){
         // Averaging reciprocal intervals can misleadingly report more than 60 FPS.
         fps_seconds+=elapsed;fps_frames++;
         if(fps_seconds>=.5f){fps=fps_frames/fps_seconds;fps_seconds=0;fps_frames=0;}
-        int was_paused=paused;SceCtrlData pad;sceCtrlPeekBufferPositive(&pad,1);if(!benchmark)input(&pad,dt);
+        int was_paused=paused,was_playing=screen==1&&!paused&&!help&&!gallery&&game.status==PLAYING;
+        SceCtrlData pad;sceCtrlPeekBufferPositive(&pad,1);if(!benchmark)input(&pad,dt);
         if(checkpoint_take_error())notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");
         menu_motion_step(dt,!benchmark);
         if(!benchmark)game.completion.cosmetics=player.completion.cosmetics;
         int old_status=game.status,old_vase_stage=game.stage;
-        if(!benchmark&&screen==1&&!paused&&!help&&game.status==PLAYING)advance_game_frame(&game,dt,&accumulator);
+        if(!benchmark&&ready&&screen==1&&!paused&&!help&&!gallery&&game.status==PLAYING)
+            advance_game_frame(&game,dt,&accumulator,was_playing?&pad:0);
         else if(!(benchmark&&live_benchmark&&review_phase==0))accumulator=0;
         if(!benchmark&&screen==1&&!game.challenge&&game.level==35&&old_vase_stage!=game.stage&&game.status==PLAYING)story_begin(game.stage==1?2700:2800,1,0,0);
         if(!benchmark&&screen==1&&game.status==WON){game_animate_pickups(&game,dt);if(old_status==WON){game_animate_deaths(&game,dt);game_animate_attacks(&game,dt);}}
@@ -892,9 +1443,9 @@ int main(int argc,char *argv[]){
         if(!benchmark&&old_status!=game.status){if(game.status==WON&&!game.challenge){progress_visit(&progress,game.level,1);}queue_current();}
         if(screen==1&&!paused&&!help){update_level_ui(dt);update_reward(dt);}
         if(!benchmark&&screen==1&&game.level==5&&!game.challenge&&!game.completion.adventure_run&&!game.shovel_tutorial&&(game.level_flags&8)&&!(game.level_flags&16)){game.level_flags|=16;story_begin(2408,1,0,0);}
-        if(!benchmark&&screen==1&&!game.challenge&&!game.completion.adventure_run&&game.status==WON&&(game.level_flags&LEVEL_REWARD_COLLECTED)&&reward_collect_time>=REWARD_FLIGHT_DURATION&&!(game.level_flags&64)&&(game.level==24||game.level==34||game.level==44)){game.level_flags|=64;if(game.level==44){garden_initialize(&player,(int64_t)time(NULL));garden_return=1;story_begin(2100,16,0,0);}else{store_return=1;store_cursor=0;if(game.level==34){game.money_collected+=100;profile_bank(&player,&game);}story_begin(game.level==24?301:601,9,0,0);}save_current();}
-        if(!benchmark&&screen==1&&game.challenge&&game.status==WON&&reward_collect_time>=REWARD_FLIGHT_DURATION&&player.completion.gold_sunflower==1){completion_return=1;screen=28;}
-        if(!benchmark&&screen==1&&reward_collect_time>=REWARD_FLIGHT_DURATION&&adventure_ending_pending())start_adventure_ending();
+        if(!benchmark&&screen==1&&board_exit_screen<0&&!game.challenge&&!game.completion.adventure_run&&game.status==WON&&(game.level_flags&LEVEL_REWARD_COLLECTED)&&reward_collect_time>=REWARD_FLIGHT_DURATION&&!(game.level_flags&64)&&(game.level==24||game.level==34||game.level==44)){game.level_flags|=64;if(game.level==44){garden_initialize(&player,(int64_t)time(NULL));garden_return=1;story_begin(2100,16,0,0);}else{store_return=1;store_cursor=0;if(game.level==34){game.money_collected+=100;profile_bank(&player,&game);}story_begin(game.level==24?301:601,9,0,0);}queue_current_without_history();}
+        if(!benchmark&&screen==1&&board_exit_screen<0&&game.challenge&&game.status==WON&&reward_collect_time>=REWARD_FLIGHT_DURATION&&player.completion.gold_sunflower==1){completion_return=1;screen=28;}
+        if(!benchmark&&screen==1&&board_exit_screen<0&&reward_collect_time>=REWARD_FLIGHT_DURATION&&adventure_ending_pending())start_adventure_ending();
         if(screen==18)story_step(dt);if(screen==19)ending_step(dt);
         if(benchmark&&live_benchmark&&review_phase==0){
             if(!live_phase&&clock>=67){write_profile(log,"LIVE DAY BENCHMARK");live_combat_report(log,"DAY");render_debug_frame("live-day.ppm");profile_seconds=profile_cpu=profile_gpu=0;profile_frames=0;live_phase=1;live_combat_setup(1);}
@@ -904,14 +1455,16 @@ int main(int argc,char *argv[]){
         if(screen==16){garden_clock+=dt;int64_t now=(int64_t)time(NULL);garden_step(&player,garden_view,dt,now);garden_present_step(dt);if(!garden_pending()&&now-garden_saved_time>=30){persist_profile();garden_saved_time=now;}}
         challenge_step(dt);
         int context=soundtrack_context();
-        int preferred=audio_preferred_track();if(ready)audio_select_music(music_test&&preferred>=0?preferred:context);
-        audio_music(ready&&!help&&!(screen==19&&ending_paused)&&(screen!=1||(!paused&&(game.status==PLAYING||(game.status==WON&&game.level==50))))&&!(screen==1&&game.level==40));
+        int preferred=audio_preferred_track(),track=music_test&&preferred>=0?preferred:context;
+        if(ready&&screen!=19)audio_select_music(track);
+        audio_music(ready&&!help&&ending_allows_music(track)&&(screen!=1||(!paused&&(game.status==PLAYING||(game.status==WON&&game.level==50))))&&!(screen==1&&game.level==40));
         int music_enemies=0;for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&game.zombies[i];if(z->used&&z->death<=0&&!game.hypnotized[i]&&game_zombie_has_head(&game,z))music_enemies++;}
         audio_battle_state(music_enemies,screen==1&&game.status==PLAYING&&!paused&&!help,game.huge_wave_timer);
         audio_scene_step(dt);memset(game.events,0,sizeof(game.events));
         render_begin();
-        if(!benchmark)shared_ui_step(!first_frame_logged);
-        if(!ready){panel("GAME DATA REQUIRED");render_text(56,106,"RUN SETUP.EXE ON YOUR COMPUTER\nWITH YOUR OWN SUPPORTED PS3 ISO.\n\nCOPY THE RESULTING PVZPSP FOLDER\nINTO PSP/GAME ON YOUR MEMORY CARD.\n\nSEE THE INCLUDED README.",WHITE,1);}
+        if(!benchmark&&ready)shared_ui_step(!first_frame_logged);
+        int showed_data_fault=!ready;
+        if(showed_data_fault)draw_game_data_fault();
         else if(gallery)draw_gallery(clock);
         else if(screen==0)draw_menu();
         else if(screen==2)draw_intro();
@@ -939,13 +1492,33 @@ int main(int argc,char *argv[]){
         else if(screen==29)draw_house_choice();
         else if(screen==24)challenge_notice_draw();
         else if(screen==7)draw_mini_menu();
-        else if(screen==8){render_background(&assets[A_MENU_BG]);ui_note(note_cursor);char caption[96];snprintf(caption,sizeof(caption),"Zombie note %d/5   L/R: Next   O: Back",note_cursor+1);ui_hint(caption);}
+        else if(screen==8){render_background(&assets[A_MENU_BG]);ui_note(note_cursor);char caption[96];snprintf(caption,sizeof(caption),"Zombie note %d/5   L/R: Change note   O: Back",note_cursor+1);ui_context_hint(caption);}
         else {draw_board();draw_hud(fps);
             if(paused)draw_pause_menu();
             if(game.status==WON&&!(game.level_flags&LEVEL_REWARD_COLLECTED))draw_reward();else if(game.status!=PLAYING)draw_result();
+            if(board_exit_screen>=0)draw_save_transition(board_exit_snapshot);
         }
-        if(help)draw_help();if(message_time>0&&screen!=1&&screen!=19&&screen!=23&&screen!=25&&screen!=26){ui_dialog(65,207,350,44,"");disc_text(82,218,316,message,UI_GOLD,.62f);}if(benchmark&&review_label){render_rect(180,220,294,18,RGBA(20,25,20,235));render_text(187,226,review_label,WHITE,.8f);}render_end();last_render=render_stats();if(!animation_cache_ok())ready=0;
-        if(!first_frame_logged){uint64_t boot_end;sceRtcGetCurrentTick(&boot_end);if(log){fprintf(log,"STARTUP FIRST FRAME: %.3f seconds; diagnostics %s\n",(boot_end-boot_start)/(double)sceRtcGetTickResolution(),benchmark?"enabled":"disabled");fflush(log);}first_frame_logged=1;}
+        if(ready&&menu_launch.mode!=LAUNCH_NONE)draw_save_transition(menu_launch.snapshot);
+        if(ready&&(menu_read==READ_MINI_ROUND||menu_read==READ_EXTRA_ROUND)){
+            ui_dialog(97,81,286,110,"Loading saved round...");
+            ui_center(110,153,260,"O: Go back",UI_GOLD,.70f);
+        }
+        if(ready&&help)draw_help();if(ready&&message_time>0&&screen!=1&&screen!=19&&screen!=23&&screen!=25&&screen!=26){ui_dialog(65,207,350,44,"");disc_text(82,218,316,message,UI_GOLD,.62f);}if(ready&&benchmark&&review_label){render_rect(180,220,294,18,RGBA(20,25,20,235));render_text(187,226,review_label,WHITE,.8f);}
+        render_end();last_render=render_stats();
+        if(!benchmark&&ready)prefetch_level_art();
+        if(ready&&!animation_cache_ok())game_cache_fault(log);
+        if(!first_frame_logged){
+            uint64_t boot_end;sceRtcGetCurrentTick(&boot_end);
+            if(log){
+                fprintf(log,"STARTUP FIRST FRAME: %.3f seconds; diagnostics %s\n",(boot_end-boot_start)/(double)sceRtcGetTickResolution(),benchmark?"enabled":"disabled");
+                AnimationIOStats io=animation_io_stats();
+                fprintf(log,"STARTUP ANIMATION I/O: %u synchronous reads, %u bank bytes, static menu bank %s\n",
+                    (unsigned)io.sync_reads,(unsigned)io.bytes,animation_bank_ready(&assets[A_MENU_MAIN])?"loaded":"unloaded");
+                fflush(log);
+            }
+            first_frame_logged=1;
+        }
+        if(benchmark&&showed_data_fault){render_debug_frame("review-data-error.ppm");break;}
         if(benchmark&&screen==19)ending_review_frame();
         if(screen==1&&!paused&&!help&&game.status==PLAYING&&(!benchmark||(review_phase==0&&clock>1.5f))){profile_seconds+=elapsed;profile_cpu+=last_render.cpu_ms;profile_gpu+=last_render.gpu_wait_ms;profile_frames++;}
         if(!was_paused&&paused)write_profile(log,"PAUSE");
@@ -994,8 +1567,15 @@ int main(int argc,char *argv[]){
                 case 24:render_debug_frame("review-note2.ppm");screen=5;progress.played=0xfffff;progress.completed=0x7ffff;replay_cursor=19;break;
                 case 25:render_debug_frame("review-night-replay.ppm");screen=8;note_cursor=4;break;
                 case 26:render_debug_frame("review-final-note-gallery.ppm");game_start_minigame(&game,1,614);screen=1;game.spawn_timer=0;game_step(&game,.05f);reset_level_ui();break;
-                case 27:render_debug_frame("review-whack.ppm");screen=7;break;
-                case 28:render_debug_frame("review-minigames.ppm");review_chapter(29);break;
+                case 27:
+                    render_debug_frame("review-whack.ppm");
+                    mini_review_story_seen=player.garden.story_seen;
+                    player.garden.story_seen|=CHALLENGE_MINI;
+                    screen=7;mini_cursor=mini_resume_id=MINI_SLOT;break;
+                case 28:
+                    render_debug_frame("review-minigames.ppm");
+                    player.garden.story_seen=mini_review_story_seen;
+                    mini_resume_id=-1;review_chapter(29);break;
                 case 29:render_debug_frame("review-pool.ppm");review_chapter(39);break;
                 case 30:render_debug_frame("review-fog.ppm");review_chapter(49);break;
                 case 31:render_debug_frame("review-roof.ppm");game_start_level(&game,35,750);reset_level_ui();break;
@@ -1034,15 +1614,33 @@ int main(int argc,char *argv[]){
                 default:
                     if(mini_review>=0&&mini_review<20){
                         if(mini_review>0){char file[80];snprintf(file,sizeof(file),"review-mini-%02d.ppm",mini_review-1);render_debug_frame(file);}
-                        game_start_mini(&game,mini_review,2200+mini_review);read_costs();reset_level_ui();game.sun=500;game.mini.phase=1;game.spawn_timer=0;game_step(&game,.05f);screen=1;mini_review++;
+                        game_start_mini(&game,mini_review,2200+mini_review);apply_level_profile();reset_level_ui();game.sun=500;game.mini.phase=1;game.spawn_timer=0;
+                        if(mini_review==MINI_STARS){
+                            game_place(&game,0,3,STAR);
+                            game_place(&game,2,3,WALLNUT);
+                            game.cursor_row=2;game.cursor_col=4;game.selected=STAR;
+                        }
+                        if(mini_review==MINI_SLOT){
+                            game_mini_action(&game,1);
+                            for(int frame=0;frame<49;frame++)game_step(&game,.05f);
+                        }
+                        if(mini_review==MINI_COLUMN){
+                            game.packets[0]=MELON;
+                            game.packet_count=1;game.selected=0;
+                            game.support[0][2]=game.support[2][2]=0;
+                            game.support_hp[0][2]=game.support_hp[2][2]=0;
+                            game.cursor_col=2;
+                        }
+                        game_step(&game,.05f);screen=1;mini_review++;
                     }else if(mini_review==20){render_debug_frame("review-mini-19.ppm");extra_review=0;mini_review++;}else if(extra_review>=0){if(review_expansion(extra_review++)){extra_review=-1;completion_review=0;}}else if(completion_review>=0){if(review_completion(completion_review++)){if(scene_review){running=0;break;}screen=4;menu_volume_row=2;stream_tests=fopen("selftest.txt","a");audio_stream_test_begin(performance.target_fps);music_test=1;}}break;
             }
         }
     }
-    if(benchmark){int ok=animation_cache_ok();test_ok&=ok;FILE *checks=fopen("selftest.txt","a");if(checks){fprintf(checks,"all captured scenes and ending finish without cache allocation or decode errors: %s\nASSET CACHE RESULT %d/1\n",ok?"PASS":"FAIL",ok);fclose(checks);}}
-    game_sound_listener(0);foley_report(log);
-    if(!benchmark){garden_flush();save_current();progress_save(&progress,progress_path);}
+    if(benchmark){int ok=ready&&animation_cache_ok();test_ok&=ok;FILE *checks=fopen("selftest.txt","a");if(checks){fprintf(checks,"all captured scenes and ending finish without cache allocation or decode errors: %s\nASSET CACHE RESULT %d/1\n",ok?"PASS":"FAIL",ok);fclose(checks);}}
+    game_sound_listener(0);audio_write_status(log);
+    if(!benchmark&&ready){garden_flush();save_current();progress_save(&progress,progress_path);}
     write_profile(log,"EXIT");
     if(!benchmark){audio_queue_settings();if(ui_settings_dirty)ui_settings_save();if(performance_dirty)performance_save();}
+    book_close();
     checkpoint_shutdown();movie_close();menu_motion_close();audio_shutdown();render_shutdown();for(int i=0;i<2;i++)animation_free(&gallery_thumbnails[i]);for(int i=0;i<AV_COUNT;i++)animation_free(&avatar_art[i]);for(int i=0;i<13;i++)animation_free(&head_particles[i]);for(int i=0;i<A_COUNT;i++){animation_free(&assets[i]);for(int stage=0;stage<3;stage++)animation_free(&imitated_assets[i][stage]);for(int stage=0;stage<2;stage++)animation_free(&damaged[i][stage]);}animation_catalog_close();animation_cache_report(log);if(log)fclose(log);sceKernelExitGame();return 0;
 }

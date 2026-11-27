@@ -1,17 +1,25 @@
 /* Each group owns its four slots through generation IDs, never proximity. */
-static int dancer_slot_valid024(const Game *g,const Zombie *z,int slot){int row=z->row+(slot==0?-1:slot==1?1:0);return game_row_active(g,row)&&!game_water_row(g,row);}
-static int dancer_missing024(const Game *g,int leader){
- for(int slot=0;slot<4;slot++)if(dancer_slot_valid024(g,&g->zombies[leader],slot)){
-  int found=0;for(int j=0;j<MAX_ZOMBIES;j++)if(g->zombies[j].used&&g->zombies[j].death<=0&&g->zombies[j].kind==Z_BACKUP&&g->polish024.leader_id[j]==g->fidelity.actor_id[leader]&&g->polish024.dancer_slot[j]==slot&&!g->hypnotized[j])found=1;
-  if(!found)return 1;
- }return 0;
+static int dancer_slot_row(int row,int slot){return row+(slot==0?-1:slot==1?1:0);}
+static unsigned dancer_open_slots(const Game *g,int leader){
+ unsigned open=0;
+ for(int slot=0;slot<4;slot++){
+  int row=dancer_slot_row(g->zombies[leader].row,slot);
+  if(game_row_active(g,row)&&!game_water_row(g,row))open|=1u<<slot;
+ }
+ uint32_t id=g->fidelity.actor_id[leader];
+ for(int i=0;i<MAX_ZOMBIES&&open;i++){
+  if(g->polish024.leader_id[i]!=id)continue;
+  const Zombie *z=&g->zombies[i];
+  unsigned slot=g->polish024.dancer_slot[i];
+  if(slot<4&&z->used&&z->death<=0&&z->kind==Z_BACKUP&&!g->hypnotized[i])open&=~(1u<<slot);
+ }
+ return open;
 }
 static int dancer_summon024(Game *g,int leader){
  Zombie *z=&g->zombies[leader];
- for(int slot=0;slot<4;slot++)if(dancer_slot_valid024(g,z,slot)){
-  int found=0;for(int j=0;j<MAX_ZOMBIES;j++)if(g->zombies[j].used&&g->zombies[j].death<=0&&g->zombies[j].kind==Z_BACKUP&&g->polish024.leader_id[j]==g->fidelity.actor_id[leader]&&g->polish024.dancer_slot[j]==slot&&!g->hypnotized[j])found=1;
-  if(found)continue;
-  int row=z->row+(slot==0?-1:slot==1?1:0);float x=z->x+(slot==2?-47.5f:slot==3?47.5f:0);
+ unsigned open=dancer_open_slots(g,leader);
+ for(int slot=0;slot<4;slot++)if(open&(1u<<slot)){
+  int row=dancer_slot_row(z->row,slot);float x=z->x+(slot==2?-47.5f:slot==3?47.5f:0);
   int child=game_spawn_zombie(g,row,Z_BACKUP,x);if(child<0)return 0;
   g->polish024.leader_id[child]=g->fidelity.actor_id[leader];g->polish024.dancer_slot[child]=slot;
   g->polish024.dancer_state[child]=DANCE_RISE;g->polish024.altitude[child]=-89.28f;cue(FOLEY_DIRT_RISE);
@@ -34,7 +42,7 @@ static int dancer_step024(Game *g,int i,float dt){
  if(state==DANCE_POINT){z->eating=0;if(t>=9/24.0f&&dancer_summon024(g,i)){g->polish024.dancer_state[i]=DANCE_HOLD;g->polish024.actor_clock[i]=0;}return 1;}
  if(state==DANCE_HOLD){z->eating=0;if(t>=2){g->polish024.dancer_state[i]=DANCE_GROUP;g->polish024.actor_clock[i]=0;z->age=g->polish.pose[i]=0;}return 1;}
  if(state==DANCE_GROUP){
-  if(dancer_missing024(g,i)){g->polish024.summon_delay[i]+=dt;if(g->polish024.summon_delay[i]>=1&&dancer_beat024(g)==12&&z->x<GRID_X+700*.475f){g->polish024.dancer_state[i]=DANCE_POINT;g->polish024.actor_clock[i]=0;g->polish024.summon_delay[i]=0;return 1;}}
+  if(dancer_open_slots(g,i)){g->polish024.summon_delay[i]+=dt;if(g->polish024.summon_delay[i]>=1&&dancer_beat024(g)==12&&z->x<GRID_X+700*.475f){g->polish024.dancer_state[i]=DANCE_POINT;g->polish024.actor_clock[i]=0;g->polish024.summon_delay[i]=0;return 1;}}
   else g->polish024.summon_delay[i]=0;
  }return 0;
 }

@@ -11,16 +11,34 @@ static int fidelity_actor_step(Game *g,int i,float dt){
  }
  if(action==ACTION_SNORKEL_RISE||action==ACTION_SNORKEL_DIVE){
   int cell=g->fidelity.actor_target[i],r=cell/COLS,c=cell%COLS;
-  int target=r>=0&&r<ROWS&&c>=0&&c<COLS&&(g->plants[r][c].kind>=0||g->support[r][c]||g->pumpkin_hp[r][c]>0)&&bite_contact(z->x,plant_x(c))&&game_zombie_has_head(g,z);
+  int target=0;
+  if(r==z->row&&(unsigned)r<ROWS&&(unsigned)c<COLS){
+   int anchor=bite_plant_col(g,r,c);
+   int plant=squash_in_flight(g,r,anchor)?-1:g->plants[r][anchor].kind;
+   target=tile_is_bite_target(g,r,c,plant,z->kind)&&bite_contact(z->x,plant_x(c))&&game_zombie_has_head(g,z);
+  }
   if(action==ACTION_SNORKEL_RISE&&!target){g->polish.action[i]=ACTION_SNORKEL_DIVE;g->polish.action_time[i]=fmaxf(0,11/24.0f-t);return 1;}
   z->eating=action==ACTION_SNORKEL_RISE;
   if(t>=11/24.0f){g->polish.action[i]=0;g->fidelity.actor_aux[i]=action==ACTION_SNORKEL_RISE?1:0;z->age=g->polish.pose[i]=0;}return 1;
  }
  if(action==ACTION_LADDER){
   int cell=g->polish.target[i],r=cell/COLS,c=cell%COLS;
-  if(r!=z->row||r>=ROWS||c>=COLS||z->armor<=0){g->polish.action[i]=0;return 0;}
+  if(r!=z->row||(unsigned)r>=ROWS||(unsigned)c>=COLS||z->armor<=0||
+     !bite_contact(z->x,plant_x(c))||ladder_attachment(g,r,c)){
+   g->polish.action[i]=0;return 0;
+  }
+  int attachment=g->fidelity.actor_target[i];
+  if(!attachment){ /* Older saves only record the target tile. */
+   attachment=ladder_surface(g,r,c);
+   g->fidelity.actor_target[i]=attachment;
+   if(attachment)g->fidelity.grabbed_id[i]=ladder_plant_id(g,r,c,attachment);
+  }
+  if(!ladder_surface_live(g,r,c,attachment)||
+     g->fidelity.grabbed_id[i]!=ladder_plant_id(g,r,c,attachment)){
+   g->polish.action[i]=0;return 0;
+  }
   if(t>=11/24.0f){
-   if(g->plants[r][c].kind==WALLNUT||g->plants[r][c].kind==TALLNUT||g->pumpkin_hp[r][c]>0){g->ladders[r][c]=1;z->armor=0;g->fidelity.equipment_lost[i]=1;cue(GAME_SAMPLE(FX_LADDER_ZOMBIE));}
+   g->ladders[r][c]=attachment;z->armor=0;g->fidelity.equipment_lost[i]=1;cue(GAME_SAMPLE(FX_LADDER_ZOMBIE));
    g->polish.action[i]=0;z->age=g->polish.pose[i]=0;
   }return 1;
  }
@@ -28,9 +46,13 @@ static int fidelity_actor_step(Game *g,int i,float dt){
  if(action==ACTION_DIGGER_RISE){if(t>=.6f+13/16.0f){g->polish.action[i]=0;z->age=g->polish.pose[i]=0;g->special[i]=0;z->speed=.23f+random_unit(g)*.14f;}return 1;}
  if(action==ACTION_CATAPULT){
   if(before<.545f*(31/24.0f)&&t>=.545f*(31/24.0f)){int cell=g->fidelity.actor_target[i],r=cell/COLS,c=cell%COLS;
-   if(r>=0&&r<ROWS&&c>=0&&c<COLS)for(int n=0;n<MAX_SHOTS;n++)if(!g->shots[n].used){
-    float x=z->x-12,y=game_ground_y(g,r)+game_roof_offset(g,x)-32,dest=plant_x(c),target_y=game_ground_y(g,r)+game_roof_offset(g,dest)-14;
-    g->shots[n]=(Shot){1,r,14,x};g->shot_y[n]=y;g->shot_vx[n]=(dest-x)/1.0f;g->shot_vy[n]=target_y-y-150;g->shot_remaining[n]=1;g->shot_target[n]=cell;g->shot_damage[n]=75;cue(FOLEY_BASKETBALL);break;
+   if(r>=0&&r<ROWS&&c>=0&&c<COLS){
+    float x=z->x-12;
+    int n=allocate_shot(g,r,x,14);
+    if(n>=0){
+     float y=game_ground_y(g,r)+game_roof_offset(g,x)-32,dest=plant_x(c),target_y=game_ground_y(g,r)+game_roof_offset(g,dest)-14;
+     g->shot_y[n]=y;g->shot_vx[n]=dest-x;g->shot_vy[n]=target_y-y-150;g->shot_remaining[n]=1;g->shot_target[n]=cell;g->shot_damage[n]=75;cue(FOLEY_BASKETBALL);
+    }
    }
   }
   if(t>=31/24.0f){g->fidelity.actor_aux[i]=fmaxf(0,g->fidelity.actor_aux[i]-1);g->polish.action[i]=0;z->age=g->polish.pose[i]=0;}return 1;

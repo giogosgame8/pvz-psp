@@ -29,5 +29,57 @@
     g.store_flags=STORE_POOL;g.mower_x[2]=GRID_X-1;advance(&g,.1f);CHECK("purchased pool cleaners cross the water",g.mower_x[2]>GRID_X&&g.mower_x[2]<520);
     game_start_level(&g,9,1208);g.spawn_timer=100000;g.store_flags=STORE_RAKE;advance(&g,.02f);target=game_spawn_zombie(&g,g.rake_row,Z_BUCKET,plant_x(g.rake_col));g.zombies[target].speed=0;advance(&g,.5f);
     CHECK("rake triggers on contact and damages an armored zombie",g.rake_state==2&&g.zombies[target].death>0);advance(&g,2.2f);CHECK("a used rake does not reset during the same level",g.rake_state==3);
+    game_start_level(&g,9,1210);g.spawn_timer=100000;g.store_flags=STORE_RAKE;advance(&g,.02f);
+    float rake_x=plant_x(g.rake_col);
+    int ally=game_spawn_zombie(&g,g.rake_row,Z_NORMAL,rake_x);
+    g.hypnotized[ally]=1;g.frozen[ally]=5;
+    int flying=game_spawn_zombie(&g,g.rake_row,Z_IMP,rake_x);
+    g.polish.action[flying]=ACTION_IMP_FLIGHT;g.frozen[flying]=5;
+    int underground=game_spawn_zombie(&g,g.rake_row,Z_DIGGER,rake_x);
+    g.frozen[underground]=5;
+    advance(&g,.5f);
+    CHECK("rake stays armed under a friendly, airborne or digging zombie",g.rake_state==1);
+    target=game_spawn_zombie(&g,g.rake_row,Z_BUCKET,rake_x);
+    g.frozen[target]=5;advance(&g,.5f);
+    CHECK("rake impact skips ineligible zombies that precede a valid target",
+          g.rake_state==2&&g.zombies[target].death>0&&!g.zombies[ally].death&&
+          !g.zombies[flying].death&&!g.zombies[underground].death);
+    game_start_level(&g,9,1211);g.spawn_timer=100000;g.store_flags=STORE_RAKE;advance(&g,.02f);
+    rake_x=plant_x(g.rake_col);
+    target=game_spawn_zombie(&g,g.rake_row,Z_NORMAL,rake_x);
+    g.frozen[target]=5;advance(&g,.1f);
+    int started=g.rake_state==2;
+    g.hypnotized[target]=1;advance(&g,.5f);
+    CHECK("rake rechecks a zombie that turns friendly before impact",started&&g.rake_state==2&&!g.zombies[target].death);
+
+    game_start_level(&g,9,1212);g.spawn_timer=100000;
+    g.plants[2][3]=(Plant){.kind=MINE,.hp=300,.age=MINE_ARM_SECONDS};
+    underground=game_spawn_zombie(&g,2,Z_DIGGER,plant_x(3));
+    g.frozen[underground]=5;
+    flying=game_spawn_zombie(&g,2,Z_IMP,plant_x(3));
+    g.polish.action[flying]=ACTION_IMP_FLIGHT;g.frozen[flying]=5;
+    advance(&g,.1f);
+    CHECK("an armed mine ignores underground and airborne contact",g.plants[2][3].kind==MINE);
+    target=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3));advance(&g,.1f);
+    CHECK("a mine explosion leaves underground and airborne actors unharmed",
+          g.plants[2][3].kind<0&&g.zombies[target].death>0&&!g.zombies[underground].death&&!g.zombies[flying].death);
+
+    game_start_level(&g,9,1213);g.spawn_timer=100000;
+    g.plants[2][3]=(Plant){.kind=SPIKEWEED,.hp=300};
+    int front_vehicle=game_spawn_zombie(&g,2,Z_ZOMBONI,plant_x(3));
+    int rear_vehicle=game_spawn_zombie(&g,2,Z_CATAPULT,plant_x(3)+8);
+    g.frozen[front_vehicle]=g.frozen[rear_vehicle]=5;advance(&g,.1f);
+    CHECK("spikeweed pops just one vehicle when consumed",g.plants[2][3].kind<0&&
+          g.zombies[front_vehicle].death>0&&g.zombies[rear_vehicle].death<=0);
+    g.plants[2][3]=(Plant){.kind=SPIKEROCK,.hp=450};
+    ally=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3));
+    g.hypnotized[ally]=1;g.frozen[ally]=5;
+    underground=game_spawn_zombie(&g,2,Z_DIGGER,plant_x(3));
+    g.frozen[underground]=5;
+    target=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3));
+    g.frozen[target]=5;advance(&g,.1f);
+    CHECK("spikerock hits ground enemies and survives a vehicle without hurting friendly or underground actors",
+          g.plants[2][3].kind==SPIKEROCK&&g.plants[2][3].hp==400&&g.zombies[rear_vehicle].death>0&&
+          g.zombies[target].hp==230&&g.zombies[ally].hp==270&&g.zombies[underground].hp==270);
     game_start_level(&g,9,1209);g.sun=10000;g.seed_mask=g.unlocked_mask=(UINT64_C(1)<<ALL_SEEDS)-1;g.spawn_timer=100000;game_place(&g,2,2,SPIKEWEED);game_place(&g,2,2,SPIKEROCK);target=game_spawn_zombie(&g,2,Z_GARG,plant_x(2)+20);g.zombies[target].speed=0;advance(&g,1.4f);
     CHECK("Gargantuar strikes a Spikerock instead of walking through it",g.zombies[target].eating&&g.plants[2][2].kind==SPIKEROCK&&g.plants[2][2].hp==400);

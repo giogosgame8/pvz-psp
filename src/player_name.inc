@@ -9,17 +9,19 @@ static int normalize_name(char out[PLAYER_NAME_MAX+1],const char *value){
  if(!n)return 0;for(size_t i=0;i<n;i++)if(!((value[i]>='a'&&value[i]<='z')||(value[i]>='A'&&value[i]<='Z')||(value[i]>='0'&&value[i]<='9')||strchr(" .'-",value[i])))return 0;
  memcpy(out,value,n);out[n]=0;return 1;
 }
+static int player_name_read(FILE *f,void *buffer){
+ uint32_t header[2];char record[PLAYER_NAME_MAX+1];
+ int ok=fread(header,sizeof(header),1,f)==1&&header[0]==0x4e505650&&header[1]==1&&fread(record,sizeof(record),1,f)==1&&record[PLAYER_NAME_MAX]==0&&fgetc(f)==EOF;
+ return ok&&normalize_name(buffer,record);
+}
+static int player_name_valid(const char *path){char name[PLAYER_NAME_MAX+1];return record_inspect(path,name,player_name_read);}
 static int player_name_save(const char *value){
- char normalized[PLAYER_NAME_MAX+1];if(!normalize_name(normalized,value))return 0;
- uint32_t header[2]={0x4e505650,1};char record[PLAYER_NAME_MAX+1]={0},temporary[256];snprintf(record,sizeof(record),"%s",normalized);snprintf(temporary,sizeof(temporary),"%s.tmp",player_name_path);
- FILE *f=fopen(temporary,"wb");if(!f)return 0;int ok=fwrite(header,sizeof(header),1,f)==1&&fwrite(record,sizeof(record),1,f)==1;if(fclose(f))ok=0;
- if(ok){remove(player_name_path);ok=rename(temporary,player_name_path)==0;}if(ok){snprintf(player_name,sizeof(player_name),"%s",normalized);player_name_set=1;}return ok;
+ uint32_t header[2]={0x4e505650,1};unsigned char record[sizeof(header)+PLAYER_NAME_MAX+1]={0};
+ memcpy(record,header,sizeof(header));char *name=(char *)record+sizeof(header);
+ if(!normalize_name(name,value)||!record_replace(player_name_path,record,sizeof(record),player_name_valid))return 0;
+ snprintf(player_name,sizeof(player_name),"%s",name);player_name_set=1;return 1;
 }
-static int player_name_load(void){
- uint32_t header[2];char record[PLAYER_NAME_MAX+1],normalized[PLAYER_NAME_MAX+1];FILE *f=fopen(player_name_path,"rb");if(!f)return 0;
- int ok=fread(header,sizeof(header),1,f)==1&&header[0]==0x4e505650&&header[1]==1&&fread(record,sizeof(record),1,f)==1&&record[PLAYER_NAME_MAX]==0&&fgetc(f)==EOF;fclose(f);
- if(ok)ok=normalize_name(normalized,record);if(ok){snprintf(player_name,sizeof(player_name),"%s",normalized);player_name_set=1;}return ok;
-}
+static int player_name_load(void){char name[PLAYER_NAME_MAX+1];if(!record_load(player_name_path,name,player_name_read))return 0;snprintf(player_name,sizeof(player_name),"%s",name);player_name_set=1;return 1;}
 static void name_begin(int destination){name_mode=0;snprintf(name_draft,sizeof(name_draft),"%s",player_name_set?player_name:"");name_error[0]=0;name_return=destination;name_key=0;name_lower=0;screen=23;}
 static void secret_begin(void){name_begin(25);name_mode=1;name_draft[0]=0;}
 static void name_delete(void){size_t n=strlen(name_draft);if(n)name_draft[n-1]=0;name_error[0]=0;}

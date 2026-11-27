@@ -14,6 +14,24 @@ int garden_selftest(FILE *out){
  G("garden and tree persist in profile",profile_save(&p,"selftest-garden.dat")&&profile_load(&q,"selftest-garden.dat")&&!memcmp(&p,&q,sizeof(p)));remove("selftest-garden.dat");
  profile_init(&p);p.highest=50;p.adventure_finished=1;game_start_level(&g,9,123);profile_apply(&p,&g);game_add_coin(&g,100,100,-1-PEA);game_collect_coins(&g);game_animate_pickups(&g,1);G("collecting a present adds its garden plant",profile_bank(&p,&g)&&garden_count(&p,GARDEN_MAIN)==1);G("resuming cannot duplicate collected garden presents",!profile_bank(&p,&g)&&garden_count(&p,GARDEN_MAIN)==1);
  profile_init(&p);p.purchases[SHOP_SNAIL]=1;p.garden.snail_awake=now;p.garden.snail_chocolate=now;p.garden.snail_x=200;p.garden.snail_y=200;p.garden.coins[0]=(GardenCoin){.used=1,.value=1,.x=207.5f,.y=200};garden_step(&p,GARDEN_MAIN,.1f,now);G("023 chocolate snail reaches a nearby coin without overshooting",fabsf(p.garden.snail_x-207.5f)<.001f&&p.garden.snail_y==200);garden_step(&p,GARDEN_MAIN,.01f,now);G("023 a reached coin is collected once",p.money==1&&!p.garden.coins[0].used);
+ p.garden.plants[4]=(GardenPlant){.used=1,.slot=31,.garden=GARDEN_MAIN};
+ p.garden.plants[50]=(GardenPlant){.used=1,.slot=7,.garden=GARDEN_MUSHROOM};
+ p.garden.plants[95]=(GardenPlant){.used=1,.slot=4,.garden=GARDEN_AQUARIUM};
+ p.garden.plants[GARDEN_PLANTS-1]=(GardenPlant){.used=1,.slot=0,.garden=GARDEN_BARROW};
+ int indexed=1;
+ for(int garden=GARDEN_MAIN;garden<=GARDEN_BARROW;garden++){
+    int slots[GARDEN_MAX_SLOTS],capacity=garden_index_slots(&p,garden,slots);
+    indexed&=capacity==(garden==GARDEN_MAIN?32:garden==GARDEN_BARROW?1:8);
+    for(int slot=0;slot<capacity;slot++)indexed&=slots[slot]==garden_find(&p,garden,slot);
+ }
+ G("one slot index matches individual lookups across all four gardens",indexed);
+ for(int slot=0;slot<GARDEN_MAX_SLOTS-1;slot++)
+    p.garden.plants[100+slot]=(GardenPlant){.used=1,.slot=slot,.garden=GARDEN_MAIN};
+ int full=!garden_add(&p,MARIGOLD,now);
+ p.garden.plants[109].used=0;
+ G("full greenhouse rejects a plant and addition reuses the first empty pot",
+   full&&garden_add(&p,MARIGOLD,now)&&garden_find(&p,GARDEN_MAIN,9)>=0&&
+   garden_count(&p,GARDEN_MAIN)==GARDEN_MAX_SLOTS);
  #undef G
  fprintf(out,"GARDEN RESULT %d/%d\n",pass,total);return pass==total;
 }

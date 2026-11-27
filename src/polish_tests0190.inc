@@ -24,6 +24,61 @@
     advance(&g,1);CHECK("0190 Garlic pauses chewing before changing lanes",!g.zombies[pi].eating&&g.zombies[pi].row==2);
     advance(&g,1);CHECK("0190 Garlic selects an adjacent active lane",abs(g.zombies[pi].row-2)==1&&game_row_active(&g,g.zombies[pi].row));
     advance(&g,1);CHECK("0190 Garlic recovers without repeated reactions",!g.polish.action[pi]);
+    RESET0190(9,1920);put_plant(&g,2,3,GARLIC);put_plant(&g,2,3,PUMPKIN);
+    g.pumpkin_hp[2][3]=30;pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);
+    advance(&g,.1f);
+    CHECK("a bite on Pumpkin cannot damage or trigger the Garlic inside",
+        g.pumpkin_hp[2][3]>0&&g.pumpkin_hp[2][3]<30&&g.plants[2][3].hp==300&&
+        !g.polish.action[pi]&&g.zombies[pi].eating);
+    advance(&g,.3f);
+    CHECK("Garlic redirects the zombie once the shell is gone and it is bitten",
+        !g.pumpkin_hp[2][3]&&g.plants[2][3].hp<300&&g.polish.action[pi]==ACTION_GARLIC);
+    RESET0190(9,1921);put_plant(&g,2,3,SPIKEWEED);put_plant(&g,2,3,PUMPKIN);
+    g.pumpkin_hp[2][3]=30;pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.1f);
+    CHECK("the Pumpkin around Spikeweed is a bite target",
+        g.pumpkin_hp[2][3]<30&&g.plants[2][3].kind==SPIKEWEED&&g.plants[2][3].hp==300&&g.zombies[pi].eating);
+    RESET0190(9,1922);put_plant(&g,2,3,HYPNO);g.plants[2][3].hp=5;
+    pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.1f);
+    CHECK("a sleeping Hypno-shroom can be eaten without turning the zombie",
+        g.plants[2][3].kind<0&&!g.hypnotized[pi]);
+    RESET0190(9,1923);put_plant(&g,2,3,HYPNO);put_plant(&g,2,3,COFFEE);
+    advance(&g,1.1f);g.plants[2][3].hp=5;
+    pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.1f);
+    CHECK("Coffee Bean enables the Hypno-shroom effect when it is eaten",
+        !g.asleep[2][3]&&g.plants[2][3].kind<0&&g.hypnotized[pi]);
+    RESET0190(9,1924);put_plant(&g,2,3,SQUASH);put_plant(&g,2,3,PUMPKIN);
+    pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,1.35f);
+    float shell_before=g.pumpkin_hp[2][3];
+    int launched=g.burst_left[2][3]==3;advance(&g,.1f);
+    CHECK("a bite keeps wearing down the Pumpkin during Squash's jump",
+        launched&&g.burst_left[2][3]==3&&g.pumpkin_hp[2][3]<shell_before&&
+        g.plants[2][3].hp==300&&g.zombies[pi].eating);
+    g.pumpkin_hp[2][3]=0;advance(&g,.1f);
+    CHECK("a zombie ignores a jumping Squash when no tile layers remain",
+        g.burst_left[2][3]==3&&g.plants[2][3].hp==300&&!g.zombies[pi].eating);
+    RESET0190(49,1925);put_plant(&g,2,3,POT);put_plant(&g,2,3,SQUASH);
+    g.burst_left[2][3]=3;g.fidelity.support_safe[2][3]=0;
+    pi=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.1f);
+    CHECK("a pot left below an airborne Squash can take bites",
+        g.support_hp[2][3]<300&&g.plants[2][3].hp==300&&g.zombies[pi].eating);
+    put_plant(&g,2,3,PUMPKIN);
+    game_spawn_zombie(&g,2,Z_CATAPULT,plant_x(3)+10);advance(&g,.1f);
+    CHECK("a vehicle crushes the pot and Pumpkin without stopping the Squash's flight",
+        !g.support[2][3]&&!g.pumpkin_hp[2][3]&&g.plants[2][3].kind==SQUASH&&g.burst_left[2][3]==3);
+    RESET0190(9,1926);put_plant(&g,2,3,GARLIC);put_plant(&g,2,3,PUMPKIN);
+    g.pumpkin_hp[2][3]=30;pi=game_spawn_zombie(&g,2,Z_DIGGER,plant_x(3)-10);
+    g.zombies[pi].vaulted=1;advance(&g,.1f);
+    CHECK("the Pumpkin protects Garlic from a Digger attacking from behind",
+        g.pumpkin_hp[2][3]<30&&g.pumpkin_hp[2][3]>0&&g.plants[2][3].hp==300&&!g.polish.action[pi]);
+    advance(&g,.3f);
+    CHECK("a Digger reacts when it bites the Garlic after the Pumpkin breaks",
+        !g.pumpkin_hp[2][3]&&g.plants[2][3].hp<300&&g.polish.action[pi]==ACTION_GARLIC);
+    RESET0190(19,1927);put_plant(&g,2,3,HYPNO);g.plants[2][3].hp=5;
+    pi=game_spawn_zombie(&g,2,Z_DIGGER,plant_x(3)-10);g.zombies[pi].vaulted=1;
+    int hostile=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+8);
+    advance(&g,.15f);
+    CHECK("a redirected Digger fights hostile zombies after eating an awake Hypno-shroom",
+        g.hypnotized[pi]&&g.plants[2][3].kind<0&&g.zombies[hostile].hp<270);
     RESET0190(21,1904);pi=game_spawn_zombie(&g,2,Z_DUCK,330);g.frozen[pi]=1;float pose=g.polish.pose[pi];advance(&g,.5f);
     CHECK("0190 freeze stops an advanced walking clock and movement",g.polish.pose[pi]==pose&&g.zombies[pi].x==330);
     g.frozen[pi]=0;g.zombies[pi].slow=5;advance(&g,.5f);CHECK("0190 chill halves the saved walking clock",fabsf(g.polish.pose[pi]-.25f)<.002f);
@@ -64,7 +119,7 @@
     g.polish.action_time[pi]=2;game_save(&g,"polish0190.dat");remove("polish0190.dat");CHECK("0190 an interrupted final rename can recover the previous save",game_load(&restored,"polish0190.dat")&&restored.polish.action_time[pi]==1.2f);remove("polish0190.dat.bak");
     uint32_t vh[4]={0x31535650,10,offsetof(Game,polish),checksum(&g,offsetof(Game,polish))};FILE *vf=fopen("polish0190-v10.dat","wb");int vw=vf&&fwrite(vh,sizeof(vh),1,vf)==1&&fwrite(&g,vh[2],1,vf)==1;if(vf)fclose(vf);
     CHECK("0190 version 10 saves load with an initialized transition tail",vw&&game_load(&restored,"polish0190-v10.dat")&&!restored.polish.action[pi]&&restored.level==g.level);remove("polish0190-v10.dat");
-    g.polish.action_time[pi]=NAN;game_save(&g,"polish0190-bad.dat");CHECK("0190 malformed new action state is rejected even with a valid checksum",!game_load(&restored,"polish0190-bad.dat"));remove("polish0190-bad.dat");remove("polish0190-bad.dat.bak");
+    g.polish.action_time[pi]=NAN;CHECK("0190 malformed new action state is rejected even with a valid checksum",write_board_fixture(&g,"polish0190-bad.dat")&&!game_load(&restored,"polish0190-bad.dat"));remove("polish0190-bad.dat");remove("polish0190-bad.dat.bak");
     game_start_survival(&g,0,SURVIVAL_NORMAL,1916);pi=game_spawn_zombie(&g,2,Z_NORMAL,330);kill_zombie(&g,&g.zombies[pi]);g.extra.pending=1;g.extra.effect_time[0]=1;float corpse=g.zombies[pi].death;game_step(&g,.1f);
     CHECK("0190 Survival intermission advances corpses and effects exactly once",fabsf(g.zombies[pi].death-(corpse-.1f))<.001f&&fabsf(g.extra.effect_time[0]-.9f)<.001f);
     g.polish.wave_entry=50;g.polish.action[pi]=ACTION_PAPER;int continued=game_extra_continue(&g);

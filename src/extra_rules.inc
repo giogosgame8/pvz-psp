@@ -99,13 +99,14 @@ int game_extra_continue(Game *g){
     if(extra_is(g,EXTRA_VASE))vase_setup(g);else if(extra_is(g,EXTRA_IZOMBIE))iz_setup(g);return 1;
 }
 
-static int extra_target(const Game *g,int r,int c,float x){
-    if(!g->extra.left_facing[r][c])return target_in_lane(g,r,x);
-    for(int i=0;i<MAX_ZOMBIES;i++){const Zombie *z=&g->zombies[i];if(z->used&&z->death<=0&&!g->hypnotized[i]&&z->row==r&&z->x<x+6&&z->x>0&&z->kind!=Z_BALLOON)return 1;}return 0;
+static int extra_target(const Game *g,int r,int c,float x,ZombieRows *rows){
+    if(!g->extra.left_facing[r][c])return target_in_lane(g,r,x,rows);
+    return lane_has_projectile_target(g,r,0,x+6,SHOT_HITS_GROUND,rows);
 }
 static void extra_shoot(Game *g,int r,int c,float x,int ice){
     if(!g->extra.left_facing[r][c]){shoot(g,r,x,ice);return;}
-    for(int i=0;i<MAX_SHOTS;i++)if(!g->shots[i].used){shoot(g,r,x-26,ice);g->shot_vx[i]=-150;return;}
+    int slot=shoot(g,r,x-26,ice);
+    if(slot>=0)g->shot_vx[slot]=-150;
 }
 
 static void adventure_vases(Game *g){
@@ -116,11 +117,34 @@ static void adventure_vases(Game *g){
  int green=g->stage==1?2:g->stage==2?3:0;for(int r=0;r<5&&green;r++)for(int c=0;c<9&&green;c++)if(g->vases[r][c]&&g->extra.vase_content[r][c]>=0){g->extra.vase_green[r][c]=1;green--;}
  g->spawned=0;g->wave=g->stage+1;g->num_waves=3;g->spawn_timer=100000;
 }
+static int bobsled_on_track(const Game *g,const Zombie *leader){
+ if(leader->x<GRID_X)return 0;
+ /* Allow a sled to approach from the road before it reaches the first tile. */
+ if(leader->x>=GRID_X+COLS*CELL_W)return 1;
+ int col=(int)((leader->x-GRID_X)/CELL_W);
+ return g->ice_tiles[leader->row][col]>0;
+}
 static int bobsled_step(Game *g,int i,float dt){
  Zombie *z=&g->zombies[i];int team=g->extra.bobsled_team[i];if(!team)return 0;int leader=team-1;
  if(leader<0||leader>=MAX_ZOMBIES){g->extra.bobsled_team[i]=0;return 0;}
     if(g->extra.bobsled_phase[i]<0){g->extra.bobsled_phase[i]+=dt;if(g->extra.bobsled_phase[i]<0){z->age+=dt;return 1;}g->extra.bobsled_team[i]=0;z->speed=.23f+random_unit(g)*.14f;return 0;}
-    int col=(int)((g->zombies[leader].x-GRID_X)/CELL_W);if(!g->zombies[leader].used||g->zombies[leader].kind!=Z_BOBSLED||(i!=leader&&g->polish024.leader_id[i]!=g->fidelity.actor_id[leader])||g->zombies[leader].death>0||(col>=0&&col<COLS&&g->ice_tiles[z->row][col]<=0)){for(int j=0;j<MAX_ZOMBIES;j++)if(g->extra.bobsled_team[j]==team&&(j==i||g->polish024.leader_id[j]==g->polish024.leader_id[i]))g->extra.bobsled_phase[j]=-.6f;return 1;}
- if(i!=leader){Zombie *head=&g->zombies[leader];z->x=head->x+g->extra.bobsled_position[i]*14;z->row=head->row;z->age=head->age;return 1;}
- z->eating=0;z->age+=dt;z->x-=47.5f*dt*(z->slow>0?.5f:1);return 1;
+ Zombie *sled=&g->zombies[leader];
+ if(!sled->used||sled->kind!=Z_BOBSLED||sled->death>0||
+    (i!=leader&&g->polish024.leader_id[i]!=g->fidelity.actor_id[leader])||
+    (i==leader&&!bobsled_on_track(g,sled))){
+  for(int j=0;j<MAX_ZOMBIES;j++)
+   if(g->extra.bobsled_team[j]==team&&(j==i||g->polish024.leader_id[j]==g->polish024.leader_id[i]))
+    g->extra.bobsled_phase[j]=-.6f;
+  return 1;
+ }
+ if(i!=leader)return 1;
+ z->eating=0;z->age+=dt;z->x-=47.5f*dt*(z->slow>0?.5f:1);
+ for(int member=0;member<MAX_ZOMBIES;member++){
+  Zombie *rider=&g->zombies[member];
+  if(member==leader||!rider->used||rider->death>0||rider->kind!=Z_BOBSLED||
+     g->extra.bobsled_team[member]!=team||g->polish024.leader_id[member]!=g->fidelity.actor_id[leader]||
+     g->extra.bobsled_phase[member]<0)continue;
+  rider->x=z->x+g->extra.bobsled_position[member]*14;rider->row=z->row;rider->age=z->age;
+ }
+ return 1;
 }

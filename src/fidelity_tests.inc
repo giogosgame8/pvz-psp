@@ -20,9 +20,51 @@
  advance(&g,2);CHECK("023 a disarmed Jack cannot start its old fuse",g.zombies[target].death<=0&&!g.polish.action[target]);
  FRESH023(19);put_plant(&g,2,3,MAGNET);g.plants[2][3].attack=0;target=game_spawn_zombie(&g,2,Z_DIGGER,plant_x(3)+60);advance(&g,.2f);CHECK("023 a stolen pick starts Digger emergence without changing its type",g.zombies[target].kind==Z_DIGGER&&g.polish.action[target]==ACTION_DIGGER_RISE&&g.fidelity.equipment_lost[target]);
  FRESH023(9);put_plant(&g,2,3,WALLNUT);target=game_spawn_zombie(&g,2,Z_LADDER,plant_x(3)+10);advance(&g,.2f);CHECK("023 Ladder placement has a windup and retains the carried ladder",g.polish.action[target]==ACTION_LADDER&&!g.ladders[2][3]&&g.zombies[target].armor==500);
- advance(&g,.5f);CHECK("023 Ladder placement finishes on the original square",g.ladders[2][3]&&g.zombies[target].armor==0&&g.plants[2][3].hp==4000);
+ advance(&g,.5f);CHECK("023 Ladder placement finishes on the original square",g.ladders[2][3]==LADDER_NUT&&g.zombies[target].armor==0&&g.plants[2][3].hp==4000);
+ g.zombies[target].used=0;
+ target=game_spawn_zombie(&g,2,Z_NORMAL,plant_x(3)+10);advance(&g,.25f);
+ CHECK("0246 zombies pass a nut while its ladder is attached",!g.zombies[target].eating&&g.plants[2][3].hp==4000);
+ game_shovel(&g,2,3);put_plant(&g,2,3,WALLNUT);advance(&g,.25f);
+ CHECK("0246 a replacement nut stops zombies after its predecessor is shoveled",!g.ladders[2][3]&&g.zombies[target].eating&&g.plants[2][3].hp<4000);
+ FRESH023(9);put_plant(&g,2,3,WALLNUT);put_plant(&g,2,3,PUMPKIN);
+ target=game_spawn_zombie(&g,2,Z_LADDER,plant_x(3)+10);advance(&g,.7f);
+ CHECK("0246 a ladder attaches to the outer Pumpkin",g.ladders[2][3]==LADDER_PUMPKIN);
+ game_shovel(&g,2,3);
+ CHECK("0246 removing the inner nut preserves the Pumpkin ladder",g.plants[2][3].kind<0&&g.ladders[2][3]==LADDER_PUMPKIN);
+ damage_pumpkin(&g,2,3,4000);
+ CHECK("0246 destroying the Pumpkin clears its ladder",!g.ladders[2][3]&&!g.pumpkin_hp[2][3]);
+ FRESH023(9);put_plant(&g,2,3,WALLNUT);
+ target=game_spawn_zombie(&g,2,Z_LADDER,plant_x(3)+10);advance(&g,.4f);
+ game_shovel(&g,2,3);put_plant(&g,2,3,WALLNUT);advance(&g,.2f);
+ CHECK("0246 replacing a nut during a windup restarts ladder placement",!g.ladders[2][3]&&g.zombies[target].armor==500&&g.polish.action[target]==ACTION_LADDER&&g.polish.action_time[target]<.2f);
+ advance(&g,.5f);
+ CHECK("0246 a restarted ladder placement can finish normally",g.ladders[2][3]==LADDER_NUT&&g.zombies[target].armor==0);
+ FRESH023(9);put_plant(&g,2,3,WALLNUT);put_plant(&g,2,5,WALLNUT);put_plant(&g,2,5,PUMPKIN);
+ g.ladders[2][3]=g.ladders[2][4]=g.ladders[2][5]=LADDER_LEGACY;
+ CHECK("0246 a saved board recovers historical ladder flags",game_save(&g,"fidelity-state.dat")&&game_load(&restored,"fidelity-state.dat")&&restored.ladders[2][3]==LADDER_NUT&&!restored.ladders[2][4]&&restored.ladders[2][5]==LADDER_PUMPKIN);
+ game_shovel(&restored,2,5);
+ CHECK("0246 a recovered Pumpkin ladder retains its ownership after saving again",game_save(&restored,"fidelity-state.dat")&&game_load(&g,"fidelity-state.dat")&&g.ladders[2][5]==LADDER_PUMPKIN&&g.plants[2][5].kind<0);
  FRESH023(9);target=game_spawn_zombie(&g,2,Z_BALLOON,300);shoot(&g,2,287,9);chapter_shots(&g,.05f);CHECK("023 Cactus pops a balloon without converting its rider to a basic zombie",g.zombies[target].kind==Z_BALLOON&&g.polish.action[target]==ACTION_BALLOON_FALL&&!can_freeze(&g,&g.zombies[target]));
  advance(&g,1.5f);CHECK("023 the grounded balloon rider can walk and be frozen",!g.polish.action[target]&&g.fidelity.equipment_lost[target]&&can_freeze(&g,&g.zombies[target]));
+ FRESH023(9);
+ int friendly=game_spawn_zombie(&g,2,Z_NORMAL,320);
+ g.hypnotized[friendly]=1;
+ int flying=game_spawn_zombie(&g,2,Z_BALLOON,329);
+ int digging=game_spawn_zombie(&g,2,Z_DIGGER,329);
+ float balloon_hp=g.zombies[flying].hp,digger_hp=g.zombies[digging].hp;
+ game_step(&g,.05f);
+ CHECK("Hypnotized zombies keep walking past airborne and underground targets",
+       !g.zombies[friendly].eating&&g.zombies[friendly].x>320&&g.zombies[flying].hp==balloon_hp&&g.zombies[digging].hp==digger_hp);
+ int foe=game_spawn_zombie(&g,2,Z_NORMAL,330);
+ g.frozen[foe]=1;game_step(&g,.05f);
+ CHECK("A frozen opponent can take a bite but cannot retaliate",
+       g.zombies[friendly].eating&&g.zombies[friendly].hp==270&&g.zombies[foe].hp==265);
+ g.frozen[foe]=0;g.zombies[foe].hp=50;game_step(&g,.05f);
+ CHECK("A headless opponent cannot retaliate",
+       !game_zombie_has_head(&g,&g.zombies[foe])&&g.zombies[friendly].hp==270&&g.zombies[foe].hp<50);
+ g.zombies[foe].hp=270;g.zombies[friendly].slow=g.zombies[foe].slow=1;game_step(&g,.05f);
+ CHECK("Chill halves bite damage on both sides of a hypnotized fight",
+       g.zombies[friendly].hp==267.5f&&g.zombies[foe].hp==267.5f);
  FRESH023(9);put_plant(&g,2,0,WALLNUT);target=game_spawn_zombie(&g,2,Z_CATAPULT,400);g.special[target]=0;advance(&g,.8f);CHECK("023 Catapult damage waits for a visible basketball flight",g.plants[2][0].hp==4000&&g.polish.action[target]==ACTION_CATAPULT);
  advance(&g,1.1f);CHECK("023 the basketball damages its landing square",g.plants[2][0].hp==3925);
  FRESH023(9);put_plant(&g,2,3,FUME);int coffee023=game_place(&g,2,3,COFFEE);advance(&g,.5f);CHECK("023 Coffee has a wake delay and rejects duplicate beans",coffee023==0&&g.asleep[2][3]&&game_place(&g,2,3,COFFEE)==-11);advance(&g,.6f);CHECK("023 Coffee wakes its original mushroom after the delay",!g.asleep[2][3]&&!g.fidelity.wake[2][3]);
@@ -46,7 +88,7 @@
  FRESH023(50);g.extra.boss_action=B_HEAD_ENTER;g.extra.boss_head_time=1000;put_plant(&g,2,3,ICESHROOM);g.plants[2][3].age=.99f;g.boss_ball_kind=1;g.boss_ball_x=400;advance(&g,.02f);CHECK("023 Ice can cancel a fireball without damaging an entering boss head",g.boss_hp==40000&&!g.boss_phase&&!g.boss_ball_kind);
  FRESH023(9);target=game_spawn_zombie(&g,2,Z_NORMAL,350);uint32_t h023[4]={0x31535650,12,offsetof(Game,fidelity),checksum(&g,offsetof(Game,fidelity))};FILE *old023=fopen("fidelity-v12.dat","wb");int made023=old023&&fwrite(h023,sizeof(h023),1,old023)==1&&fwrite(&g,h023[2],1,old023)==1;if(old023)fclose(old023);
  CHECK("023 v12 saves migrate without changing existing combat",made023&&game_load(&restored,"fidelity-v12.dat")&&restored.zombies[target].hp==270&&restored.fidelity.actor_id[target]&&!restored.fidelity.equipment_lost[target]);
- g.fidelity.wake[0][0]=NAN;game_save(&g,"fidelity-invalid.dat");CHECK("023 malformed transition clocks are rejected",!game_load(&restored,"fidelity-invalid.dat"));
+ g.fidelity.wake[0][0]=NAN;CHECK("023 malformed transition clocks are rejected",write_board_fixture(&g,"fidelity-invalid.dat")&&!game_load(&restored,"fidelity-invalid.dat"));
  for(int n=0;n<3;n++){const char *p=(const char*[]){"fidelity-state.dat","fidelity-v12.dat","fidelity-invalid.dat"}[n];char b[128];snprintf(b,sizeof(b),"%s.bak",p);remove(p);remove(b);}
 #undef FRESH023
 }

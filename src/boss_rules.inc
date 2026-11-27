@@ -55,12 +55,32 @@ static int boss_step(Game *g,float dt){
  case B_HEAD_LEAVE:if(t>=44/12.0f)boss_set(g,B_IDLE);break;
  case B_STOMP:{float duration=(g->boss_row<2?30:28)/12.0f,contact=duration*(g->boss_row<2?.5f:.55f);if(before<contact&&t>=contact)boss_squish(g,g->boss_row,5,4);if(t>=duration)boss_set(g,B_IDLE);break;}
  case B_BUNGEE:
-  if(t>=.8f){int free=0;for(int i=0;i<MAX_ZOMBIES;i++)free+=!g->zombies[i].used;if(free<3)break;
-   for(int n=0;n<3;n++){int col=g->extra.boss_target_col+n,rows[5],count=0;for(int r=0;r<5;r++)if(g->plants[r][col].kind>=0||g->support[r][col]||g->pumpkin_hp[r][col]>0)rows[count++]=r;int row=count?rows[random_next(g)%count]:random_next(g)%5;int z=game_spawn_zombie(g,row,Z_BUNGEE,plant_x(col));g->zombies[z].x=plant_x(col);g->polish024.boss_bungee_id[n]=g->fidelity.actor_id[z];}
-   boss_set(g,B_BUNGEE_DROP);
-  }break;
- case B_BUNGEE_DROP:{int remaining=0,ascending=0;for(int n=0;n<3;n++){int i=actor_by_id024(g,g->polish024.boss_bungee_id[n]);if(i>=0&&g->zombies[i].death<=0){remaining++;ascending|=g->fidelity.bungee_phase[i]>=3;}}
-  if(!remaining||ascending)boss_set(g,B_BUNGEE_LEAVE);break;}
+  if(t<.8f)break;
+  if(!zombie_slots_available(g,3)){
+   // Leave time for dying actors to clear before ending a blocked attack.
+   if(t>=1.8f)boss_set(g,B_BUNGEE_LEAVE);
+   break;
+  }
+  for(int n=0;n<3;n++){
+   int col=g->extra.boss_target_col+n,rows[5],count=0;
+   for(int r=0;r<5;r++)if(g->plants[r][col].kind>=0||g->support[r][col]||g->pumpkin_hp[r][col]>0)rows[count++]=r;
+   int row=count?rows[random_next(g)%count]:random_next(g)%5;
+   int z=game_spawn_zombie(g,row,Z_BUNGEE,plant_x(col));
+   if(z<0)break;
+   g->zombies[z].x=plant_x(col);
+   g->polish024.boss_bungee_id[n]=g->fidelity.actor_id[z];
+  }
+  boss_set(g,B_BUNGEE_DROP);
+  break;
+ case B_BUNGEE_DROP:{
+  int descending=0;
+  for(int n=0;n<3;n++){
+   int i=actor_by_id024(g,g->polish024.boss_bungee_id[n]);
+   if(i>=0&&g->zombies[i].death<=0&&g->fidelity.bungee_phase[i]<3){descending=1;break;}
+  }
+  if(!descending)boss_set(g,B_BUNGEE_LEAVE);
+  break;
+ }
  case B_BUNGEE_LEAVE:if(t>=17/18.0f)boss_set(g,B_IDLE);break;
  case B_RV:{float contact=.65f*(37/16.0f);if(before<contact&&t>=contact){boss_squish(g,g->boss_row,g->extra.boss_target_col,3);g->boss_timer=5;g->extra.boss_head_time=50;if(phase)g->extra.boss_stomp_delay=40;if(phase>=2)g->extra.boss_bungee_delay=65;}if(t>=37/16.0f)boss_set(g,B_IDLE);break;}
  }

@@ -1,5 +1,11 @@
-static int ending_review_captured,ending_review_frames,ending_review_last=-1,ending_review_ticks;static float ending_review_max_lag;
-static void ending_review_frame(void){int frame=movie_frame();if(frame!=ending_review_last){ending_review_frames++;ending_review_last=frame;}if(frame>=0){float lag=ending_clock-frame/24.0f;if(lag>ending_review_max_lag)ending_review_max_lag=lag;}
+static int ending_review_captured,ending_review_frames,ending_review_last,ending_review_ticks,ending_review_reached_last;
+static float ending_review_max_lag,ending_review_max_time;
+static void ending_review_frame(void){
+ int frame=movie_frame();
+ if(frame>=0&&frame!=ending_review_last){ending_review_frames++;ending_review_last=frame;}
+ ending_review_reached_last|=movie_at_end();
+ float lag=movie_frame_lag(ending_clock);
+ if(lag>ending_review_max_lag){ending_review_max_lag=lag;ending_review_max_time=ending_clock;}
  if((ending_review_ticks++%150)==0){FILE *f=fopen("ending-progress.txt","a");if(f){fprintf(f,"tick %d, audio %.3f, frame %d, error %d, free %u\n",ending_review_ticks,ending_clock,frame,movie_error(),(unsigned)sceKernelTotalFreeMemSize());fclose(f);}}
  int id=ending_clock>150?3:ending_clock>80?2:ending_clock>20?1:0;if(id>ending_review_captured){char file[80];snprintf(file,sizeof(file),"review-ending-%d.ppm",id);render_debug_frame(file);ending_review_captured=id;}
 }
@@ -88,7 +94,23 @@ static int review_expansion(int n){
  case 88:render_debug_frame("review0200-dancer-options.ppm");game_start_level(&game,9,20088);screen=1;game.spawn_timer=10000;reset_level_ui();for(int r=0;r<3;r++){int i=game_spawn_zombie(&game,r*2,Z_DANCER,260+r*65);game.zombies[i].age=.4f;game.zombies[i].speed=0;if(r==1){game.zombies[i].eating=1;game.zombies[i].age=.5f;}if(r==2)game.zombies[i].hp=100;}break;
  case 89:render_debug_frame("review0200-classic-dancer.ppm");classic_dancer=0;break;
  case 90:render_debug_frame("review0200-disco-dancer.ppm");
-if(review_ui_only){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ENDING PLAYBACK: UI-only model run; initial first/middle/final decoder checks performed; full playback rerun on Street.\n");fclose(f);}return 1;}ending_review_captured=ending_review_frames=0;ending_review_max_lag=0;if(!ending_begin(20)){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ending full synchronized playback opens after all game assets: FAIL\n");fclose(f);}test_ok=0;return 1;}break;
- default:{FILE *f=fopen("selftest.txt","a");if(f){int ok=ending_review_frames>100&&ending_review_captured==3&&ending_clock>=158;fprintf(f,"ending full synchronized playback reaches final credits: %s\nENDING PLAYBACK: %d displayed frames, maximum lag %.3f s, audio position %.3f s\n",ok?"PASS":"FAIL",ending_review_frames,ending_review_max_lag,ending_clock);fclose(f);test_ok&=ok;}return 1;}
+  if(review_ui_only){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ENDING PLAYBACK: UI-only run; first, middle and final decoder checks performed.\n");fclose(f);}return 1;}
+  ending_review_captured=ending_review_frames=ending_review_ticks=ending_review_reached_last=0;
+  ending_review_last=-1;ending_review_max_lag=ending_review_max_time=0;
+  if(!ending_begin(20)){FILE *f=fopen("selftest.txt","a");if(f){fprintf(f,"ending full playback opens after all game assets: FAIL\n");fclose(f);}test_ok=0;return 1;}
+  break;
+ default:{
+  int song_complete=ending_phase==ENDING_AFTER_MUSIC;
+  int ok=ending_review_frames>100&&ending_review_captured==3&&ending_review_reached_last&&!movie_error();
+  FILE *f=fopen("selftest.txt","a");
+  if(f){
+   fprintf(f,"ending full playback displays the final frame: %s\n",ok?"PASS":"FAIL");
+   fprintf(f,"ending soundtrack plays through its final sample: %s\n",song_complete?"PASS":"FAIL");
+   fprintf(f,"ENDING PLAYBACK: %d displayed frames, maximum video delay %.3f s at %.3f s, audio position %.3f s\n",
+           ending_review_frames,ending_review_max_lag,ending_review_max_time,ending_clock);
+   fclose(f);
+  }
+  test_ok&=ok&&song_complete;return 1;
+ }
  }return 0;
 }

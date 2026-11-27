@@ -14,7 +14,7 @@ static int award_ui_selftest(FILE *out){
     AWARD_CHECK("pickup flight cannot be skipped by a second quick press",game.level==1&&reward_collect_time<.85f);
     pad.Buttons=0;input(&pad,.016f);update_reward(REWARD_FLIGHT_DURATION);pad.Buttons=PSP_CTRL_CROSS;input(&pad,.016f);
     AWARD_CHECK("a separate press advances after collection",game.level==2&&screen==2&&!(game.level_flags&LEVEL_REWARD_COLLECTED));
-    Game resumed;AWARD_CHECK("the next level is saved after pickup",game_load(&resumed,adventure_path)&&resumed.level==2);
+    Game resumed;AWARD_CHECK("the next level is saved after pickup",checkpoint_flush()&&game_load(&resumed,adventure_path)&&resumed.level==2);
     remove(adventure_path);remove(progress_path);adventure_path=old_path;progress_path=old_progress_path;game=old_game;progress=old_progress;screen=old_screen;replaying=old_replaying;can_resume=old_resume;ready=old_ready;previous_buttons=0;reset_level_ui();
     fprintf(out,"AWARD UI RESULT %d/%d\n",passed,total);
     #undef AWARD_CHECK

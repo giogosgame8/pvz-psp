@@ -13,12 +13,15 @@
 
 enum { MUSIC_RING=16384,MUSIC_CHUNK=2048 };
 static int16_t music_ring[3][MUSIC_RING];static unsigned int ring_read[3],ring_write[3],ring_count[3];
-static volatile uint32_t music_position,underruns,read_errors;static int music_half,music_fade;
+static volatile uint32_t music_position,music_end,underruns,read_errors;static int music_half,music_fade;
 static int initialized;static volatile int play_music,worker_running;static SceUID lock=-1,worker=-1;
 static volatile int music_volume=85,effects_volume=50;
 static volatile int music_track=-1,requested_track=-1,failed_track=-1,test_read_delay;
-static volatile uint32_t requested_generation,music_generation;
-static int preferred_track=-1,available_tracks,track_available[MUSIC_COUNT],stream_test_active;
+static volatile int requested_music_once;
+static volatile uint32_t requested_generation,music_generation,failed_music_generation;
+enum { TRACK_UNTRIED, TRACK_READY, TRACK_ERROR };
+static int preferred_track=-1,stream_test_active;
+static unsigned char track_status[MUSIC_COUNT];
 static unsigned int max_request_us;
 static volatile unsigned int settings_requested,settings_written;
 static uint32_t settings_record[5];static volatile int settings_result=1;
@@ -37,19 +40,16 @@ static int write_settings(const char *filename,const uint32_t data[5]){return re
 int audio_save_settings(const char *filename){
     uint32_t data[5]={0x55415650,2,(uint32_t)music_volume,(uint32_t)effects_volume,(uint32_t)preferred_track};return write_settings(filename,data);
 }
-static int read_settings(const char *filename,uint32_t data[5]){
-    FILE *f=fopen(filename,"rb");if(!f)return 0;
+static int read_settings(FILE *f,void *buffer){
+    uint32_t *data=buffer;
     int ok=fread(data,16,1,f)==1&&data[0]==0x55415650&&(data[1]==1||data[1]==2)&&data[2]<=100&&data[3]<=100;
     data[4]=0xffffffffu;if(ok&&data[1]==2)ok=fread(&data[4],4,1,f)==1&&(data[4]==0xffffffffu||data[4]<MUSIC_COUNT);
-    if(ok)ok=fgetc(f)==EOF;fclose(f);return ok;
+    if(ok)ok=fgetc(f)==EOF;return ok;
 }
-static int settings_valid(const char *filename){uint32_t data[5];return read_settings(filename,data);}
+static int settings_valid(const char *filename){uint32_t data[5];return record_inspect(filename,data,read_settings);}
 int audio_load_settings(const char *filename){
     uint32_t data[5];
-    if(!read_settings(filename,data)){
-        char backup[160];
-        if(snprintf(backup,sizeof(backup),"%s.bak",filename)>=(int)sizeof(backup)||!read_settings(backup,data))return 0;
-    }
+    if(!record_load(filename,data,read_settings))return 0;
     audio_set_volumes(data[2],data[3]);audio_set_preferred_track((int)data[4]);return 1;
 }
 void audio_queue_settings(void){
@@ -69,27 +69,53 @@ static void save_queued_settings(void){
     if(generation!=settings_written){settings_result=write_settings(save_storage_path(SAVE_AUDIO),data);settings_written=generation;}
 }
 
-#include "audio_dynamic.inc"
-int audio_select_music(int track){
-    uint64_t start=stream_test_active?sceKernelGetSystemTimeWide():0;
-    if(track<0||track>=MUSIC_COUNT)return 0;
-    requested_track=track; // Latest request wins; no allocation, locks or I/O here.
-    if(stream_test_active){unsigned int us=sceKernelGetSystemTimeWide()-start;if(us>max_request_us)max_request_us=us;}
-    return track_available[track];
+static void record_track_error(int track,uint32_t generation){
+    if((unsigned)track<MUSIC_COUNT){
+        sceKernelWaitSema(lock,1,0);
+        track_status[track]=TRACK_ERROR;
+        sceKernelSignalSema(lock,1);
+    }
+    failed_music_generation=generation;
+    failed_track=track;
+    read_errors++;
 }
-void audio_restart_music(int track){if(track<0||track>=MUSIC_COUNT)return;requested_track=track;requested_generation++;}
+
+#include "audio_dynamic.inc"
+void audio_select_music(int track){
+    uint64_t start=stream_test_active?sceKernelGetSystemTimeWide():0;
+    if(track<0||track>=MUSIC_COUNT)return;
+    if(requested_track!=track){
+        requested_music_once=0;
+        requested_track=track; // Latest request wins; no allocation, locks or I/O here.
+    }
+    if(stream_test_active){unsigned int us=sceKernelGetSystemTimeWide()-start;if(us>max_request_us)max_request_us=us;}
+}
+static void restart_music(int track,int once){
+    if(track<0||track>=MUSIC_COUNT)return;
+    requested_music_once=once;requested_track=track;requested_generation++;
+}
+void audio_restart_music(int track){restart_music(track,0);}
+void audio_restart_music_once(int track){restart_music(track,1);}
 float audio_music_seconds(int track){return music_track==track&&requested_track==track&&music_generation==requested_generation?music_position/22050.0f:-1;}
+int audio_music_finished(int track){
+    return music_track==track&&requested_track==track&&music_generation==requested_generation&&
+           music_end&&music_position>=music_end;
+}
+int audio_music_unavailable(int track){
+    return !initialized||!worker_running||
+           (requested_track==track&&failed_track==track&&failed_music_generation==requested_generation);
+}
+void audio_test_request_delay(unsigned int ms){test_read_delay=ms*1000;}
 int audio_init(void){
     audio_load_settings(save_storage_path(SAVE_AUDIO));
     dynamic_load();int effects_ready=foley_init();
-    for(int i=0;i<MUSIC_COUNT;i++){char path[64];snprintf(path,sizeof(path),"data/music%d.wav",i);FILE *f=fopen(path,"rb");if(f){track_available[i]=1;available_tracks++;fclose(f);}}
     lock=sceKernelCreateSema("pvzaudio",0,1,1,0);
     if(lock<0)return 0;
     initialized=pspAudioInit()>=0;
     if(initialized){pspAudioSetVolume(0,0x6000,0x6000);pspAudioSetChannelCallback(0,mix,0);}
+    audio_select_music(MUSIC_MENU);
     worker_running=1;worker=sceKernelCreateThread("pvzmusic",stream_worker,0x18,80*1024,THREAD_ATTR_USER,0);
     if(worker<0||sceKernelStartThread(worker,0,0)<0){worker_running=0;if(worker>=0)sceKernelDeleteThread(worker);worker=-1;read_errors++;}
-    audio_select_music(MUSIC_MENU);
     return initialized&&effects_ready;
 }
 void audio_play(int effect){
@@ -100,8 +126,14 @@ void audio_play(int effect){
 void audio_music(int enabled){play_music=enabled&&!dynamic_test_paused;}
 void audio_write_status(FILE *out){
     if(!out)return;
+    unsigned counts[3]={0};
+    if(lock>=0)sceKernelWaitSema(lock,1,0);
+    for(int i=0;i<MUSIC_COUNT;i++)counts[track_status[i]]++;
+    if(lock>=0)sceKernelSignalSema(lock,1);
     fprintf(out,"Adaptive music: %d/5 themes, %u bursts, %u layer transitions, %u night entries; PCM buffers %u bytes\n",music_plan_count,(unsigned)burst_count,(unsigned)layer_boundaries,(unsigned)night_restarts,(unsigned)(sizeof(music_ring)+sizeof(night_prime)));
-    fprintf(out,"Audio: IMA ADPCM streaming, buffer %u bytes, songs %d/%d, effects %d/%d, sliders %d/%d\n",(unsigned int)sizeof(music_ring),available_tracks,MUSIC_COUNT,foley_ok()?FX_SAMPLE_COUNT:0,FX_SAMPLE_COUNT,music_volume,effects_volume);foley_report(out);fflush(out);
+    fprintf(out,"Audio: IMA ADPCM streaming, buffer %u bytes, songs %u ready / %u failed / %u untried, effects %d/%d, sliders %d/%d\n",(unsigned int)sizeof(music_ring),counts[TRACK_READY],counts[TRACK_ERROR],counts[TRACK_UNTRIED],foley_ok()?FX_SAMPLE_COUNT:0,FX_SAMPLE_COUNT,music_volume,effects_volume);
+    fprintf(out,"Music stream: %u read errors, %u underruns\n",(unsigned)read_errors,(unsigned)underruns);
+    foley_report(out);
 }
 void audio_shutdown(void){
     worker_running=0;if(worker>=0){sceKernelWaitThreadEnd(worker,0);sceKernelDeleteThread(worker);worker=-1;}
