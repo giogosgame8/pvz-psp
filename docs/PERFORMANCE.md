@@ -1,6 +1,6 @@
 # PSP-1000 60 FPS mode — 0.18.1
 
-See the [0.24.7 release notes](changelog/CHANGES-0.24.7.md) for the current release.
+See the [1.0 release notes](changelog/CHANGES-1.0.0.md) for the current release.
 
 ## Measuring stutters on a PSP
 

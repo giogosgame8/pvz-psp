@@ -1,10 +1,9 @@
-# Known limitations — 0.24.7 single-player release
+# Known limitations — 1.0 single-player release
 
-See the [0.24.7 changes and validation](changelog/CHANGES-0.24.7.md).
+See the [1.0 release notes](changelog/CHANGES-1.0.0.md).
 
-This is an unfinished native PSP reimplementation, not an exact PS3 reproduction.
-It imports resources from the original BLUS30852 version 01.00 PS3 ISO. It does
-not run the PS3 executable on PSP.
+The native PSP build imports resources from the original BLUS30852 version
+01.00 PS3 ISO. Some gameplay and presentation details still differ from PS3.
 
 ## Missing or unfinished
 

@@ -1,8 +1,8 @@
 # Plants vs. Zombies for PSP
 
-An unfinished, unofficial PSP reimplementation. Original game files are not included.
+An unofficial, single-player PSP homebrew project. Setup uses your own PS3 disc image.
 
-**[Download the 0.24.7 single-player release](https://github.com/giogosgame8/pvz-psp/releases/download/v0.24.7/PvZ-PSP-0.24.7.zip)**
+**[Download the 1.0 full release](https://github.com/giogosgame8/pvz-psp/releases/download/v1.0.0/PvZ-PSP-1.0.0.zip)**
 
 ## What you need
 
@@ -29,12 +29,11 @@ to `PSP/SAVEDATA/PVZPSP`; copy that folder to back up saves from then on.
 
 ## Good to know
 
-- This is early access: some modes and original-game behavior still need work.
-- Multiplayer is not available yet.
+- This release covers offline single-player.
 - Choose **Disco / Michael Jackson** under **Options > Dancing zombie**.
 - Open **Player → Zombie customizer** to create a saved flag-zombie appearance using PS3 artwork.
 - PSP-1000 defaults to 30 FPS; its Options menu offers an experimental 60 FPS target.
-- [What's new in 0.24.7](docs/changelog/CHANGES-0.24.7.md).
+- [What's in 1.0](docs/changelog/CHANGES-1.0.0.md).
 
 **[Report a bug](https://github.com/giogosgame8/pvz-psp/issues/new/choose)**
 
