@@ -78,6 +78,21 @@ int game_audio018_selftest(FILE *out){
  g.frozen[flying]=g.frozen[walker]=5;
  shoot(&g,2,x,2);advance(&g,.55f);
  E("a spore passes a flying imp and hits a ground target behind it",g.zombies[flying].hp==270&&g.zombies[walker].hp==250);
+
+ START_MUSHROOM_TEST(49);
+ int digger=game_spawn_zombie(&g,2,Z_DIGGER,GRID_X+.1f);
+ game_step(&g,1.0f/60);advance(&g,.3f);
+ E("a naturally emerging Digger starts its rise with one dirt cue",
+   g.zombies[digger].vaulted&&g.polish.action[digger]==ACTION_DIGGER_RISE&&
+   event018[FOLEY_DIRT_RISE]==1&&!event018[FOLEY_DIGGER]);
+
+ START_MUSHROOM_TEST(49);
+ *p=(Plant){.kind=MAGNET,.hp=300};
+ digger=game_spawn_zombie(&g,2,Z_DIGGER,x+35);
+ game_step(&g,1.0f/60);advance(&g,.3f);
+ E("Magnet triggers one dirt cue and one pickup cue without starting the digging loop",
+   g.zombies[digger].vaulted&&g.fidelity.equipment_lost[digger]&&
+   event018[FOLEY_DIRT_RISE]==1&&event018[FOLEY_MAGNETSHROOM]==1&&!event018[FOLEY_DIGGER]);
  #undef START_MUSHROOM_TEST
  memset(event018,0,sizeof(event018));game_start_puzzle(&g,0,0,123);int broken=0;for(int r=0;r<5&&!broken;r++)for(int c=0;c<9&&!broken;c++)if(g.vases[r][c])broken=game_break_vase(&g,r,c);E("breaking a vase uses the glass-breaking effect",broken&&event018[FOLEY_VASE_BREAKING]==1);
  sound_listener=prior;

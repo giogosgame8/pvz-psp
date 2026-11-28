@@ -35,7 +35,7 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512);
 #ifdef TEST_PSP1000_60FPS
 #define BUILD018_LABEL "PvZ PSP prototype 0.18.1 PSP1000 60 FPS EXPERIMENT"
 #else
-#define BUILD018_LABEL "PvZ PSP 0.24.6 development - gameplay, presentation and recovery"
+#define BUILD018_LABEL "PvZ PSP 0.24.7"
 #endif
 
 enum { A_PEA,A_PEA_SHOOT,A_SUNFLOWER,A_WALLNUT,A_CHERRY,A_CHERRY_EXPLODE,A_MINE,A_MINE_UNARMED,A_SNOW,A_SNOW_SHOOT,
@@ -230,7 +230,8 @@ static void apply_level_profile(void){
 }
 static uint8_t level_art_attempted[A_COUNT];
 static uint32_t level_art_bytes;
-static void reset_level_ui(void){board_exit_screen=-1;reward_elapsed=0;reward_delay=-1;reward_collect_time=-1;packet_ui_count=game.packet_count;for(int i=0;i<MAX_PACKETS;i++)packet_x[i]=44+i*37;meter_progress=game.spawned&&game.num_waves>0?(game.wave-1)/(float)game.num_waves:0;meter_wave=-1;memset(squash_audio_phase,0,sizeof(squash_audio_phase));memset(level_art_attempted,0,sizeof(level_art_attempted));level_art_bytes=0;last_sun=game.sun;sun_glow=0;}
+static void reset_sound_actors(void);
+static void reset_level_ui(void){board_exit_screen=-1;reward_elapsed=0;reward_delay=-1;reward_collect_time=-1;packet_ui_count=game.packet_count;for(int i=0;i<MAX_PACKETS;i++)packet_x[i]=44+i*37;meter_progress=game.spawned&&game.num_waves>0?(game.wave-1)/(float)game.num_waves:0;meter_wave=-1;memset(squash_audio_phase,0,sizeof(squash_audio_phase));memset(level_art_attempted,0,sizeof(level_art_attempted));level_art_bytes=0;last_sun=game.sun;sun_glow=0;reset_sound_actors();}
 static int mini_session_index(const Game *board){
     unsigned index=(unsigned)board->mini.id-1u;
     if(board->extra.category||index>=MINI_COUNT)return -1;
@@ -462,14 +463,17 @@ static void draw_board(void){
     int vase_lights_ready=0;
     int row_count=game_rows(&game),invisible=game_mini_active(&game,MINI_INVIS);
     float zombie_scale=(game.level==25||game_mini_active(&game,MINI_LITTLE))?.465f:.93f;
+    float roof_offset[COLS];
+    for(int col=0;col<COLS;col++)roof_offset[col]=game_roof_offset(&game,center(col));
     BoardActorRows actors;
     board_actor_rows(&game,row_count,invisible,&actors);
     for(int row=0;row<row_count;row++){
+        float row_ground=baseline(row);
         if(game_cleaner_active(&game,row)&&game.mower_x[row]<510)render_anim(&assets[board_cleaner_asset(row)],game.mower_x[row],baseline(game.extra.mower_row[row]?game.extra.mower_row[row]-1:row)+game_roof_offset(&game,game.mower_x[row]),game.time,.68f,WHITE,1);
         for(int col=0;col<COLS;col++){
-            if(game.graves[row][col])render_anim(&assets[A_GRAVE],center(col),baseline(row),0,1,WHITE,0);
-            if(game.craters[row][col]>0)render_anim(&assets[A_CRATER],center(col),baseline(row),0,1,WHITE,0);
-            float foot=plant_base(row,col)+game.mini.match_fall[row][col];
+            if(game.graves[row][col])render_anim(&assets[A_GRAVE],center(col),row_ground,0,1,WHITE,0);
+            if(game.craters[row][col]>0)render_anim(&assets[A_CRATER],center(col),row_ground,0,1,WHITE,0);
+            float tile_foot=row_ground+roof_offset[col]+game.mini.match_fall[row][col],foot=tile_foot;
             if(game.support[row][col]){int kind=game.support[row][col]-1,id=seed_icons[kind];render_anim(game.imitated[row][col]&2?gray_asset(id,0):&assets[id],center(col)+potted_offset(row,col,kind,0),foot+potted_offset(row,col,kind,1),kind==POT&&game.plants[row][col].kind>=0?0:game.time,.68f,WHITE,1);}
             if(game.ice_tiles[row][col]>0)render_rect(center(col)-18,foot-6,36,7,RGBA(160,220,250,180));
             if(game.vases[row][col]){
@@ -485,9 +489,10 @@ static void draw_board(void){
             if(game.pumpkin_hp[row][col]>0)render_anim(game.imitated[row][col]&4?gray_asset(A_PUMPKIN_BACK,0):&assets[A_PUMPKIN_BACK],center(col)+potted_offset(row,col,PUMPKIN,0),foot+potted_offset(row,col,PUMPKIN,1),game.time,.68f,WHITE,1);
             if(game.morph_timer[row][col]>0)render_anim(&assets[game.morph_timer[row][col]>30.0f/26?A_IMITATER:A_IMITATER_MORPH],center(col)+potted_offset(row,col,IMITATER,0),foot+potted_offset(row,col,IMITATER,1),2+30.0f/26-game.morph_timer[row][col],.68f,WHITE,0);
             Plant *p=&game.plants[row][col];if(p->kind<0)continue;float plant_x=center(col)+potted_offset(row,col,p->kind,0);foot+=potted_offset(row,col,p->kind,1);
+            float glow=p->kind==SUNFLOWER&&!(game.imitated[row][col]&1)?board_sunflower_glow(p):0;
             if(p->kind==SQUASH&&game.burst_left[row][col]>=3){}
             else if(p->kind==SQUASH&&game.burst_left[row][col]>0){int phase=game.burst_left[row][col],id=phase==1?(game.pea_shoot_time[row][col]<plant_x?A_SQUASH_LEFT:A_SQUASH_RIGHT):A_SQUASH_UP;render_anim(&assets[id],plant_x,foot,game.burst[row][col],.68f,WHITE,0);}
-            else if(p->kind==SUNFLOWER&&!(game.imitated[row][col]&1)&&board_sunflower_glow(p)>0)render_anim_glow(&assets[A_SUNFLOWER],plant_x,foot,p->age,.68f,board_sunflower_glow(p));
+            else if(glow>0)render_anim_glow(&assets[A_SUNFLOWER],plant_x,foot,p->age,.68f,glow);
             else{
                 float plant_time=game.extra.category==EXTRA_IZOMBIE?0:p->age;int plant_loop=1,asset=plant_asset(p);fidelity_plant_view(row,col,&asset,&plant_time,&plant_loop);int stage=p->kind==WALLNUT?defender_stage(p->hp,4000):p->kind==TALLNUT?defender_stage(p->hp,8000):0;
                 const Animation *a=stage?&damaged[asset][stage-1]:&assets[asset];
@@ -502,7 +507,7 @@ static void draw_board(void){
                         (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(&assets[body+2],plant_x+dx,foot+dy,action,.68f,RGBA(255,255,255,(int)(255*blend)),0);}
                 }else (game.extra.left_facing[row][col]?render_anim_mirrored:render_anim)(a,plant_x,foot,plant_time,p->kind==MINE?(p->age<MINE_ARM_SECONDS?.51f:.45f):.68f,game.asleep[row][col]?RGBA(160,160,190,255):WHITE,plant_loop);
             }
-            if(game.fidelity.wake[row][col]>0)render_anim(&assets[A_COFFEE],game.support[row][col]==POT+1?center(col)+potted_offset(row,col,COFFEE,0):plant_x,game.support[row][col]==POT+1?plant_base(row,col)+game.mini.match_fall[row][col]+potted_offset(row,col,COFFEE,1):foot-7,1-game.fidelity.wake[row][col],.68f,WHITE,0);
+            if(game.fidelity.wake[row][col]>0)render_anim(&assets[A_COFFEE],game.support[row][col]==POT+1?center(col)+potted_offset(row,col,COFFEE,0):plant_x,game.support[row][col]==POT+1?tile_foot+potted_offset(row,col,COFFEE,1):foot-7,1-game.fidelity.wake[row][col],.68f,WHITE,0);
             if(p->kind==MINE&&p->age<MINE_ARM_SECONDS){
                 render_rect(plant_x-11,foot+2,22,2,RGBA(60,40,20,255));
                 render_rect(plant_x-11,foot+2,22*p->age/MINE_ARM_SECONDS,2,RGBA(250,202,85,255));
@@ -511,17 +516,18 @@ static void draw_board(void){
         }
         for(int col=0;col<COLS;col++)if(game.pumpkin_hp[row][col]>0){
             int stage=defender_stage(game.pumpkin_hp[row][col],4000);const Animation *front=stage?&damaged[A_PUMPKIN_FRONT][stage-1]:&assets[A_PUMPKIN_FRONT];if(game.imitated[row][col]&4)front=gray_asset(A_PUMPKIN_FRONT,stage);
-            render_anim(front,center(col)+potted_offset(row,col,PUMPKIN,0),plant_base(row,col)+game.mini.match_fall[row][col]+potted_offset(row,col,PUMPKIN,1),game.time,.68f,WHITE,1);
+            float foot=row_ground+roof_offset[col]+game.mini.match_fall[row][col];
+            render_anim(front,center(col)+potted_offset(row,col,PUMPKIN,0),foot+potted_offset(row,col,PUMPKIN,1),game.time,.68f,WHITE,1);
         }
         for(int i=actors.zombie_head[row];i>=0;i=actors.zombie_next[i]){
             Zombie *z=&game.zombies[i];
             int body;const Animation *animation=zombie_visible_clip(z,i,&body);
             uint32_t tint=game.hypnotized[i]?RGBA(240,150,255,255):z->slow>0||game.frozen[i]>0?RGBA(150,215,255,255):WHITE;
-            float foot=baseline(row)+game_roof_offset(&game,z->x),scale=zombie_scale;
+            float ground=row_ground+game_roof_offset(&game,z->x),foot=ground,scale=zombie_scale;
             if(z->kind==Z_DANCER||z->kind==Z_BACKUP)scale*=.8f;
             int action=game.polish.action[i];
             if(action==ACTION_KELP&&game.polish.action_time[i]>=.5f)foot+=47.5f*(game.polish.action_time[i]-.5f);
-            if(action==ACTION_GARLIC&&game.polish.action_time[i]>=1.7f){float t=fminf(1,game.polish.action_time[i]-1.7f);int oldrow=game.polish.target[i]/ROWS;foot+=(baseline(oldrow)-baseline(z->row))*(1-t);}
+            if(action==ACTION_GARLIC&&game.polish.action_time[i]>=1.7f){float t=fminf(1,game.polish.action_time[i]-1.7f);int oldrow=game.polish.target[i]/ROWS;foot+=(baseline(oldrow)-row_ground)*(1-t);}
             if(action==ACTION_IMP_FLIGHT||action==ACTION_POOL_RISE||action==ACTION_SKY_DROP||game.polish024.dancer_state[i]==DANCE_RISE)foot-=game.polish024.altitude[i];
             int plant_head=zombotany_head_asset(z,i,body);
             if(z->death<=0&&game.mini.zombie_heads[i]==5&&game.extra.zombotany_jump[i]>0)
@@ -532,7 +538,7 @@ static void draw_board(void){
             float anim=zombie_visible_time(z,animation);
             if(z->death>0)tint=(tint&0xffffffu)|((uint32_t)(255*game_death_alpha(z))<<24);
             else if(game.mode==MODE_WHACK&&game.special[i]>0)tint=RGBA(255,210,140,255);
-            int rising=action==ACTION_POOL_RISE||game.polish024.dancer_state[i]==DANCE_RISE,clipped=rising||(z->kind==Z_DUCK&&game_water_row(&game,row));if(clipped)render_clip(0,0,480,(int)(baseline(row)+game_roof_offset(&game,z->x)));
+            int rising=action==ACTION_POOL_RISE||game.polish024.dancer_state[i]==DANCE_RISE,clipped=rising||(z->kind==Z_DUCK&&game_water_row(&game,row));if(clipped)render_clip(0,0,480,(int)ground);
             int custom=z->kind==Z_FLAG&&z->death<=0&&body<2&&avatar.enabled&&avatar_draw(&avatar,z->x,foot,anim,scale,tint,!!z->eating,!!game.hypnotized[i],body==1);
             if(custom){}
              else if(game.hypnotized[i]||(z->kind==Z_DIGGER&&z->vaulted&&!game.fidelity.equipment_lost[i])||game.completion.yeti_retreat[i])render_anim_mirrored(animation,z->x,foot,anim,scale,tint,z->death<=0&&!action&&z->vault<=0);
@@ -1329,6 +1335,7 @@ static int performance_selftest(FILE *out){
 #include "fidelity_presentation_tests.inc"
 #include "polish_ui024_tests.inc"
 #include "scene0241_tests.inc"
+#include "frame_timing.inc"
 #include "hitch0242_tests.inc"
 int main(int argc,char *argv[]){
     uint64_t boot_start;sceRtcGetCurrentTick(&boot_start);int first_frame_logged=0;
@@ -1420,6 +1427,7 @@ int main(int argc,char *argv[]){
     #endif
     int review_phase=0,music_test=0,mini_review=-1,extra_review=-1,completion_review=-1;FILE *stream_tests=0;
     uint64_t mini_review_story_seen=0;
+    FrameTiming frame_timing={0};
     uint64_t previous; sceRtcGetCurrentTick(&previous);float clock=0,accumulator=0,fps=60,fps_seconds=0;unsigned int fps_frames=0;
     while(running){
         uint64_t now;sceRtcGetCurrentTick(&now);float dt=(now-previous)/(float)sceRtcGetTickResolution();previous=now;
@@ -1429,6 +1437,8 @@ int main(int argc,char *argv[]){
         fps_seconds+=elapsed;fps_frames++;
         if(fps_seconds>=.5f){fps=fps_frames/fps_seconds;fps_seconds=0;fps_frames=0;}
         int was_paused=paused,was_playing=screen==1&&!paused&&!help&&!gallery&&game.status==PLAYING;
+        int was_timing=!benchmark&&debug_info;
+        TimingScene before_timing=was_timing?timing_scene():(TimingScene){0};
         SceCtrlData pad;sceCtrlPeekBufferPositive(&pad,1);if(!benchmark)input(&pad,dt);
         if(checkpoint_take_error())notify("COULD NOT SAVE. CHECK YOUR MEMORY CARD.");
         menu_motion_step(dt,!benchmark);
@@ -1458,9 +1468,9 @@ int main(int argc,char *argv[]){
         int preferred=audio_preferred_track(),track=music_test&&preferred>=0?preferred:context;
         if(ready&&screen!=19)audio_select_music(track);
         audio_music(ready&&!help&&ending_allows_music(track)&&(screen!=1||(!paused&&(game.status==PLAYING||(game.status==WON&&game.level==50))))&&!(screen==1&&game.level==40));
-        int music_enemies=0;for(int i=0;i<MAX_ZOMBIES;i++){Zombie *z=&game.zombies[i];if(z->used&&z->death<=0&&!game.hypnotized[i]&&game_zombie_has_head(&game,z))music_enemies++;}
+        int music_enemies=audio_scene_step(dt);
         audio_battle_state(music_enemies,screen==1&&game.status==PLAYING&&!paused&&!help,game.huge_wave_timer);
-        audio_scene_step(dt);memset(game.events,0,sizeof(game.events));
+        memset(game.events,0,sizeof(game.events));
         render_begin();
         if(!benchmark&&ready)shared_ui_step(!first_frame_logged);
         int showed_data_fault=!ready;
@@ -1505,6 +1515,13 @@ int main(int argc,char *argv[]){
         }
         if(ready&&help)draw_help();if(ready&&message_time>0&&screen!=1&&screen!=19&&screen!=23&&screen!=25&&screen!=26){ui_dialog(65,207,350,44,"");disc_text(82,218,316,message,UI_GOLD,.62f);}if(ready&&benchmark&&review_label){render_rect(180,220,294,18,RGBA(20,25,20,235));render_text(187,226,review_label,WHITE,.8f);}
         render_end();last_render=render_stats();
+        if(!benchmark&&debug_info){
+            uint64_t presented=sceKernelGetSystemTimeWide();
+            AnimationIOStats io=animation_io_stats();
+            TimingFrame frame={timing_scene(),presented,io.sync_reads,io.waits,performance.target_fps};
+            if(was_timing) timing_present(&frame_timing,before_timing,frame);
+            else frame_timing.previous=frame;
+        }else if(was_timing) timing_write(log,&frame_timing);
         if(!benchmark&&ready)prefetch_level_art();
         if(ready&&!animation_cache_ok())game_cache_fault(log);
         if(!first_frame_logged){
@@ -1637,6 +1654,7 @@ int main(int argc,char *argv[]){
         }
     }
     if(benchmark){int ok=ready&&animation_cache_ok();test_ok&=ok;FILE *checks=fopen("selftest.txt","a");if(checks){fprintf(checks,"all captured scenes and ending finish without cache allocation or decode errors: %s\nASSET CACHE RESULT %d/1\n",ok?"PASS":"FAIL",ok);fclose(checks);}}
+    if(!benchmark&&debug_info)timing_write(log,&frame_timing);
     game_sound_listener(0);audio_write_status(log);
     if(!benchmark&&ready){garden_flush();save_current();progress_save(&progress,progress_path);}
     write_profile(log,"EXIT");

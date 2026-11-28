@@ -65,7 +65,7 @@ static int fidelity_plant_step(Game *g,int r,int c,float dt,ZombieRows *rows){
    int metal=z->armor>0&&(z->kind==Z_BUCKET||(z->kind==Z_DUCK&&g->polish024.pool_gear[i]==Z_BUCKET)||z->kind==Z_DOOR||z->kind==Z_FOOTBALL||z->kind==Z_LADDER);
    if(!metal&&z->kind!=Z_POGO&&z->kind!=Z_DIGGER&&z->kind!=Z_JACK)continue;
    z->armor=0;g->fidelity.equipment_lost[i]=1;
-   if(z->kind==Z_DIGGER&&!z->vaulted){z->vaulted=1;g->polish.action[i]=ACTION_DIGGER_RISE;g->polish.action_time[i]=0;g->special[i]=0;cue(FOLEY_DIGGER);}
+   if(z->kind==Z_DIGGER&&!z->vaulted)begin_digger_rise(g,i);
    if(z->kind==Z_POGO){z->vaulted=1;z->vault=0;z->speed=.23f+random_unit(g)*.14f;}
    if(z->kind==Z_LADDER&&g->polish.action[i]==ACTION_LADDER)g->polish.action[i]=0;
    p->attack=15;*clock=0;*phase=1;cue(FOLEY_MAGNETSHROOM);break;

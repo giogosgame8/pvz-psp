@@ -1521,6 +1521,23 @@ static int read_board_data(FILE *file,const uint32_t header[4],Game *loaded){
     if(bytes<sizeof(*loaded))memset((char*)loaded+bytes,0,sizeof(*loaded)-bytes);
     return 1;
 }
+static int saved_zombie_motion_valid(const Game *g,int i,uint32_t version){
+    const Zombie *z=&g->zombies[i];
+    if((unsigned)z->row>=ROWS||(unsigned)z->kind>=Z_TYPES||
+       !isfinite(z->hp)||!isfinite(z->x)||!isfinite(z->age)||z->age<0||
+       !isfinite(z->death)||z->death<0||!isfinite(z->vault)||z->vault<0||
+       !isfinite(z->speed)||!isfinite(z->slow)||!isfinite(g->frozen[i])||!isfinite(g->special[i]))return 0;
+    if(z->death>0){
+        if(version<7)return 1; /* These saves acquire a playback rate during migration. */
+        if(!isfinite(z->vault_from)||z->vault_from<1||z->vault_from>120)return 0;
+        float duration=game_death_duration_for(g,z);
+        return z->death<=duration+1&&z->age<=duration+1;
+    }
+    if(z->vault>0&&(!isfinite(z->vault_from)||!isfinite(z->vault_to)||
+                   !isfinite(z->vault_to-z->vault_from)))return 0;
+    return version<14||g->polish.action[i]!=ACTION_IMP_FLIGHT||isfinite(z->vault_from);
+}
+
 static int finish_loaded_board(Game *loaded,uint32_t version){
  int ok=loaded->status>=0&&loaded->status<=2&&loaded->level>=1&&loaded->level<=50&&loaded->num_waves>=1&&loaded->num_waves<=40&&loaded->wave>=1&&loaded->wave<=loaded->num_waves&&loaded->sun>=0&&loaded->sun<=1000000&&loaded->selected>=0&&loaded->selected<ALL_SEEDS&&loaded->packet_count>=0&&loaded->packet_count<=MAX_PACKETS;
  if(ok)ok=saved_plants_valid(loaded->plants)&&saved_supports_valid(loaded->support)&&saved_shots_valid(loaded->shots);
@@ -1535,7 +1552,7 @@ static int finish_loaded_board(Game *loaded,uint32_t version){
  }
  if(ok){ExtraState *e=&loaded->extra;ok=loaded->mode>=0&&loaded->mode<=MODE_IZOMBIE&&loaded->cursor_row>=0&&loaded->cursor_row<ROWS&&loaded->cursor_col>=0&&loaded->cursor_col<COLS&&e->category>=0&&e->category<=EXTRA_IZOMBIE&&e->card_count>=0&&e->card_count<=12&&e->selection>=0&&e->selection<(e->category==EXTRA_SURVIVAL?5:10)&&e->difficulty>=0&&e->difficulty<=2&&e->stage>=0&&e->stage<1000000&&e->garden_drop_count>=0;
   if(e->category==EXTRA_IZOMBIE)ok=ok&&e->card_count>0;for(int i=0;i<e->card_count&&ok;i++)ok=e->zombie_cards[i]>=0&&e->zombie_cards[i]<Z_TYPES;
-  for(int i=0;i<MAX_ZOMBIES&&ok;i++)if(loaded->zombies[i].used){Zombie *z=&loaded->zombies[i];ok=z->row>=0&&z->row<ROWS&&z->kind>=0&&z->kind<Z_TYPES&&isfinite(z->hp)&&isfinite(z->x)&&isfinite(z->age);}
+  for(int i=0;i<MAX_ZOMBIES&&ok;i++)if(loaded->zombies[i].used)ok=saved_zombie_motion_valid(loaded,i,version);
   for(int i=0;i<loaded->packet_count&&ok;i++)ok=loaded->packets[i]>=0&&loaded->packets[i]<=LEFT_PACKET;
   for(int w=0;w<loaded->num_waves&&ok;w++){ok=loaded->wave_count[w]>=0&&loaded->wave_count[w]<=WAVE_CAPACITY;for(int n=0;n<loaded->wave_count[w]&&ok;n++)ok=loaded->wave_types[w][n]<Z_TYPES;}
   if(version>=11){PolishState *p=&loaded->polish;ok=ok&&p->wave_pending>=0&&p->wave_pending<=1&&p->wave_entry>=0&&p->wave_entry<=WAVE_CAPACITY&&(!p->wave_pending||p->wave_entry<=loaded->wave_count[loaded->wave-1])&&p->grave_entry>=0&&p->grave_entry<=ROWS*COLS&&isfinite(p->wave_health)&&p->wave_health>=0&&p->wave_health<1e9f&&isfinite(p->wave_fraction)&&p->wave_fraction>=0&&p->wave_fraction<=1;

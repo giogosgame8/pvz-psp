@@ -1,6 +1,21 @@
 # PSP-1000 60 FPS mode — 0.18.1
 
-See the [0.24.6 PSP-1000 results](reference/REMAINING-0.24.6.md#psp-1000-at-the-optional-60-fps-setting) for the current preview.
+See the [0.24.7 release notes](changelog/CHANGES-0.24.7.md) for the current release.
+
+## Measuring stutters on a PSP
+
+In a build with frame timing, press **Select** during a level to show the FPS
+overlay. Move the cursor, open and close pause, and finish a level if you want
+to measure rewards. Press **Select** again to write the summary. Copy
+`PSP/GAME/PVZPSP/runtime.log` before reopening the game, which starts a new log.
+
+The **FRAME TIMING** lines report the mean and longest interval between frame
+presentations, frames over 1.5 times the target interval, and synchronous
+animation reads and cache waits. Victory, reward appearance and reward pickup
+use separate samples, so the intended wait for the reward drop is outside the
+reveal measurement. Keep the PSP awake for the whole sample.
+
+## Earlier emulator benchmark
 
 The opt-in target works in the tested PSP-1000 emulator configuration. It is
 not a locked-60-FPS result, and no physical PSP-1000 was tested.

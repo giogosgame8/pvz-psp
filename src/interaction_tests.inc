@@ -41,3 +41,46 @@
     game_start_level(&g,9,1013);hit=game_spawn_zombie(&g,2,Z_NORMAL,300);g.zombies[hit].death=1.5f;g.zombies[hit].age=.4f;
     saved=legacy071_fixture(&g,"selftest-v6.dat",6);
     CHECK("0.7 save migration preserves position and repairs a pending death",saved&&game_load(&restored,"selftest-v6.dat")&&restored.zombies[hit].x==300&&restored.zombies[hit].age==.4f&&restored.zombies[hit].vault_from==27&&restored.zombies[hit].death>.4f);remove("selftest-v6.dat");
+
+    const char *motion_path="selftest-motion.dat",*motion_backup="selftest-motion.dat.bak";
+    remove(motion_path);remove(motion_backup);
+    game_start_level(&g,9,1014);
+    hit=game_spawn_zombie(&g,2,Z_NORMAL,300);
+    kill_zombie(&g,&g.zombies[hit]);
+    game_animate_deaths(&g,.4f);
+    int jumper=game_spawn_zombie(&g,2,Z_POLE,380);
+    g.zombies[jumper].vault=.5f;
+    g.zombies[jumper].vault_from=390;
+    g.zombies[jumper].vault_to=335;
+    int airborne=game_spawn_zombie(&g,2,Z_IMP,450);
+    g.polish.action[airborne]=ACTION_IMP_FLIGHT;
+    g.zombies[airborne].vault_from=460;
+    saved=game_save(&g,motion_path);
+    CHECK("resuming preserves death timing, a vault and an airborne Imp",
+      saved&&game_load(&restored,motion_path)&&!game_load_backup_used()&&
+      !memcmp(restored.zombies,g.zombies,sizeof(g.zombies))&&restored.polish.action[airborne]==ACTION_IMP_FLIGHT);
+    int motion_saved=saved&&write_board_fixture(&g,motion_backup);
+    float *damaged_motion[]={&g.zombies[hit].vault_from,&g.zombies[hit].vault_from,
+                            &g.zombies[hit].death,&g.zombies[hit].age,
+                            &g.zombies[jumper].vault_to,&g.zombies[airborne].vault_from};
+    const float invalid_motion[]={0,NAN,INFINITY,1e20f,NAN,INFINITY};
+    for(unsigned n=0;n<sizeof(invalid_motion)/sizeof(*invalid_motion);n++){
+        float original=*damaged_motion[n];*damaged_motion[n]=invalid_motion[n];
+        int recovered=motion_saved&&write_board_fixture(&g,motion_path)&&
+                      game_load(&restored,motion_path)&&game_load_backup_used();
+        *damaged_motion[n]=original;
+        motion_saved&=recovered&&!memcmp(restored.zombies,g.zombies,sizeof(g.zombies));
+    }
+    CHECK("invalid actor timing in a checksummed primary recovers the valid backup",motion_saved);
+    g.sun+=25;
+    int repaired_motion=game_save(&g,motion_path)&&game_load(&restored,motion_path)&&
+                        !game_load_backup_used()&&restored.sun==g.sun;
+    remove(motion_path);
+    CHECK("repairing the checkpoint preserves its valid previous backup",
+      repaired_motion&&game_load(&restored,motion_path)&&game_load_backup_used()&&restored.sun==g.sun-25);
+    g.zombies[hit].vault_from=0;
+    remove(motion_backup);
+    CHECK("an invalid checkpoint without a backup leaves the loaded board intact",
+      write_board_fixture(&g,motion_path)&&!game_load(&restored,motion_path)&&
+      restored.sun==g.sun-25&&restored.zombies[hit].vault_from>0);
+    remove(motion_path);

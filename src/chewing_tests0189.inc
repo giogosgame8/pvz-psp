@@ -50,6 +50,46 @@ static int chewing_selftest(FILE *out){
   for(int frame=0;frame<240;frame++){game_step(&game,1/60.0f);bites+=zombie_chew_events(id,1/60.0f);}
   C(chill?"chilled gameplay halves eating motion and keeps four matching cues":"normal gameplay produces seven cues at PS3 playback speed",fabsf(z->age-(chill?2:4))<.03f&&bites==(chill?4:7));
  }
+ game_start_level(&game,9,9198);reset_sound_actors();
+ id=game_spawn_zombie(&game,2,Z_NORMAL,350);
+ SoundActor *previous=sound_actor(id);
+ uint32_t former=previous->id;
+ previous->chewing=1;previous->chew=.20f;previous->clip=&assets[A_ZOMBIE_EAT];previous->death=.95f;
+ game.zombies[id].used=0;
+ int reused=game_spawn_zombie(&game,2,Z_NORMAL,350);
+ z=&game.zombies[reused];z->eating=1;z->age=assets[A_ZOMBIE_EAT].frames*.72f/36;
+ C("a reused same-kind slot cannot replay its last occupant's bite",
+   reused==id&&game.fidelity.actor_id[reused]!=former&&zombie_chew_events(reused,.01f)==0&&
+   sound_actors[reused].death==0);
+ z->vault_from=27; /* Death playback rate, as initialized by kill_zombie(). */
+ float length=game_death_duration_for(&game,z);
+ z->death=length*.25f;
+ int before_fall=zombie_fall_cue(reused);
+ z->death=length*.15f;
+ int fall=zombie_fall_cue(reused),repeat_fall=zombie_fall_cue(reused);
+ C("the new occupant has an independent landing cue that plays once",
+   !before_fall&&fall&&!repeat_fall);
+ reset_sound_actors();
+ C("resuming a death already past ground contact does not replay its landing cue",
+   !zombie_fall_cue(reused));
+ int prior_screen=screen,prior_pause=paused,prior_help=help,prior_audio_screen=audio_last_screen;
+ float prior_groan=groan_wait,prior_thunder=thunder_wait;
+ game_start_level(&game,9,9199);reset_sound_actors();
+ screen=audio_last_screen=1;paused=help=0;groan_wait=7;
+ game_spawn_zombie(&game,2,Z_NORMAL,350);
+ int allied=game_spawn_zombie(&game,2,Z_NORMAL,370);game.hypnotized[allied]=1;
+ int headless=game_spawn_zombie(&game,2,Z_NORMAL,390);game.zombies[headless].hp=40;
+ int dying=game_spawn_zombie(&game,2,Z_NORMAL,410);
+ game.zombies[dying].vault_from=27;game.zombies[dying].death=game_death_duration_for(&game,&game.zombies[dying]);
+ C("the audio scene counts only live headed enemies for adaptive music",audio_scene_step(0)==1);
+ paused=1;int paused_count=audio_scene_step(0);
+ paused=0;help=1;int help_count=audio_scene_step(0);
+ help=0;int resumed_count=audio_scene_step(0);
+ screen=0;int menu_count=audio_scene_step(0);
+ C("pausing, opening help or leaving the lawn suppresses adaptive threat counts",
+   !paused_count&&!help_count&&!menu_count&&resumed_count==1);
+ screen=prior_screen;paused=prior_pause;help=prior_help;audio_last_screen=prior_audio_screen;
+ groan_wait=prior_groan;thunder_wait=prior_thunder;foley_pause(paused||help);
  game=old;memcpy(sound_actors,saved,sizeof(saved));fprintf(out,"CHEWING RESULT %d/%d\n",pass,total);return pass==total;
  #undef C
 }

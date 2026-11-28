@@ -1,6 +1,37 @@
 static int hitch0242_selftest(FILE *out){
  int pass=0,total=0,saved_screen=screen,saved_page=menu_crow_page;float saved_clock=crow_clock;
 #define H(label,test) do{int ok=(test);total++;pass+=ok;fprintf(out,"hitch0242 %s: %s\n",label,ok?"PASS":"FAIL");}while(0)
+ FrameTiming timing={0};
+ TimingScene play={TIMING_BOARD|TIMING_ACTIVE,2,3}, moved=play;
+ moved.column++;
+ TimingScene pause_scene={TIMING_BOARD|TIMING_PAUSED,2,4};
+ TimingScene won={TIMING_BOARD|TIMING_WON,2,4}, revealed=won, collected=won;
+ revealed.flags|=TIMING_REWARD;
+ collected.flags|=TIMING_COLLECTED;
+ timing_present(&timing,play,(TimingFrame){play,1000000,10,3,60});
+ timing_present(&timing,play,(TimingFrame){moved,1016667,10,3,60});
+ timing_present(&timing,moved,(TimingFrame){moved,1050000,12,4,60});
+ timing_present(&timing,moved,(TimingFrame){pause_scene,1090000,13,5,60});
+ timing_present(&timing,pause_scene,(TimingFrame){pause_scene,1150000,13,5,60});
+ H("frame timing separates cursor and pause spikes from ordinary play",
+   timing.groups[TIMING_PLAY].samples==2&&timing.groups[TIMING_PLAY].long_frames==1&&
+   timing.groups[TIMING_PLAY].reads==2&&timing.groups[TIMING_PLAY].waits==1&&
+   timing.groups[TIMING_CURSOR].samples==1&&timing.groups[TIMING_CURSOR].peak_us==16667&&
+   timing.groups[TIMING_PAUSE].samples==1&&timing.groups[TIMING_PAUSE].peak_us==40000);
+ timing_present(&timing,pause_scene,(TimingFrame){moved,2000000,19,5,30});
+ timing_present(&timing,moved,(TimingFrame){moved,2040000,19,5,30});
+ timing_present(&timing,moved,(TimingFrame){won,2073300,19,5,30});
+ timing_present(&timing,won,(TimingFrame){revealed,2133300,22,6,30});
+ timing_present(&timing,revealed,(TimingFrame){collected,2166600,22,6,30});
+ H("frame timing uses the display target and measures reward transitions individually",
+   timing.groups[TIMING_PLAY].samples==3&&timing.groups[TIMING_PLAY].long_frames==1&&
+   timing.groups[TIMING_VICTORY].peak_us==33300&&timing.groups[TIMING_REVEAL].peak_us==60000&&
+   timing.groups[TIMING_REVEAL].reads==3&&timing.groups[TIMING_REVEAL].long_frames==1&&
+   timing.groups[TIMING_PICKUP].peak_us==33300&&timing.groups[TIMING_PICKUP].long_frames==0);
+ timing_write(NULL,&timing);
+ H("disabling timing discards the previous timestamp and all samples",
+   timing.previous.target_fps==0&&timing.groups[TIMING_PLAY].samples==0&&
+   timing.groups[TIMING_PICKUP].samples==0);
  Animation probe={0};
  int loaded=animation_load(&probe,"data/pea_idle.pva");
  render_begin();

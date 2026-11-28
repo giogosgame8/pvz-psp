@@ -1,13 +1,16 @@
 #include "save_storage.h"
 #include <pspiofilemgr.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 static const char *const names[SAVE_COUNT]={
     "save.dat", "profile.dat", "progress.dat", "mode-save.dat", "adventure-backup.dat",
     "audio-settings.dat", "ui-settings.dat", "performance.dat", "player-name.dat",
     "custom-zombie.dat", "challenge-view.dat", "mini-save.dat"
 };
+_Static_assert(SAVE_COUNT*2<32,"Legacy save mask must fit in 32 bits");
 static char paths[SAVE_COUNT][64];
 static int active;
 
@@ -17,6 +20,27 @@ const char *save_storage_path(SaveSlot slot){
 
 static int is_missing(int code){
     return (unsigned)code==0x80010002u;
+}
+
+static uint32_t legacy_save_slots(void){
+    /* If enumeration fails, leave per-file inspection as the fallback. */
+    const uint32_t all=(UINT32_C(1)<<(SAVE_COUNT*2))-1;
+    SceUID directory=sceIoDopen(".");
+    if(directory<0)return all;
+    uint32_t found=0;
+    SceIoDirent entry={0};
+    int result;
+    while((result=sceIoDread(directory,&entry))>0){
+        for(int slot=0;slot<SAVE_COUNT;slot++){
+            size_t length=strlen(names[slot]);
+            if(strncasecmp(entry.d_name,names[slot],length))continue;
+            const char *suffix=entry.d_name+length;
+            if(!*suffix)found|=UINT32_C(1)<<(slot*2);
+            else if(!strcasecmp(suffix,".bak"))found|=UINT32_C(1)<<(slot*2+1);
+            break;
+        }
+    }
+    return sceIoDclose(directory)<0||result<0?all:found;
 }
 
 static int copy_legacy(const char *name,const char *stage,int *copied){
@@ -56,14 +80,22 @@ int save_storage_init(const char *device,int *copied){
     if(status<0){
         if(!is_missing(status))return 0;
         if(sceIoMkdir(root,0777)<0&&(sceIoGetstat(root,&stat)<0||!FIO_S_ISDIR(stat.st_mode)))return 0;
-        if(sceIoMkdir(stage,0777)<0&&(sceIoGetstat(stage,&stat)<0||!FIO_S_ISDIR(stat.st_mode)))return 0;
+        status=sceIoGetstat(stage,&stat);
+        int existing_stage=status>=0;
+        if(existing_stage){if(!FIO_S_ISDIR(stat.st_mode))return 0;}
+        else if(!is_missing(status)||sceIoMkdir(stage,0777)<0)return 0;
+        uint32_t legacy=legacy_save_slots();
         for(int slot=0;slot<SAVE_COUNT;slot++)for(int backup=0;backup<2;backup++){
+            int has_source=(legacy&(UINT32_C(1)<<(slot*2+backup)))!=0;
+            if(!existing_stage&&!has_source)continue;
             char name[40],path[96];
             snprintf(name,sizeof(name),"%s%s",names[slot],backup?".bak":"");
-            snprintf(path,sizeof(path),"%s/%s",stage,name);
-            status=sceIoRemove(path);
-            if(status<0&&!is_missing(status))return 0;
-            if(!copy_legacy(name,stage,copied))return 0;
+            if(existing_stage){
+                snprintf(path,sizeof(path),"%s/%s",stage,name);
+                status=sceIoRemove(path);
+                if(status<0&&!is_missing(status))return 0;
+            }
+            if(has_source&&!copy_legacy(name,stage,copied))return 0;
         }
         if(sceIoRename(stage,target)<0)return 0;
     }else if(!FIO_S_ISDIR(stat.st_mode))return 0;

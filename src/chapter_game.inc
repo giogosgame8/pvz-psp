@@ -244,6 +244,14 @@ static void chapter_shots_step(Game *g,float dt,ZombieRows *targets){
         if(s->x>490||s->x<0||g->shot_y[i]<0||g->shot_y[i]>270)s->used=0;
     }
 }
+static void begin_digger_rise(Game *g,int i){
+    g->zombies[i].vaulted=1;
+    g->special[i]=0;
+    g->polish.action[i]=ACTION_DIGGER_RISE;
+    g->polish.action_time[i]=0;
+    cue(FOLEY_DIRT_RISE);
+}
+
 static int chapter_zombie(Game *g,int i,float dt){
     Zombie *z=&g->zombies[i];if(z->death>0)return 0;
     if(g->mode==MODE_BUNGEE&&g->special[i]<0&&z->kind!=Z_BUNGEE){g->special[i]=fminf(0,g->special[i]+dt);z->age+=dt;return 1;}
@@ -269,7 +277,7 @@ static int chapter_zombie(Game *g,int i,float dt){
     }
     if(g->frozen[i]>0)return 0;
     if(z->kind==Z_BALLOON&&!g->fidelity.equipment_lost[i]){z->x-=game_zombie_walk(z,dt);if(z->x<12){if(game_zombie_has_head(g,z))g->status=LOST;else kill_zombie(g,z);}return 1;}
-    if(z->kind==Z_DIGGER&&!z->vaulted){z->x-=16*dt;z->age+=dt;if(z->x<GRID_X){z->vaulted=1;g->special[i]=0;g->polish.action[i]=ACTION_DIGGER_RISE;g->polish.action_time[i]=0;cue(FOLEY_DIRT_RISE);}return 1;}
+    if(z->kind==Z_DIGGER&&!z->vaulted){z->x-=16*dt;z->age+=dt;if(z->x<GRID_X)begin_digger_rise(g,i);return 1;}
     if(z->kind==Z_DIGGER&&z->vaulted&&!g->hypnotized[i]){
         if(g->special[i]>0){g->special[i]-=dt;return 1;}
         int was_eating=z->eating,row=z->row;
